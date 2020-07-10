@@ -245,6 +245,8 @@ void XJackKeyBoard::read_config() {
 }
 
 void XJackKeyBoard::save_config() {
+    if(nsmsig.nsm_session_control)
+        XLockDisplay(win->app->dpy);
     std::ofstream outfile(config_file);
      if (outfile.is_open()) {
          outfile << main_x << std::endl;
@@ -257,19 +259,25 @@ void XJackKeyBoard::save_config() {
          outfile << velocity << std::endl;
          outfile.close();
      }
+    if(nsmsig.nsm_session_control)
+        XUnlockDisplay(win->app->dpy);
 }
 
 void XJackKeyBoard::nsm_show_ui() {
+    XLockDisplay(win->app->dpy);
     widget_show_all(win);
     XFlush(win->app->dpy);
     XMoveWindow(win->app->dpy,win->widget, main_x, main_y);
     nsmsig.trigger_nsm_gui_is_shown();
+    XUnlockDisplay(win->app->dpy);
 }
 
 void XJackKeyBoard::nsm_hide_ui() {
+    XLockDisplay(win->app->dpy);
     widget_hide(win);
     XFlush(win->app->dpy);
     nsmsig.trigger_nsm_gui_is_hidden();
+    XUnlockDisplay(win->app->dpy);
 }
 
 void XJackKeyBoard::show_ui(int present) {
@@ -606,7 +614,12 @@ void XJackKeyBoard::key_release(void *w_, void *key_, void *user_data) {
 
 // static
 void XJackKeyBoard::signal_handle (int sig, XJackKeyBoard *xjmkb) {
-    if (sig == SIGTERM) quit(xjmkb->win);
+    if(xjmkb->nsmsig.nsm_session_control)
+        XLockDisplay(xjmkb->win->app->dpy);
+    if (sig == SIGTERM || sig == SIGINT)
+        quit(xjmkb->win);
+    if(xjmkb->nsmsig.nsm_session_control)
+        XUnlockDisplay(xjmkb->win->app->dpy);
     jack_client_close (xjmkb->client);
     fprintf (stderr, "\n%s: signal %i received, exiting ...\n",xjmkb->client_name.c_str(), sig);
     exit (0);
@@ -693,7 +706,8 @@ void PosixSignalHandler::signal_helper_thread() {
  */
 
 int main (int argc, char *argv[]) {
-    XInitThreads();
+    if(0 == XInitThreads()) 
+        fprintf(stderr, "Warning: XInitThreads() failed\n");
     Xputty app;
 
     midikeyboard::MidiMessenger mmessage;
