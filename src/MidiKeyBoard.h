@@ -154,6 +154,7 @@ public:
     void set_config(const char *name, const char *client_id, bool op_gui);
 
     static void signal_handle (int sig, XJackKeyBoard *xjmkb);
+    static void exit_handle (int sig, XJackKeyBoard *xjmkb);
 };
 
 

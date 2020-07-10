@@ -614,13 +614,19 @@ void XJackKeyBoard::key_release(void *w_, void *key_, void *user_data) {
 
 // static
 void XJackKeyBoard::signal_handle (int sig, XJackKeyBoard *xjmkb) {
-    if(xjmkb->nsmsig.nsm_session_control)
-        XLockDisplay(xjmkb->win->app->dpy);
-    if (sig == SIGTERM || sig == SIGINT)
-        quit(xjmkb->win);
-    if(xjmkb->nsmsig.nsm_session_control)
-        XUnlockDisplay(xjmkb->win->app->dpy);
     jack_client_close (xjmkb->client);
+    xjmkb->client = NULL;
+    XLockDisplay(xjmkb->win->app->dpy);
+    quit(xjmkb->win);
+    XFlush(xjmkb->win->app->dpy);
+    XUnlockDisplay(xjmkb->win->app->dpy);
+    fprintf (stderr, "\n%s: signal %i received, bye bye ...\n",xjmkb->client_name.c_str(), sig);
+}
+
+// static
+void XJackKeyBoard::exit_handle (int sig, XJackKeyBoard *xjmkb) {
+    jack_client_close (xjmkb->client);
+    xjmkb->client = NULL;
     fprintf (stderr, "\n%s: signal %i received, exiting ...\n",xjmkb->client_name.c_str(), sig);
     exit (0);
 }
@@ -683,11 +689,14 @@ void PosixSignalHandler::signal_helper_thread() {
             continue;
         }
         switch (sig) {
-        case SIGTERM:
         case SIGINT:
+        case SIGTERM:
         case SIGQUIT:
-        case SIGHUP:
             xjmkb->signal_handle (sig, xjmkb);
+            break;
+        case SIGHUP:
+        case SIGKILL:
+            xjmkb->exit_handle (sig, xjmkb);
             break;
         default:
             assert(false);
@@ -732,7 +741,7 @@ int main (int argc, char *argv[]) {
    
     main_quit(&app);
     xjmkb.save_config();
-    jack_client_close (xjmkb.client);
+    if (xjmkb.client) jack_client_close (xjmkb.client);
 
     exit (0);
 
