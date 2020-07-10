@@ -143,6 +143,8 @@ public:
     int velocity;
     int mbank;
     int mprogram;
+    int keylayout;
+    int mchannel;
 
     void init_ui(Xputty *app);
     void init_jack();

@@ -106,6 +106,8 @@ XJackKeyBoard::XJackKeyBoard(MidiMessenger *mmessage_, nsmhandler::NsmSignalHand
     velocity = 127;
     mbank = 0;
     mprogram = 0;
+    keylayout = 0;
+    mchannel = 0;
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
         sigc::mem_fun(this, &XJackKeyBoard::nsm_show_ui));
@@ -231,6 +233,12 @@ void XJackKeyBoard::read_config() {
         if (!line.empty()) main_h = std::stoi(line);
         getline( infile, line );
         if (!line.empty()) visible = std::stoi(line);
+        getline( infile, line );
+        if (!line.empty()) keylayout = std::stoi(line);
+        getline( infile, line );
+        if (!line.empty()) mchannel = std::stoi(line);
+        getline( infile, line );
+        if (!line.empty()) velocity = std::stoi(line);
         infile.close();
         has_config = true;
     }
@@ -244,6 +252,9 @@ void XJackKeyBoard::save_config() {
          outfile << main_w << std::endl;
          outfile << main_h << std::endl;
          outfile << visible << std::endl;
+         outfile << keylayout << std::endl;
+         outfile << mchannel << std::endl;
+         outfile << velocity << std::endl;
          outfile.close();
      }
 }
@@ -392,7 +403,9 @@ void XJackKeyBoard::init_ui(Xputty *app) {
         main_x = screen->width/2 - main_w/2;
         main_y = screen->height/2 - main_h/2; 
     }
-
+    combobox_set_active_entry(channel, mchannel);
+    combobox_set_active_entry(layout, keylayout);
+    adj_set_value(keys->w[6]->adj, velocity);
 }
 
 // static
@@ -533,7 +546,7 @@ void XJackKeyBoard::channel_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
-    xjmkb->mmessage->channel = (int)adj_get_value(w->adj);
+    xjmkb->mmessage->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
 }
 
 // static
@@ -562,7 +575,7 @@ void XJackKeyBoard::layout_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->w->parent_struct;
-    keys->layout = (int)adj_get_value(w->adj);
+    keys->layout = xjmkb->keylayout = (int)adj_get_value(w->adj);
 }
 
 // static
@@ -572,6 +585,7 @@ void XJackKeyBoard::octave_callback(void *w_, void* user_data) {
     XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->w->parent_struct;
     keys->octave = (int)12*adj_get_value(w->adj);
+    expose_widget(xjmkb->w);
 }
 
 // static

@@ -37,7 +37,7 @@
 	PIXMAPS_DIR ?= $(SHARE_DIR)/pixmaps
 
 	# set compile flags
-	CXXFLAGS += -D_FORTIFY_SOURCE=2 -Wall $(SSE_CFLAGS) 
+	CXXFLAGS += -O2 -D_FORTIFY_SOURCE=2 -Wall $(SSE_CFLAGS) 
 	LDFLAGS += -I./ -I../libxputty/libxputty/include/ `pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo` -lm -pthread
 	# invoke build files
 	OBJECTS = $(NAME).cpp NsmHandler.cpp xkeyboard.c
