@@ -15,6 +15,7 @@ Virtual Midi keyboard for Jack Audio Connection Kit
 - libcairo2-dev
 - libx11-dev
 - liblo-dev
+- libsig++-2.0-dev
 - libjack-(jackd2)-dev
 
 ## Build
