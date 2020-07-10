@@ -8,7 +8,7 @@ Virtual Midi keyboard for Jack Audio Connection Kit
 
 - Virtual Midi Keyboard for Jack Audio Connection Kit
 - Midi Through: forward midi input to output
-- [NSM] (https://linuxaudio.github.io/new-session-manager/) support
+- [NSM](https://linuxaudio.github.io/new-session-manager/) support
 
 ## Dependencys
 
