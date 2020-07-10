@@ -740,7 +740,9 @@ int main (int argc, char *argv[]) {
     main_run(&app);
    
     main_quit(&app);
-    xjmkb.save_config();
+
+    if(!nsmsig.nsm_session_control) xjmkb.save_config();
+
     if (xjmkb.client) jack_client_close (xjmkb.client);
 
     exit (0);
