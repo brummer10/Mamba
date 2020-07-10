@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=MidiKeyBoard
+Comment=Virtual Midi Keyboard for Jack Audio Connection Kit
+Exec=midikeyboard
+Icon=MidiKeyBoard
+Categories=AudioVideo;Audio;Midi;
+Terminal=false
+Name[de_DE]=MidiKeyBoard
