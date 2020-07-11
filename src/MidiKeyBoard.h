@@ -123,6 +123,7 @@ private:
     static void unmap_callback(void *w_, void* user_data);
     static void map_callback(void *w_, void* user_data);
     static void draw_board(void *w_, void* user_data);
+    static void win_mem_free(void *w_, void* user_data);
     void nsm_show_ui();
     void nsm_hide_ui();
 public:

@@ -87,8 +87,9 @@ bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) {
 
 XJackKeyBoard::XJackKeyBoard(MidiMessenger *mmessage_, nsmhandler::NsmSignalHandler& nsmsig_)
     : mmessage(mmessage_),
-    nsmsig(nsmsig_) {
-    icon = NULL;
+    nsmsig(nsmsig_),
+    icon(NULL),
+    client(NULL) {
     client_name = "MidiKeyBoard";
     if (getenv("XDG_CONFIG_HOME")) {
         path = getenv("XDG_CONFIG_HOME");
@@ -306,10 +307,11 @@ void XJackKeyBoard::init_ui(Xputty *app) {
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
     widget_set_icon_from_png(win,icon,LDVAR(midikeyboard_png));
     widget_set_title(win, client_name.c_str());
-    win->flags |= NO_AUTOREPEAT;
+    win->flags |= HAS_MEM | NO_AUTOREPEAT;
     win->parent_struct = this;
     win->func.expose_callback = draw_board;
     win->func.configure_notify_callback = win_configure_callback;
+    win->func.mem_free_callback = win_mem_free;
     win->func.map_notify_callback = map_callback;
     win->func.unmap_notify_callback = unmap_callback;
     win->func.key_press_callback = key_press;
@@ -388,6 +390,7 @@ void XJackKeyBoard::init_ui(Xputty *app) {
 
     w = create_widget(app, win, 0, 40, 700, 200);
     w->flags &= ~USE_TRANSPARENCY;
+    w->flags |= NO_AUTOREPEAT;
     add_midi_keyboard(w, "MidiKeyBoard", 0, 0, 700, 200);
 
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
@@ -631,6 +634,17 @@ void XJackKeyBoard::exit_handle (int sig, XJackKeyBoard *xjmkb) {
     exit (0);
 }
 
+
+// static
+void XJackKeyBoard::win_mem_free(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    if(xjmkb->icon) {
+        XFreePixmap(xjmkb->win->app->dpy, *xjmkb->icon);
+        xjmkb->icon = NULL;
+    }
+}
 
 /****************************************************************
  ** class PosixSignalHandler

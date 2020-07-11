@@ -341,17 +341,19 @@ static void draw_keyboard(void *w_, void* user_data) {
     if (attrs.map_state != IsViewable) return;
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
     
-    cairo_rectangle(w->crb,0,0,width_t,height_t*0.4);
-    set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
-    cairo_fill (w->crb);
-    //set_pattern(w,&w->app->color_scheme->normal,&w->app->color_scheme->selected,BACKGROUND_);
-    use_bg_color_scheme(w, SELECTED_);
-    cairo_rectangle(w->crb,0,height_t*0.38,width_t,height_t*0.02);
-    cairo_fill_preserve (w->crb);
-    use_bg_color_scheme(w, ACTIVE_);
+    if (!keys->in_motion) {
+        cairo_rectangle(w->crb,0,0,width_t,height_t*0.4);
+        set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
+        cairo_fill (w->crb);
+        //set_pattern(w,&w->app->color_scheme->normal,&w->app->color_scheme->selected,BACKGROUND_);
+        use_bg_color_scheme(w, SELECTED_);
+        cairo_rectangle(w->crb,0,height_t*0.38,width_t,height_t*0.02);
+        cairo_fill_preserve (w->crb);
+        use_bg_color_scheme(w, ACTIVE_);
 
-    cairo_set_line_width(w->crb, 1.0);
-    cairo_stroke(w->crb);
+        cairo_set_line_width(w->crb, 1.0);
+        cairo_stroke(w->crb);
+    }
     int space = 2;
     int set = 0;
     int i = 0;
@@ -502,11 +504,13 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
 
     if(xmotion->y < height*0.4) {
         keys->active_key = keys->prelight_key = -1;
+        keys->in_motion = 0;
         expose_widget(w);
         return;
     }
 
     if(xmotion->y < height*0.8) {
+        keys->in_motion = 1;
         int space = 1;
         int set = 0;
         int set_key = 1;
@@ -527,7 +531,12 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
                         }
                     }
                     catchit = true;
-                    expose_widget(w);
+                    if (keys->prelight_key != keys->new_prelight_key ||
+                            keys->active_key != keys->new_active_key ) {
+                        expose_widget(w);
+                        keys->new_prelight_key = keys->prelight_key;
+                        keys->new_active_key = keys->active_key;
+                    }
                     break;
                 }
                 space++;
@@ -567,7 +576,12 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
                             keys->mk_send_note(p, &keys->send_key,true);
                     }
                 }
-                expose_widget(w);
+                if (keys->prelight_key != keys->new_prelight_key ||
+                        keys->active_key != keys->new_active_key ) {
+                    expose_widget(w);
+                    keys->new_prelight_key = keys->prelight_key;
+                    keys->new_active_key = keys->active_key;
+                }
                 break;
             }
 
@@ -652,6 +666,7 @@ static void leave_keyboard(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
     keys->prelight_key = -1;
+    keys->in_motion = 0;
     expose_widget(w);
 }
 
@@ -869,6 +884,9 @@ void add_keyboard(Widget_t *wid) {
     wid->flags |= HAS_MEM | NO_AUTOREPEAT;
     keys->prelight_key = -1;
     keys->active_key = -1;
+    keys->new_prelight_key = -1;
+    keys->new_active_key = -1;
+    keys->in_motion = 0;
     keys->send_key = -1;
     keys->octave = 12*2;
     keys->layout = 0;

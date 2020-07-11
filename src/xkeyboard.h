@@ -68,8 +68,11 @@ typedef struct {
     int sustain;
     int sostenuto;
     int prelight_key;
+    int new_prelight_key;
     int active_key;
+    int new_active_key;
     int send_key;
+    int in_motion;
     unsigned long key_matrix[4];
 
     midikeyfunc mk_send_note;
