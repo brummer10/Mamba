@@ -29,30 +29,11 @@
 extern "C" {
 #endif
 
-#define CPORTS 11
 
 typedef void (*midikeyfunc)(Widget_t *w,int *key, bool on_off);
 typedef void (*midiwheelfunc)(Widget_t *w,int *value);
 
-typedef enum {
-    PITCHBEND,
-    MODULATION,
-    CELESTE,
-    ATTACK_TIME,
-    RELEASE_TIME,
-    VOLUME,
-    VELOCITY,
-    SUSTAIN,
-    SOSTENUTO,
-    BALANCE,
-    EXPRESSION,
-    KEYMAP,
-    LAYOUT,
-    
-}ControlPorts;
-
 typedef struct {
-    Widget_t *w[CPORTS];
 
     int octave;
     int layout;
@@ -76,17 +57,6 @@ typedef struct {
     unsigned long key_matrix[4];
 
     midikeyfunc mk_send_note;
-    midiwheelfunc mk_send_pitch;
-    midiwheelfunc mk_send_balance;
-    midiwheelfunc mk_send_sustain;
-    midiwheelfunc mk_send_sostenuto;
-    midiwheelfunc mk_send_mod;
-    midiwheelfunc mk_send_detune;
-    midiwheelfunc mk_send_attack;
-    midiwheelfunc mk_send_expression;
-    midiwheelfunc mk_send_release;
-    midiwheelfunc mk_send_volume;
-    midiwheelfunc mk_send_velocity;
     midiwheelfunc mk_send_all_sound_off;
 } MidiKeyboard;
 

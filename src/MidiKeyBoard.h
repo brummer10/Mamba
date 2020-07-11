@@ -45,7 +45,27 @@
 #ifndef MIDIKEYBOARD_H
 #define MIDIKEYBOARD_H
 
+
 namespace midikeyboard {
+
+#define CPORTS 11
+
+typedef enum {
+    PITCHBEND,
+    MODULATION,
+    CELESTE,
+    ATTACK_TIME,
+    RELEASE_TIME,
+    VOLUME,
+    VELOCITY,
+    SUSTAIN,
+    SOSTENUTO,
+    BALANCE,
+    EXPRESSION,
+    KEYMAP,
+    LAYOUT,
+    
+}ControlPorts;
 
 /****************************************************************
  ** class MidiMessenger
@@ -85,6 +105,7 @@ private:
     jack_port_t *in_port;
     jack_port_t *out_port;
 
+    Widget_t *w[CPORTS];
     Widget_t *channel;
     Widget_t *bank;
     Widget_t *program;
@@ -100,30 +121,35 @@ private:
     static int jack_process(jack_nframes_t nframes, void *arg);
 
     static void get_note(Widget_t *w, int *key, bool on_off);
-    static void get_velocity(Widget_t *w,int *value);
-    static void get_volume(Widget_t *w,int *value);
-    static void get_mod(Widget_t *w,int *value);
-    static void get_detune(Widget_t *w,int *value);
     static void get_all_notes_off(Widget_t *w,int *value);
-    static void get_attack(Widget_t *w,int *value);
-    static void get_pitch(Widget_t *w,int *value);
-    static void get_balance(Widget_t *w,int *value);
-    static void get_expression(Widget_t *w,int *value);
-    static void get_release(Widget_t *w,int *value);
-    static void get_sustain(Widget_t *w,int *value);
-    static void get_sostenuto(Widget_t *w,int *value);
+
     static void channel_callback(void *w_, void* user_data);
     static void bank_callback(void *w_, void* user_data);
     static void program_callback(void *w_, void* user_data);
     static void layout_callback(void *w_, void* user_data);
     static void octave_callback(void *w_, void* user_data);
+    static void modwheel_callback(void *w_, void* user_data);
+    static void detune_callback(void *w_, void* user_data);
+    static void attack_callback(void *w_, void* user_data);
+    static void expression_callback(void *w_, void* user_data);
+    static void release_callback(void *w_, void* user_data);
+    static void volume_callback(void *w_, void* user_data);
+    static void velocity_callback(void *w_, void* user_data);
+    static void pitchwheel_callback(void *w_, void* user_data);
+    static void balance_callback(void *w_, void* user_data);
+    static void sustain_callback(void *w_, void* user_data);
+    static void sostenuto_callback(void *w_, void* user_data);
+    
     static void key_press(void *w_, void *key_, void *user_data);
     static void key_release(void *w_, void *key_, void *user_data);
     static void win_configure_callback(void *w_, void* user_data);
     static void unmap_callback(void *w_, void* user_data);
     static void map_callback(void *w_, void* user_data);
     static void draw_board(void *w_, void* user_data);
+    static void mk_draw_knob(void *w_, void* user_data);
     static void win_mem_free(void *w_, void* user_data);
+    Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,
+                                int x, int y, int width, int height);
     void nsm_show_ui();
     void nsm_hide_ui();
 public:
@@ -135,7 +161,7 @@ public:
     std::string path;
     bool has_config;
     Widget_t *win;
-    Widget_t *w;
+    Widget_t *wid;
     int main_x;
     int main_y;
     int main_w;
