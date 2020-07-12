@@ -448,7 +448,7 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     win_size_hints->base_width = 700;
     win_size_hints->base_height = 240;
     win_size_hints->max_width = 1875;
-    win_size_hints->max_height = 240;
+    win_size_hints->max_height = 241; //need to be 1 more then min to avoid flicker in the UI!!
     win_size_hints->win_gravity = CenterGravity;
     XSetWMNormalHints(win->app->dpy, win->widget, win_size_hints);
     XFree(win_size_hints);
