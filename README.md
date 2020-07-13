@@ -7,8 +7,16 @@ Virtual Midi keyboard for Jack Audio Connection Kit
 ## Features
 
 - Virtual Midi Keyboard for [Jack Audio Connection Kit](https://jackaudio.org/)
-- Midi Through: forward midi input to output and display incomming note events on the keyboard
-- [NSM](https://linuxaudio.github.io/new-session-manager/) support
+- including [NSM](https://linuxaudio.github.io/new-session-manager/) support
+- Channel selector
+- Bank and Program selector
+- Keyboard mapping for qwertz, qwerty and azerty selectable from menu
+- PC Keyboard mapping selector from C0 to C4
+- Pitchbend, Balance, Modwheel, Detune, Expression, Attack, Release, Volume and Velocity controllers
+- Sustain and Sostenuto switches
+- Midi Through: forward midi input to output
+- Midi input highlighting
+- resizable to a full range 127 key view
 
 ## Dependencys
 
