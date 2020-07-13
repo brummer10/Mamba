@@ -67,6 +67,28 @@ typedef enum {
     
 }ControlPorts;
 
+
+/****************************************************************
+ ** class AnimatedKeyBoard
+ **
+ ** animate midi input from jack on the keyboard in a extra thread
+ ** 
+ */
+
+class AnimatedKeyBoard {
+private:
+    std::atomic<bool> _execute;
+    std::thread _thd;
+
+public:
+    AnimatedKeyBoard();
+    ~AnimatedKeyBoard();
+    void stop();
+    void start(int interval, std::function<void(void)> func);
+    bool is_running() const noexcept;
+};
+
+
 /****************************************************************
  ** class MidiMessenger
  **
@@ -101,6 +123,7 @@ public:
 class XJackKeyBoard {
 private:
     MidiMessenger *mmessage;
+    AnimatedKeyBoard * animidi;
     nsmhandler::NsmSignalHandler& nsmsig;
     jack_port_t *in_port;
     jack_port_t *out_port;
@@ -114,6 +137,7 @@ private:
     Pixmap *icon;
 
     inline void process_midi_cc(void *buf, jack_nframes_t nframes);
+    inline void process_midi_in(void* buf, void *arg);
     static void jack_shutdown (void *arg);
     static int jack_xrun_callback(void *arg);
     static int jack_srate_callback(jack_nframes_t samplerate, void* arg);
@@ -139,6 +163,7 @@ private:
     static void balance_callback(void *w_, void* user_data);
     static void sustain_callback(void *w_, void* user_data);
     static void sostenuto_callback(void *w_, void* user_data);
+    static void animate_midi_keyboard(void *w_);
     
     static void key_press(void *w_, void *key_, void *user_data);
     static void key_release(void *w_, void *key_, void *user_data);
@@ -153,7 +178,8 @@ private:
     void nsm_show_ui();
     void nsm_hide_ui();
 public:
-    XJackKeyBoard(MidiMessenger *mmessage, nsmhandler::NsmSignalHandler& nsmsig);
+    XJackKeyBoard(MidiMessenger *mmessage,
+        nsmhandler::NsmSignalHandler& nsmsig, AnimatedKeyBoard * animidi);
     ~XJackKeyBoard();
     jack_client_t *client;
     std::string client_name;
@@ -172,6 +198,7 @@ public:
     int mprogram;
     int keylayout;
     int mchannel;
+    int run_one_more;
 
     void init_ui(Xputty *app);
     void init_jack();

@@ -160,7 +160,7 @@ void keysym_qwerty_to_midi_key(unsigned int inkey, float *midi_key) {
     else if ((*midi_key) == 33) (*midi_key) = 12;
 }
 
-static void set_key_in_matrix(unsigned long *key_matrix, int key, bool set) {
+void set_key_in_matrix(unsigned long *key_matrix, int key, bool set) {
     unsigned long *use_matrix = &key_matrix[0];
     
     if(key>94) {
@@ -249,6 +249,9 @@ static void draw_keyboard(void *w_, void* user_data) {
         if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
             use_base_color_scheme(w, ACTIVE_);
             cairo_set_line_width(w->crb, 1.0);
+        } else if (is_key_in_matrix(keys->in_key_matrix,k+keys->octave)) {
+            use_base_color_scheme(w, SELECTED_);
+            cairo_set_line_width(w->crb, 2.0);
         } else if ( k+keys->octave == keys->prelight_key) {
             use_base_color_scheme(w, PRELIGHT_);
             cairo_set_line_width(w->crb, 2.0);
@@ -339,6 +342,9 @@ static void draw_keyboard(void *w_, void* user_data) {
             if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
                 use_base_color_scheme(w, ACTIVE_);
                 cairo_set_line_width(w->crb, 1.0);
+            } else if (is_key_in_matrix(keys->in_key_matrix,k+keys->octave)) {
+                use_base_color_scheme(w, SELECTED_);
+                cairo_set_line_width(w->crb, 2.0);
             } else if ( k+keys->octave == keys->prelight_key) {
                 use_base_color_scheme(w, PRELIGHT_);
                 cairo_set_line_width(w->crb, 2.0);
@@ -403,6 +409,7 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
                                 keys->mk_send_note(p, &keys->send_key,false);
                             keys->active_key = keys->prelight_key;
                             keys->send_key = keys->active_key;
+                            keys->last_active_key = keys->active_key;
                             if (keys->send_key>=0 && keys->send_key<128)
                                 keys->mk_send_note(p, &keys->send_key,true);
                         }
@@ -410,7 +417,7 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
                     catchit = true;
                     if (keys->prelight_key != keys->new_prelight_key ||
                             keys->active_key != keys->new_active_key ) {
-                        expose_widget(w);
+                        //expose_widget(w);
                         keys->new_prelight_key = keys->prelight_key;
                         keys->new_active_key = keys->active_key;
                     }
@@ -449,13 +456,14 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
                             keys->mk_send_note(p, &keys->send_key,false);
                         keys->active_key = keys->prelight_key;
                         keys->send_key = keys->active_key;
+                        keys->last_active_key = keys->active_key;
                         if (keys->send_key>=0 && keys->send_key<128)
                             keys->mk_send_note(p, &keys->send_key,true);
                     }
                 }
                 if (keys->prelight_key != keys->new_prelight_key ||
                         keys->active_key != keys->new_active_key ) {
-                    expose_widget(w);
+                    //expose_widget(w);
                     keys->new_prelight_key = keys->prelight_key;
                     keys->new_active_key = keys->active_key;
                 }
@@ -511,12 +519,12 @@ static void key_press(void *w_, void *key_, void *user_data) {
         keys->send_key = (int)outkey+keys->octave;
         if (keys->send_key>=0 && keys->send_key<128)
             keys->mk_send_note(p, &keys->send_key,true);
-        expose_widget(w);
+        //expose_widget(w);
     } 
     if (sym == XK_space) {
         clear_key_matrix(&keys->key_matrix[0]);
         keys->mk_send_all_sound_off(p, NULL);
-        expose_widget(w);
+        //expose_widget(w);
     } 
 }
 
@@ -535,7 +543,7 @@ static void key_release(void *w_, void *key_, void *user_data) {
         keys->send_key = (int)outkey+keys->octave;
         if (keys->send_key>=0 && keys->send_key<128)
             keys->mk_send_note(p,&keys->send_key,false);
-        expose_widget(w);
+        //expose_widget(w);
     }
 }
 
@@ -543,8 +551,9 @@ static void leave_keyboard(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
     keys->prelight_key = -1;
+    keys->active_key = -1;
     keys->in_motion = 0;
-    expose_widget(w);
+    //expose_widget(w);
 }
 
 static void button_pressed_keyboard(void *w_, void* button_, void* user_data) {
@@ -556,9 +565,10 @@ static void button_pressed_keyboard(void *w_, void* button_, void* user_data) {
         if(xbutton->button == Button1) {
             keys->active_key = keys->prelight_key;
             keys->send_key = keys->active_key;
+            keys->last_active_key = keys->active_key;
             if (keys->send_key>=0 && keys->send_key<128)
                 keys->mk_send_note(p,&keys->send_key,true);
-            expose_widget(w);
+            //expose_widget(w);
         }
     }
 }
@@ -566,15 +576,24 @@ static void button_pressed_keyboard(void *w_, void* button_, void* user_data) {
 static void button_released_keyboard(void *w_, void* button_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *p = (Widget_t *)w->parent;
+    MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
+    XButtonEvent *xbutton = (XButtonEvent*)button_;
     if (w->flags & HAS_POINTER) {
-        MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
-        XButtonEvent *xbutton = (XButtonEvent*)button_;
         if(xbutton->button == Button1) {
             keys->send_key = keys->active_key;
-            if (keys->send_key>=0 && keys->send_key<128)
+            if (keys->send_key>=0 && keys->send_key<128) {
                 keys->mk_send_note(p,&keys->send_key,false);
+            }
             keys->active_key = -1;
-            expose_widget(w);
+            //expose_widget(w);
+        }
+    } else {
+        if(xbutton->button == Button1) {
+            keys->send_key = keys->last_active_key;
+            if (keys->send_key>=0 && keys->send_key<128) {
+                keys->mk_send_note(p,&keys->send_key,false);
+            }
+            keys->last_active_key = -1;
         }
     }
 }
@@ -584,6 +603,15 @@ static void keyboard_mem_free(void *w_, void* user_data) {
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
     free(keys);
 }
+
+bool need_redraw(MidiKeyboard *keys) {
+    
+    return (keys->active_key > 0 ? 1 : 0) |
+    (keys->prelight_key  > 0 ? 1 : 0)  |
+    have_key_in_matrix(keys->key_matrix) |
+    have_key_in_matrix(keys->in_key_matrix);
+}
+
 
 void add_midi_keyboard(Widget_t *parent, const char * label,
                             int x, int y, int width, int height) {
@@ -611,6 +639,7 @@ void add_keyboard(Widget_t *wid) {
     keys->active_key = -1;
     keys->new_prelight_key = -1;
     keys->new_active_key = -1;
+    keys->last_active_key = -1;
     keys->in_motion = 0;
     keys->send_key = -1;
     keys->octave = 12*2;
@@ -618,6 +647,10 @@ void add_keyboard(Widget_t *wid) {
     int j = 0;
     for(;j<4;j++) {
         keys->key_matrix[j] = 0;
+    }
+    j = 0;
+    for(;j<4;j++) {
+        keys->in_key_matrix[j] = 0;
     }
 
     wid->func.expose_callback = draw_keyboard;

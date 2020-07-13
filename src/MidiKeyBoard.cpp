@@ -28,6 +28,50 @@ namespace midikeyboard {
 
 
 /****************************************************************
+ ** class AnimatedKeyBoard
+ **
+ ** animate midi input from jack on the keyboard in a extra thread
+ ** 
+ */
+
+AnimatedKeyBoard::AnimatedKeyBoard() 
+    :_execute(false) {
+}
+
+AnimatedKeyBoard::~AnimatedKeyBoard() {
+    if( _execute.load(std::memory_order_acquire) ) {
+        stop();
+    };
+}
+
+void AnimatedKeyBoard::stop() {
+    _execute.store(false, std::memory_order_release);
+    if (_thd.joinable()) {
+        _thd.join();
+    }
+}
+
+void AnimatedKeyBoard::start(int interval, std::function<void(void)> func) {
+    if( _execute.load(std::memory_order_acquire) ) {
+        stop();
+    };
+    _execute.store(true, std::memory_order_release);
+    _thd = std::thread([this, interval, func]() {
+        while (_execute.load(std::memory_order_acquire)) {
+            func();                   
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(interval));
+        }
+    });
+}
+
+bool AnimatedKeyBoard::is_running() const noexcept {
+    return ( _execute.load(std::memory_order_acquire) && 
+             _thd.joinable() );
+}
+
+
+/****************************************************************
  ** class MidiMessenger
  **
  ** create, collect and send all midi events to jack_midi out buffer
@@ -85,8 +129,10 @@ bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) {
  ** pass all incoming midi events to jack_midi out.
  */
 
-XJackKeyBoard::XJackKeyBoard(MidiMessenger *mmessage_, nsmhandler::NsmSignalHandler& nsmsig_)
+XJackKeyBoard::XJackKeyBoard(MidiMessenger *mmessage_,
+        nsmhandler::NsmSignalHandler& nsmsig_, AnimatedKeyBoard * animidi_)
     : mmessage(mmessage_),
+    animidi(animidi_),
     nsmsig(nsmsig_),
     icon(NULL),
     client(NULL) {
@@ -109,6 +155,7 @@ XJackKeyBoard::XJackKeyBoard(MidiMessenger *mmessage_, nsmhandler::NsmSignalHand
     mprogram = 0;
     keylayout = 0;
     mchannel = 0;
+    run_one_more = 0;
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
         sigc::mem_fun(this, &XJackKeyBoard::nsm_show_ui));
@@ -134,7 +181,6 @@ void XJackKeyBoard::init_jack() {
     if ((client = jack_client_open (client_name.c_str(), JackNullOption, NULL)) == 0) {
         fprintf (stderr, "jack server not running?\n");
         quit(win);
-        exit (1);
     }
 
     in_port = jack_port_register(
@@ -151,7 +197,6 @@ void XJackKeyBoard::init_jack() {
     if (jack_activate (client)) {
         fprintf (stderr, "cannot activate client");
         quit(win);
-        exit (1);
     }
 
     if (!jack_is_realtime(client)) {
@@ -171,11 +216,33 @@ inline void XJackKeyBoard::process_midi_cc(void *buf, jack_nframes_t nframes) {
     }
 }
 
+// ----- jack process callback for the midi input
+void XJackKeyBoard::process_midi_in(void* buf, void *arg) {
+    XJackKeyBoard *xjmkb = (XJackKeyBoard*)arg;
+    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    jack_midi_event_t in_event;
+    jack_nframes_t event_count = jack_midi_get_event_count(buf);
+    unsigned int i;
+    for (i = 0; i < event_count; i++) {
+        jack_midi_event_get(&in_event, buf, i);
+        bool ch = true;
+        if ((xjmkb->mmessage->channel) != (int(in_event.buffer[0]&0x0f))) {
+            ch = false;
+        }
+        if ((in_event.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
+            set_key_in_matrix(keys->in_key_matrix, in_event.buffer[1], true);
+            //fprintf(stderr,"Note On %i", (int)in_event.buffer[1]);
+        } else if ((in_event.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
+            set_key_in_matrix(keys->in_key_matrix, in_event.buffer[1], false);
+            //fprintf(stderr,"Note Off %i", (int)in_event.buffer[1]);
+        }
+    }
+}
+
 // static
 void XJackKeyBoard::jack_shutdown (void *arg) {
     XJackKeyBoard *xjmkb = (XJackKeyBoard*)arg;
     quit(xjmkb->win);
-    exit (1);
 }
 
 // static
@@ -201,6 +268,7 @@ int XJackKeyBoard::jack_process(jack_nframes_t nframes, void *arg) {
     XJackKeyBoard *xjmkb = (XJackKeyBoard*)arg;
     void *in = jack_port_get_buffer (xjmkb->in_port, nframes);
     void *out = jack_port_get_buffer (xjmkb->out_port, nframes);
+    xjmkb->process_midi_in(in, arg);
     memcpy (out, in,
         sizeof (unsigned char) * nframes);
     xjmkb->process_midi_cc(out,nframes);
@@ -390,8 +458,7 @@ void XJackKeyBoard::mk_draw_knob(void *w_, void* user_data) {
 
     /** show label below the knob**/
     use_text_color_scheme(w, get_color_state(w));
-    float font_size = ((height/2.2 < (width*0.5)/3) ? height/2.2 : (width*0.5)/3);
-    cairo_set_font_size (w->crb, font_size);
+    cairo_set_font_size (w->crb,  (w->app->normal_font-1)/w->scale.ascale);
     cairo_text_extents(w->crb,w->label , &extents);
 
     cairo_move_to (w->crb, knobx1-extents.width/2, height );
@@ -501,16 +568,15 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     layout->func.key_release_callback = key_release;
 
 
-    keymap = add_hslider(win, "Keyboard mapping", 520, 2, 160, 35);
+    keymap = add_hslider(win, "Keyboard mapping", 540, 2, 150, 35);
     keymap->data = KEYMAP;
     keymap->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    keymap->scale.gravity = ASPECT;
     set_adjustment(keymap->adj,2.0, 2.0, 0.0, 4.0, 1.0, CL_CONTINUOS);
     adj_set_scale(keymap->adj, 0.05);
     keymap->func.value_changed_callback = octave_callback;
     keymap->func.key_press_callback = key_press;
     keymap->func.key_release_callback = key_release;
-
-
 
     w[0] = add_keyboard_knob(win, "PitchBend", 5, 40, 60, 75);
     w[0]->data = PITCHBEND;
@@ -551,16 +617,21 @@ void XJackKeyBoard::init_ui(Xputty *app) {
 
     w[7] = add_toggle_button(win, "Sustain", 580, 45, 80, 30);
     w[7]->data = SUSTAIN;
-    w[7]->flags |= NO_PROPAGATE;
+    w[7]->scale.gravity = ASPECT;
+    w[7]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     w[7]->func.value_changed_callback = sustain_callback;
+    w[7]->func.key_press_callback = key_press;
+    w[7]->func.key_release_callback = key_release;
 
     w[8] = add_toggle_button(win, "Sostenuto", 580, 80, 80, 30);
     w[8]->data = SOSTENUTO;
-    w[8]->flags |= NO_PROPAGATE;
+    w[8]->scale.gravity = ASPECT;
+    w[8]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     w[8]->func.value_changed_callback = sostenuto_callback;
+    w[8]->func.key_press_callback = key_press;
+    w[8]->func.key_release_callback = key_release;
 
-
-
+    // open a widget for the keyboard layout
     wid = create_widget(app, win, 0, 120, 700, 120);
     wid->flags &= ~USE_TRANSPARENCY;
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -572,15 +643,40 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     keys->mk_send_note = get_note;
     keys->mk_send_all_sound_off = get_all_notes_off;
 
+    // when no config file exsist, center window on sreen
     if (!has_config) {
         Screen *screen = DefaultScreenOfDisplay(win->app->dpy);
         main_x = screen->width/2 - main_w/2;
         main_y = screen->height/2 - main_h/2; 
     }
+
+    // set controllers to saved values
     combobox_set_active_entry(channel, mchannel);
     combobox_set_active_entry(layout, keylayout);
     adj_set_value(w[6]->adj, velocity);
+
+    // set window to saved size
     XResizeWindow (win->app->dpy, win->widget, main_w, main_h);
+
+    // start the timeout thread for keyboard animation
+    animidi->start(30, std::bind(animate_midi_keyboard,(void*)wid));
+}
+
+// static
+void XJackKeyBoard::animate_midi_keyboard(void *w_) {
+    Widget_t *w = (Widget_t*)w_;
+    MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    if ((need_redraw(keys) || xjmkb->run_one_more) && xjmkb->client) {
+        XLockDisplay(w->app->dpy);
+        expose_widget(w);
+        XFlush(w->app->dpy);
+        XUnlockDisplay(w->app->dpy);
+        if (xjmkb->run_one_more == 0)
+            xjmkb->run_one_more = 20;
+    }
+    xjmkb->run_one_more = max(0,xjmkb->run_one_more-1);
 }
 
 // static
@@ -925,7 +1021,8 @@ int main (int argc, char *argv[]) {
 
     midikeyboard::MidiMessenger mmessage;
     nsmhandler::NsmSignalHandler nsmsig;
-    midikeyboard::XJackKeyBoard xjmkb(&mmessage, nsmsig);
+    midikeyboard::AnimatedKeyBoard  animidi;
+    midikeyboard::XJackKeyBoard xjmkb(&mmessage, nsmsig, &animidi);
     midikeyboard::PosixSignalHandler xsig(&xjmkb);
     nsmhandler::NsmWatchDog poll;
     nsmhandler::NsmHandler nsmh(&poll, &nsmsig);
@@ -942,7 +1039,8 @@ int main (int argc, char *argv[]) {
     xjmkb.show_ui(xjmkb.visible);
 
     main_run(&app);
-   
+    
+    animidi.stop();
     main_quit(&app);
 
     if(!nsmsig.nsm_session_control) xjmkb.save_config();
