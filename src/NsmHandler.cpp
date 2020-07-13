@@ -108,7 +108,7 @@ bool NsmHandler::check_nsm(char *argv[]) {
         nsm_set_show_callback( nsm, nsm_show, static_cast<void*>(this));
         nsm_set_hide_callback( nsm, nsm_hide, static_cast<void*>(this));
         if ( 0 == nsm_init( nsm, nsm_url)) {
-            nsm_send_announce( nsm, "MidiKeyBoard", ":optional-gui:", argv[0]);
+            nsm_send_announce( nsm, "Mamba", ":optional-gui:", argv[0]);
             int wait_count = 0;
             while(wait_id) {
                 nsm_check_wait(nsm,500);

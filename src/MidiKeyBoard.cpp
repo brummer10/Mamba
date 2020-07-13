@@ -136,13 +136,13 @@ XJackKeyBoard::XJackKeyBoard(MidiMessenger *mmessage_,
     nsmsig(nsmsig_),
     icon(NULL),
     client(NULL) {
-    client_name = "MidiKeyBoard";
+    client_name = "Mamba";
     if (getenv("XDG_CONFIG_HOME")) {
         path = getenv("XDG_CONFIG_HOME");
-        config_file = path +"/MidiKeyBoard.conf";
+        config_file = path +"/Mamba.conf";
     } else {
         path = getenv("HOME");
-        config_file = path +"/.config/MidiKeyBoard.conf";
+        config_file = path +"/.config/Mamba.conf";
     }
     has_config = false;
     main_x = 0;
@@ -495,7 +495,8 @@ void XJackKeyBoard::init_ui(Xputty *app) {
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
     widget_set_icon_from_png(win,icon,LDVAR(midikeyboard_png));
-    widget_set_title(win, client_name.c_str());
+    std::string tittle = client_name + " - Virtual Midi Keyboard";
+    widget_set_title(win, tittle.c_str());
     win->flags |= HAS_MEM | NO_AUTOREPEAT;
     win->scale.gravity = NORTHEAST;
     win->parent_struct = this;

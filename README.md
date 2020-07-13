@@ -1,13 +1,13 @@
-# MidiKeyBoard
+# Mamba
 Virtual Midi keyboard for Jack Audio Connection Kit
 
-![MidiKeyBoard](https://github.com/brummer10/MidiKeyBoard/raw/master/MidiKeyBoard.png)
+![Mamba](https://github.com/brummer10/Mamba/raw/master/Mamba.png)
 
 
 ## Features
 
-- Virtual Midi Keyboard for Jack Audio Connection Kit
-- Midi Through: forward midi input to output
+- Virtual Midi Keyboard for [Jack Audio Connection Kit](https://jackaudio.org/)
+- Midi Through: forward midi input to output and display incomming note events on the keyboard
 - [NSM](https://linuxaudio.github.io/new-session-manager/) support
 
 ## Dependencys

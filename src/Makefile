@@ -23,7 +23,9 @@
 	endif
 
 	# set bundle name
-	NAME = MidiKeyBoard
+	OLDNAME = MidiKeyBoard
+	OLDEXEC_NAME  = $(shell echo $(OLDNAME) | tr A-Z a-z)
+	NAME = Mamba
 	EXEC_NAME  = $(shell echo $(NAME) | tr A-Z a-z)
 	BUILD_DIR = build
 	VER = 0.6
@@ -40,7 +42,7 @@
 	CXXFLAGS += -O2 -D_FORTIFY_SOURCE=2 -Wall $(SSE_CFLAGS) 
 	LDFLAGS += -I./ -I../libxputty/libxputty/include/ `pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo` -lm -pthread
 	# invoke build files
-	OBJECTS = $(NAME).cpp NsmHandler.cpp xkeyboard.c
+	OBJECTS = $(OLDNAME).cpp NsmHandler.cpp xkeyboard.c
 	## output style (bash colours)
 	BLUE = "\033[1;34m"
 	RED =  "\033[1;31m"
@@ -77,7 +79,14 @@ else
 endif
 
 uninstall :
-	@rm -rf $(DESTDIR)$(BIN_DIR)/$(NAME)
+	@rm -rf $(DESTDIR)$(BIN_DIR)/$(OLDEXEC_NAME)
+	@rm -rf $(DESTDIR)$(DESKAPPS_DIR)/$(OLDNAME).desktop
+	@rm -rf $(DESTDIR)$(PIXMAPS_DIR)/$(OLDNAME).png
+
+	@rm -rf $(DESTDIR)$(BIN_DIR)/$(EXEC_NAME)
+	@rm -rf $(DESTDIR)$(DESKAPPS_DIR)/$(NAME).desktop
+	@rm -rf $(DESTDIR)$(PIXMAPS_DIR)/$(NAME).png
+
 	@echo ". ." $(BLUE)", done"$(NONE)
 
 $(NAME) :
