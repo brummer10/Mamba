@@ -522,7 +522,9 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     XFree(win_size_hints);
 
 
-    add_label(win,"Channel:",10,5,60,20);
+    Widget_t * tmp = add_label(win,"Channel:",10,5,60,20);
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
     channel =  add_combobox(win, "Channel", 70, 5, 60, 30);
     channel->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     channel->scale.gravity = ASPECT;
@@ -532,8 +534,13 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     channel->func.value_changed_callback = channel_callback;
     channel->func.key_press_callback = key_press;
     channel->func.key_release_callback = key_release;
+    tmp = channel->childlist->childs[0];
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
 
-    add_label(win,"Bank:",140,5,60,20);
+    tmp = add_label(win,"Bank:",140,5,60,20);
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
     bank =  add_combobox(win, "Bank", 200, 5, 60, 30);
     bank->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bank->scale.gravity = ASPECT;
@@ -543,8 +550,13 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     bank->func.value_changed_callback = bank_callback;
     bank->func.key_press_callback = key_press;
     bank->func.key_release_callback = key_release;
+    tmp = bank->childlist->childs[0];
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
 
-    add_label(win,"Program:",260,5,60,20);
+    tmp = add_label(win,"Program:",260,5,60,20);
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
     program =  add_combobox(win, "Program", 320, 5, 60, 30);
     program->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     program->scale.gravity = ASPECT;
@@ -554,6 +566,9 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     program->func.value_changed_callback = program_callback;
     program->func.key_press_callback = key_press;
     program->func.key_release_callback = key_release;
+    tmp = program->childlist->childs[0];
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
 
     layout = add_combobox(win, "", 390, 5, 130, 30);
     layout->data = LAYOUT;
@@ -567,6 +582,9 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     layout->func.value_changed_callback = layout_callback;
     layout->func.key_press_callback = key_press;
     layout->func.key_release_callback = key_release;
+    tmp = layout->childlist->childs[0];
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
 
 
     keymap = add_hslider(win, "Keyboard mapping", 540, 2, 150, 35);
