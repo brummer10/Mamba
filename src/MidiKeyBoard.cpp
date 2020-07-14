@@ -476,6 +476,17 @@ void XJackKeyBoard::draw_board(void *w_, void* user_data) {
     use_bg_color_scheme(w, NORMAL_);
     cairo_rectangle(w->crb,0,0,width,40);
     cairo_fill (w->crb);
+
+    use_fg_color_scheme(w, SELECTED_);
+    cairo_rectangle(w->crb,0,117,width,2);
+    cairo_fill_preserve (w->crb);
+    use_bg_color_scheme(w, ACTIVE_);
+    cairo_set_line_width(w->crb, 1.0);
+    cairo_stroke(w->crb);
+
+    cairo_rectangle(w->crb,0,38,width,2);
+    cairo_fill_preserve (w->crb);
+    cairo_stroke(w->crb);
 }
 
 Widget_t *XJackKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
@@ -589,7 +600,7 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_release_callback = key_release;
 
 
-    keymap = add_hslider(win, "Keyboard mapping", 540, 2, 150, 35);
+    keymap = add_hslider(win, "Keyboard mapping", 540, 2, 150, 32);
     keymap->data = KEYMAP;
     keymap->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     keymap->scale.gravity = ASPECT;
