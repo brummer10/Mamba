@@ -1,5 +1,5 @@
 # Mamba
-Virtual Midi keyboard for Jack Audio Connection Kit
+Virtual Midi Keyboard for Jack Audio Connection Kit
 
 ![Mamba](https://github.com/brummer10/Mamba/raw/master/Mamba.png)
 
@@ -7,7 +7,7 @@ Virtual Midi keyboard for Jack Audio Connection Kit
 ## Features
 
 - Virtual Midi Keyboard for [Jack Audio Connection Kit](https://jackaudio.org/)
-- including [NSM](https://linuxaudio.github.io/new-session-manager/) support
+- Including [NSM](https://linuxaudio.github.io/new-session-manager/) support
 - Channel selector
 - Bank and Program selector
 - Keyboard mapping for qwertz, qwerty and azerty selectable from menu
@@ -16,9 +16,9 @@ Virtual Midi keyboard for Jack Audio Connection Kit
 - Sustain and Sostenuto switches
 - Midi Through: forward midi input to output
 - Midi input highlighting
-- resizable to a full range 127 key view
+- Resizable to a full range 127 key view
 
-## Dependencys
+## Dependencies
 
 - libcairo2-dev
 - libx11-dev
