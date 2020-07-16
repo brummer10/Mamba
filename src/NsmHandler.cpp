@@ -76,8 +76,8 @@ bool NsmWatchDog::is_running() const noexcept {
  ** and signal the UI thread to set up the variables
  */
 
-NsmHandler::NsmHandler(NsmWatchDog *poll_, NsmSignalHandler *nsmsig_)
-    : poll(poll_),
+NsmHandler::NsmHandler(NsmSignalHandler *nsmsig_)
+    : poll(),
     nsmsig(nsmsig_),
     nsm(0),
     wait_id(true),
@@ -97,7 +97,7 @@ NsmHandler::~NsmHandler() {
     }
 }
 
-bool NsmHandler::check_nsm(char *argv[]) {
+bool NsmHandler::check_nsm(const char *name, char *argv[]) {
 
     const char *nsm_url = getenv( "NSM_URL" );
 
@@ -108,7 +108,7 @@ bool NsmHandler::check_nsm(char *argv[]) {
         nsm_set_show_callback( nsm, nsm_show, static_cast<void*>(this));
         nsm_set_hide_callback( nsm, nsm_hide, static_cast<void*>(this));
         if ( 0 == nsm_init( nsm, nsm_url)) {
-            nsm_send_announce( nsm, "Mamba", ":optional-gui:", argv[0]);
+            nsm_send_announce( nsm, name, ":optional-gui:", argv[0]);
             int wait_count = 0;
             while(wait_id) {
                 nsm_check_wait(nsm,500);
@@ -133,7 +133,7 @@ void NsmHandler::_poll_nsm(void* arg) {
 }
 
 void NsmHandler::_nsm_start_poll() {
-    poll->start(200, std::bind(_poll_nsm,this));
+    poll.start(200, std::bind(_poll_nsm,this));
 }
 
 int NsmHandler::_nsm_open (const char *name, const char *display_name,

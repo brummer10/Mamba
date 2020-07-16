@@ -1056,10 +1056,9 @@ int main (int argc, char *argv[]) {
     midikeyboard::AnimatedKeyBoard  animidi;
     midikeyboard::XJackKeyBoard xjmkb(&mmessage, nsmsig, &animidi);
     midikeyboard::PosixSignalHandler xsig(&xjmkb);
-    nsmhandler::NsmWatchDog poll;
-    nsmhandler::NsmHandler nsmh(&poll, &nsmsig);
+    nsmhandler::NsmHandler nsmh(&nsmsig);
 
-    nsmsig.nsm_session_control = nsmh.check_nsm(argv);
+    nsmsig.nsm_session_control = nsmh.check_nsm(xjmkb.client_name.c_str(), argv);
 
     xjmkb.read_config();
 

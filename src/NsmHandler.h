@@ -103,7 +103,7 @@ public:
 
 class NsmHandler {
   private:
-    NsmWatchDog *poll;
+    NsmWatchDog poll;
     NsmSignalHandler *nsmsig;
     int _nsm_open (const char *name, const char *display_name,
             const char *client_id, char **out_msg);
@@ -118,14 +118,14 @@ class NsmHandler {
     bool optional_gui;
 
   public:
-    bool check_nsm(char *argv[]);
+    bool check_nsm(const char *name, char *argv[]);
     static void _poll_nsm(void* arg);
     static int nsm_open (const char *name, const char *display_name,
             const char *client_id, char **out_msg,  void *userdata);
     static int nsm_save ( char **out_msg, void *userdata );
     static void nsm_show ( void *userdata );
     static void nsm_hide ( void *userdata );
-    NsmHandler(NsmWatchDog *poll, NsmSignalHandler *nsmsig);
+    NsmHandler(NsmSignalHandler *nsmsig);
     ~NsmHandler();
 };
 
