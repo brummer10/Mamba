@@ -207,9 +207,13 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
                     midi_send[0] = ev.cc_num;
                     midi_send[1] = ev.pg_num;
                     midi_send[2] = ev.bg_num;
-                    if ((ev.cc_num & 0xf0) == 0x90 ) {   // Note On
+                    bool ch = true;
+                    if ((mmessage->channel) != (int(ev.cc_num&0x0f))) {
+                        ch = false;
+                    }
+                    if ((ev.cc_num & 0xf0) == 0x90 && ch) {   // Note On
                         std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, true);
-                    } else if ((ev.cc_num & 0xf0) == 0x80 ) {   // Note Off
+                    } else if ((ev.cc_num & 0xf0) == 0x80 && ch) {   // Note Off
                         std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, false);
                     }
                 }
@@ -743,9 +747,13 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     record = add_toggle_button(win, "Record", 640, 45, 50, 30);
     record->func.value_changed_callback = record_callback;
+    record->func.key_press_callback = key_press;
+    record->func.key_release_callback = key_release;
 
     play = add_toggle_button(win, "Play", 640, 80, 50, 30);
     play->func.value_changed_callback = play_callback;
+    play->func.key_press_callback = key_press;
+    play->func.key_release_callback = key_release;
 
     // open a widget for the keyboard layout
     wid = create_widget(app, win, 0, 120, 700, 120);
@@ -854,6 +862,10 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mmessage->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
+    if (xjmkb->xjack->play>0) {
+        MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+        clear_key_matrix(keys->in_key_matrix);
+    }
 }
 
 // static
