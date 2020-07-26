@@ -70,8 +70,11 @@ clean :
 
 install :
 ifneq ("$(wildcard ./$(BUILD_DIR))","")
+	mkdir -p $(DESTDIR)$(BIN_DIR)
 	cp ./$(BUILD_DIR)/$(EXEC_NAME) $(DESTDIR)$(BIN_DIR)/$(EXEC_NAME)
+	mkdir -p $(DESTDIR)$(DESKAPPS_DIR)
 	cp $(NAME).desktop $(DESTDIR)$(DESKAPPS_DIR)
+	mkdir -p $(DESTDIR)$(PIXMAPS_DIR)
 	cp $(NAME).png $(DESTDIR)$(PIXMAPS_DIR)
 	@echo ". ." $(BLUE)", done"$(NONE)
 else
