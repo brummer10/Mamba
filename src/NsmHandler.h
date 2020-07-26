@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <atomic>
+#include <future>
 #include <sigc++/sigc++.h>
 
 #include "nsm.h"

@@ -17,6 +17,7 @@ Virtual Midi Keyboard for Jack Audio Connection Kit
 - Midi Through: forward midi input to output
 - Midi input highlighting
 - Resizable to a full range 127 key view
+- Record and play Midi-Loops 
 
 ## Dependencies
 

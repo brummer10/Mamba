@@ -123,19 +123,176 @@ bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) {
 
 
 /****************************************************************
- ** class XJackKeyBoard
+ ** class XJack
  **
- ** Create Keyboard layout and connect via MidiMessenger to jack_midi out
+ ** Send content from MidiMessenger to jack_midi out
  ** pass all incoming midi events to jack_midi out.
+ ** send all incomming midi events to XKeyBoard
  */
 
-XJackKeyBoard::XJackKeyBoard(MidiMessenger *mmessage_,
-        nsmhandler::NsmSignalHandler& nsmsig_, AnimatedKeyBoard * animidi_)
+XJack::XJack(MidiMessenger *mmessage_)
     : mmessage(mmessage_),
+     start(0),
+     stop(0),
+     deltaTime(0),
+     client(NULL) {
+        record = 0;
+        play = 0;
+        fresh_take = true;
+        client_name = "Mamba";
+}
+
+XJack::~XJack() {
+    if (client) jack_client_close (client);
+}
+
+void XJack::init_jack() {
+    if ((client = jack_client_open (client_name.c_str(), JackNullOption, NULL)) == 0) {
+        fprintf (stderr, "jack server not running?\n");
+        trigger_quit_by_jack();
+    }
+
+    in_port = jack_port_register(
+                  client, "in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
+    out_port = jack_port_register(
+                   client, "out", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0);
+
+    jack_set_xrun_callback(client, jack_xrun_callback, this);
+    jack_set_sample_rate_callback(client, jack_srate_callback, this);
+    jack_set_buffer_size_callback(client, jack_buffersize_callback, this);
+    jack_set_process_callback(client, jack_process, this);
+    jack_on_shutdown (client, jack_shutdown, this);
+
+    if (jack_activate (client)) {
+        fprintf (stderr, "cannot activate client");
+        trigger_quit_by_jack();
+    }
+
+    if (!jack_is_realtime(client)) {
+        fprintf (stderr, "jack isn't running with realtime priority\n");
+    } else {
+        fprintf (stderr, "jack running with realtime priority\n");
+    }
+}
+
+// jack process callback for the midi output
+inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
+    int i = mmessage->next();
+    for (unsigned int n = 0; n < nframes; n++) {
+        if (i >= 0) {
+            unsigned char* midi_send = jack_midi_event_reserve(buf, n, mmessage->size(i));
+            if (midi_send) {
+                mmessage->fill(midi_send, i);
+                if (record) {
+                    if (fresh_take) start = jack_get_time();
+                    stop = jack_get_time();
+                    deltaTime = (double)(stop-start);
+                    if (fresh_take) {
+                        fresh_take = false;
+                    }
+                    MidiEvent ev = {midi_send[0], midi_send[1], midi_send[2], mmessage->size(i), deltaTime};
+                    store.push_back(ev);
+                    start = jack_get_time();
+                }
+            }
+            i = mmessage->next(i);
+        } else if (play && store.size()) {
+            static int p = 0;
+            stop = jack_get_time();
+            deltaTime = (double)(stop-start);
+            MidiEvent ev = store[p];
+            if (deltaTime >= ev.deltaTime) {
+                unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.me_num);
+                if (midi_send) {
+                    midi_send[0] = ev.cc_num;
+                    midi_send[1] = ev.pg_num;
+                    midi_send[2] = ev.bg_num;
+                    if ((ev.cc_num & 0xf0) == 0x90 ) {   // Note On
+                        std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, true);
+                    } else if ((ev.cc_num & 0xf0) == 0x80 ) {   // Note Off
+                        std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, false);
+                    }
+                }
+                start = jack_get_time();
+                p++;
+                if (p>=store.size()) p = 0;
+            }
+        }
+        
+    }
+}
+
+// jack process callback for the midi input
+void XJack::process_midi_in(void* buf, void *arg) {
+    XJack *xjack = (XJack*)arg;
+    jack_midi_event_t in_event;
+    jack_nframes_t event_count = jack_midi_get_event_count(buf);
+    unsigned int i;
+    for (i = 0; i < event_count; i++) {
+        jack_midi_event_get(&in_event, buf, i);
+        bool ch = true;
+        if ((xjack->mmessage->channel) != (int(in_event.buffer[0]&0x0f))) {
+            ch = false;
+        }
+        if ((in_event.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
+            std::async(std::launch::async, xjack->trigger_get_midi_in, in_event.buffer[1], true);
+        } else if ((in_event.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
+            std::async(std::launch::async, xjack->trigger_get_midi_in, in_event.buffer[1], false);
+        }
+    }
+}
+
+// static
+void XJack::jack_shutdown (void *arg) {
+    XJack *xjack = (XJack*)arg;
+    xjack->trigger_quit_by_jack();
+}
+
+// static
+int XJack::jack_xrun_callback(void *arg) {
+    fprintf (stderr, "Xrun \r");
+    return 0;
+}
+
+// static
+int XJack::jack_srate_callback(jack_nframes_t samplerate, void* arg) {
+    fprintf (stderr, "Samplerate %iHz \n", samplerate);
+    return 0;
+}
+
+// static
+int XJack::jack_buffersize_callback(jack_nframes_t nframes, void* arg) {
+    fprintf (stderr, "Buffersize is %i samples \n", nframes);
+    return 0;
+}
+
+// static
+int XJack::jack_process(jack_nframes_t nframes, void *arg) {
+    XJack *xjack = (XJack*)arg;
+    void *in = jack_port_get_buffer (xjack->in_port, nframes);
+    void *out = jack_port_get_buffer (xjack->out_port, nframes);
+    xjack->process_midi_in(in, arg);
+    memcpy (out, in,
+        sizeof (unsigned char) * nframes);
+    xjack->process_midi_out(out,nframes);
+    return 0;
+}
+
+
+/****************************************************************
+ ** class XKeyBoard
+ **
+ ** Create Keyboard layout and send events to MidiMessenger
+ ** 
+ */
+
+XKeyBoard::XKeyBoard(XJack *xjack_, MidiMessenger *mmessage_,
+        nsmhandler::NsmSignalHandler& nsmsig_, AnimatedKeyBoard * animidi_)
+    : xjack(xjack_),
+    mmessage(mmessage_),
     animidi(animidi_),
     nsmsig(nsmsig_),
-    icon(NULL),
-    client(NULL) {
+    icon(NULL) {
     client_name = "Mamba";
     if (getenv("XDG_CONFIG_HOME")) {
         path = getenv("XDG_CONFIG_HOME");
@@ -158,126 +315,35 @@ XJackKeyBoard::XJackKeyBoard(MidiMessenger *mmessage_,
     run_one_more = 0;
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
-        sigc::mem_fun(this, &XJackKeyBoard::nsm_show_ui));
+        sigc::mem_fun(this, &XKeyBoard::nsm_show_ui));
 
     nsmsig.signal_trigger_nsm_hide_gui().connect(
-        sigc::mem_fun(this, &XJackKeyBoard::nsm_hide_ui));
+        sigc::mem_fun(this, &XKeyBoard::nsm_hide_ui));
 
     nsmsig.signal_trigger_nsm_save_gui().connect(
-        sigc::mem_fun(this, &XJackKeyBoard::save_config));
+        sigc::mem_fun(this, &XKeyBoard::save_config));
 
     nsmsig.signal_trigger_nsm_gui_open().connect(
-        sigc::mem_fun(this, &XJackKeyBoard::set_config));
+        sigc::mem_fun(this, &XKeyBoard::set_config));
+
+    xjack->signal_trigger_get_midi_in().connect(
+        sigc::mem_fun(this, &XKeyBoard::get_midi_in));
+
+    xjack->signal_trigger_quit_by_jack().connect(
+        sigc::mem_fun(this, &XKeyBoard::quit_by_jack));
 }
 
-XJackKeyBoard::~XJackKeyBoard() {
+XKeyBoard::~XKeyBoard() {
     if (icon) {
         XFreePixmap(win->app->dpy, (*icon));
         icon = NULL;
     }
 }
 
-void XJackKeyBoard::init_jack() {
-    if ((client = jack_client_open (client_name.c_str(), JackNullOption, NULL)) == 0) {
-        fprintf (stderr, "jack server not running?\n");
-        quit(win);
-    }
-
-    in_port = jack_port_register(
-                  client, "in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
-    out_port = jack_port_register(
-                   client, "out", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0);
-
-    jack_set_xrun_callback(client, jack_xrun_callback, this);
-    jack_set_sample_rate_callback(client, jack_srate_callback, this);
-    jack_set_buffer_size_callback(client, jack_buffersize_callback, this);
-    jack_set_process_callback(client, jack_process, this);
-    jack_on_shutdown (client, jack_shutdown, this);
-
-    if (jack_activate (client)) {
-        fprintf (stderr, "cannot activate client");
-        quit(win);
-    }
-
-    if (!jack_is_realtime(client)) {
-        fprintf (stderr, "jack isn't running with realtime priority\n");
-    } else {
-        fprintf (stderr, "jack running with realtime priority\n");
-    }
-}
-
-inline void XJackKeyBoard::process_midi_cc(void *buf, jack_nframes_t nframes) {
-    // midi output processing
-    for (int i = mmessage->next(); i >= 0; i = mmessage->next(i)) {
-        unsigned char* midi_send = jack_midi_event_reserve(buf, i, mmessage->size(i));
-        if (midi_send) {
-            mmessage->fill(midi_send, i);
-        }
-    }
-}
-
-// ----- jack process callback for the midi input
-void XJackKeyBoard::process_midi_in(void* buf, void *arg) {
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*)arg;
-    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
-    jack_midi_event_t in_event;
-    jack_nframes_t event_count = jack_midi_get_event_count(buf);
-    unsigned int i;
-    for (i = 0; i < event_count; i++) {
-        jack_midi_event_get(&in_event, buf, i);
-        bool ch = true;
-        if ((xjmkb->mmessage->channel) != (int(in_event.buffer[0]&0x0f))) {
-            ch = false;
-        }
-        if ((in_event.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
-            set_key_in_matrix(keys->in_key_matrix, in_event.buffer[1], true);
-            //fprintf(stderr,"Note On %i", (int)in_event.buffer[1]);
-        } else if ((in_event.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
-            set_key_in_matrix(keys->in_key_matrix, in_event.buffer[1], false);
-            //fprintf(stderr,"Note Off %i", (int)in_event.buffer[1]);
-        }
-    }
-}
-
-// static
-void XJackKeyBoard::jack_shutdown (void *arg) {
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*)arg;
-    quit(xjmkb->win);
-}
-
-// static
-int XJackKeyBoard::jack_xrun_callback(void *arg) {
-    fprintf (stderr, "Xrun \r");
-    return 0;
-}
-
-// static
-int XJackKeyBoard::jack_srate_callback(jack_nframes_t samplerate, void* arg) {
-    fprintf (stderr, "Samplerate %iHz \n", samplerate);
-    return 0;
-}
-
-// static
-int XJackKeyBoard::jack_buffersize_callback(jack_nframes_t nframes, void* arg) {
-    fprintf (stderr, "Buffersize is %i samples \n", nframes);
-    return 0;
-}
-
-// static
-int XJackKeyBoard::jack_process(jack_nframes_t nframes, void *arg) {
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*)arg;
-    void *in = jack_port_get_buffer (xjmkb->in_port, nframes);
-    void *out = jack_port_get_buffer (xjmkb->out_port, nframes);
-    xjmkb->process_midi_in(in, arg);
-    memcpy (out, in,
-        sizeof (unsigned char) * nframes);
-    xjmkb->process_midi_cc(out,nframes);
-    return 0;
-}
-
 // GUI stuff starts here
-void XJackKeyBoard::set_config(const char *name, const char *client_id, bool op_gui) {
+void XKeyBoard::set_config(const char *name, const char *client_id, bool op_gui) {
     client_name = client_id;
+    xjack->client_name = client_name;
     path = name;
     config_file = path + ".config";
     if (op_gui) {
@@ -288,7 +354,7 @@ void XJackKeyBoard::set_config(const char *name, const char *client_id, bool op_
 }
 
 
-void XJackKeyBoard::read_config() {
+void XKeyBoard::read_config() {
     std::ifstream infile(config_file);
     std::string line;
     if (infile.is_open()) {
@@ -313,7 +379,7 @@ void XJackKeyBoard::read_config() {
     }
 }
 
-void XJackKeyBoard::save_config() {
+void XKeyBoard::save_config() {
     if(nsmsig.nsm_session_control)
         XLockDisplay(win->app->dpy);
     std::ofstream outfile(config_file);
@@ -332,7 +398,7 @@ void XJackKeyBoard::save_config() {
         XUnlockDisplay(win->app->dpy);
 }
 
-void XJackKeyBoard::nsm_show_ui() {
+void XKeyBoard::nsm_show_ui() {
     XLockDisplay(win->app->dpy);
     widget_show_all(win);
     XFlush(win->app->dpy);
@@ -341,7 +407,7 @@ void XJackKeyBoard::nsm_show_ui() {
     XUnlockDisplay(win->app->dpy);
 }
 
-void XJackKeyBoard::nsm_hide_ui() {
+void XKeyBoard::nsm_hide_ui() {
     XLockDisplay(win->app->dpy);
     widget_hide(win);
     XFlush(win->app->dpy);
@@ -349,7 +415,7 @@ void XJackKeyBoard::nsm_hide_ui() {
     XUnlockDisplay(win->app->dpy);
 }
 
-void XJackKeyBoard::show_ui(int present) {
+void XKeyBoard::show_ui(int present) {
     if(present) {
         widget_show_all(win);
         XMoveWindow(win->app->dpy,win->widget, main_x, main_y);
@@ -362,8 +428,20 @@ void XJackKeyBoard::show_ui(int present) {
     }
 }
 
+void XKeyBoard::get_midi_in(int n, bool on) {
+    MidiKeyboard *keys = (MidiKeyboard*)wid->parent_struct;
+    set_key_in_matrix(keys->in_key_matrix, n, on);
+}
+
+void XKeyBoard::quit_by_jack() {
+    XLockDisplay(win->app->dpy);
+    quit(win);
+    XFlush(win->app->dpy);
+    XUnlockDisplay(win->app->dpy);
+}
+
 // static
-void XJackKeyBoard::mk_draw_knob(void *w_, void* user_data) {
+void XKeyBoard::mk_draw_knob(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
@@ -466,7 +544,7 @@ void XJackKeyBoard::mk_draw_knob(void *w_, void* user_data) {
     cairo_new_path (w->crb);
 }
 
-void XJackKeyBoard::draw_board(void *w_, void* user_data) {
+void XKeyBoard::draw_board(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
@@ -489,7 +567,7 @@ void XJackKeyBoard::draw_board(void *w_, void* user_data) {
     cairo_stroke(w->crb);
 }
 
-Widget_t *XJackKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
+Widget_t *XKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height) {
     Widget_t *wid = add_knob(parent,label, x, y, width, height);
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -500,7 +578,7 @@ Widget_t *XJackKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
     return wid;
 }
 
-void XJackKeyBoard::init_ui(Xputty *app) {
+void XKeyBoard::init_ui(Xputty *app) {
     win = create_window(app, DefaultRootWindow(app->dpy), 0, 0, 700, 240);
     XSelectInput(win->app->dpy, win->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
@@ -647,7 +725,7 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     set_adjustment(w[6]->adj,127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[6]->func.value_changed_callback = velocity_callback;
 
-    w[7] = add_toggle_button(win, "Sustain", 580, 45, 80, 30);
+    w[7] = add_toggle_button(win, "Sustain", 550, 45, 80, 30);
     w[7]->data = SUSTAIN;
     w[7]->scale.gravity = ASPECT;
     w[7]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -655,13 +733,19 @@ void XJackKeyBoard::init_ui(Xputty *app) {
     w[7]->func.key_press_callback = key_press;
     w[7]->func.key_release_callback = key_release;
 
-    w[8] = add_toggle_button(win, "Sostenuto", 580, 80, 80, 30);
+    w[8] = add_toggle_button(win, "Sostenuto", 550, 80, 80, 30);
     w[8]->data = SOSTENUTO;
     w[8]->scale.gravity = ASPECT;
     w[8]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     w[8]->func.value_changed_callback = sostenuto_callback;
     w[8]->func.key_press_callback = key_press;
     w[8]->func.key_release_callback = key_release;
+
+    record = add_toggle_button(win, "Record", 640, 45, 50, 30);
+    record->func.value_changed_callback = record_callback;
+
+    play = add_toggle_button(win, "Play", 640, 80, 50, 30);
+    play->func.value_changed_callback = play_callback;
 
     // open a widget for the keyboard layout
     wid = create_widget(app, win, 0, 120, 700, 120);
@@ -695,12 +779,12 @@ void XJackKeyBoard::init_ui(Xputty *app) {
 }
 
 // static
-void XJackKeyBoard::animate_midi_keyboard(void *w_) {
+void XKeyBoard::animate_midi_keyboard(void *w_) {
     Widget_t *w = (Widget_t*)w_;
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
-    if ((need_redraw(keys) || xjmkb->run_one_more) && xjmkb->client) {
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    if ((need_redraw(keys) || xjmkb->run_one_more) && xjmkb->xjack->client) {
         XLockDisplay(w->app->dpy);
         expose_widget(w);
         XFlush(w->app->dpy);
@@ -712,10 +796,10 @@ void XJackKeyBoard::animate_midi_keyboard(void *w_) {
 }
 
 // static
-void XJackKeyBoard::win_configure_callback(void *w_, void* user_data) {
+void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
     if (attrs.map_state != IsViewable) return;
@@ -731,25 +815,25 @@ void XJackKeyBoard::win_configure_callback(void *w_, void* user_data) {
 }
 
 // static
-void XJackKeyBoard::map_callback(void *w_, void* user_data) {
+void XKeyBoard::map_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->visible = 1;
 }
 
 // static
-void XJackKeyBoard::unmap_callback(void *w_, void* user_data) {
+void XKeyBoard::unmap_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->visible = 0;
 }
 
 // static
-void XJackKeyBoard::get_note(Widget_t *w, int *key, bool on_off) {
+void XKeyBoard::get_note(Widget_t *w, const int *key, const bool on_off) {
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     if (on_off) {
         xjmkb->mmessage->send_midi_cc(0x90, (*key),xjmkb->velocity, 3);
     } else {
@@ -758,35 +842,35 @@ void XJackKeyBoard::get_note(Widget_t *w, int *key, bool on_off) {
 }
 
 // static
-void XJackKeyBoard::get_all_notes_off(Widget_t *w,int *value) {
+void XKeyBoard::get_all_notes_off(Widget_t *w, const int *value) {
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3);
 }
 
 // static
-void XJackKeyBoard::channel_callback(void *w_, void* user_data) {
+void XKeyBoard::channel_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mmessage->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
 }
 
 // static
-void XJackKeyBoard::bank_callback(void *w_, void* user_data) {
+void XKeyBoard::bank_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mbank = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
     xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2);
 }
 
 // static
-void XJackKeyBoard::program_callback(void *w_, void* user_data) {
+void XKeyBoard::program_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mprogram = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
     xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2);
@@ -794,73 +878,73 @@ void XJackKeyBoard::program_callback(void *w_, void* user_data) {
 
 
 // static
-void XJackKeyBoard::modwheel_callback(void *w_, void* user_data) {
+void XKeyBoard::modwheel_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 1, value, 3);
 }
 
 // static
-void XJackKeyBoard::detune_callback(void *w_, void* user_data) {
+void XKeyBoard::detune_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 94, value, 3);
 }
 
 // static
-void XJackKeyBoard::attack_callback(void *w_, void* user_data) {
+void XKeyBoard::attack_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 73, value, 3);
 }
 
 // static
-void XJackKeyBoard::expression_callback(void *w_, void* user_data) {
+void XKeyBoard::expression_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 11, value, 3);
 }
 
 // static 
-void XJackKeyBoard::release_callback(void *w_, void* user_data) {
+void XKeyBoard::release_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 72, value, 3);
 }
 
 // static 
-void XJackKeyBoard::volume_callback(void *w_, void* user_data) {
+void XKeyBoard::volume_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 39, value, 3);
 }
 
 // static 
-void XJackKeyBoard::velocity_callback(void *w_, void* user_data) {
+void XKeyBoard::velocity_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     xjmkb->velocity = value; 
 }
 
 // static
-void XJackKeyBoard::pitchwheel_callback(void *w_, void* user_data) {
+void XKeyBoard::pitchwheel_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     unsigned int change = (unsigned int)(128 * value);
     unsigned int low = change & 0x7f;  // Low 7 bits
@@ -869,74 +953,101 @@ void XJackKeyBoard::pitchwheel_callback(void *w_, void* user_data) {
 }
 
 // static
-void XJackKeyBoard::balance_callback(void *w_, void* user_data) {
+void XKeyBoard::balance_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 8, value, 3);
 }
 
 // static
-void XJackKeyBoard::sustain_callback(void *w_, void* user_data) {
+void XKeyBoard::sustain_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 64, value*127, 3);
 }
 
 // static
-void XJackKeyBoard::sostenuto_callback(void *w_, void* user_data) {
+void XKeyBoard::sostenuto_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 66, value*127, 3);
 }
 
-
 // static
-void XJackKeyBoard::layout_callback(void *w_, void* user_data) {
+void XKeyBoard::record_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int value = (int)adj_get_value(w->adj);
+    xjmkb->xjack->record = value;
+    if (value > 0) {
+        adj_set_value(xjmkb->play->adj,0.0);
+        xjmkb->xjack->store.clear();
+        xjmkb->xjack->fresh_take = true;
+    }
+}
+
+// static
+void XKeyBoard::play_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int value = (int)adj_get_value(w->adj);
+    xjmkb->xjack->play = value;
+    if (value < 1) {
+        MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+        clear_key_matrix(keys->in_key_matrix);
+    } else {
+        adj_set_value(xjmkb->record->adj,0.0);
+    }
+}
+
+// static
+void XKeyBoard::layout_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     keys->layout = xjmkb->keylayout = (int)adj_get_value(w->adj);
 }
 
 // static
-void XJackKeyBoard::octave_callback(void *w_, void* user_data) {
+void XKeyBoard::octave_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     keys->octave = (int)12*adj_get_value(w->adj);
     expose_widget(xjmkb->wid);
 }
 
 // static
-void XJackKeyBoard::key_press(void *w_, void *key_, void *user_data) {
+void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->wid->func.key_press_callback(xjmkb->wid, key_, user_data);
 }
 
 // static
-void XJackKeyBoard::key_release(void *w_, void *key_, void *user_data) {
+void XKeyBoard::key_release(void *w_, void *key_, void *user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->wid->func.key_release_callback(xjmkb->wid, key_, user_data);
 }
 
 
-
 // static
-void XJackKeyBoard::signal_handle (int sig, XJackKeyBoard *xjmkb) {
-    jack_client_close (xjmkb->client);
-    xjmkb->client = NULL;
+void XKeyBoard::signal_handle (int sig, XKeyBoard *xjmkb) {
+    if(xjmkb->xjack->client) jack_client_close (xjmkb->xjack->client);
+    xjmkb->xjack->client = NULL;
     XLockDisplay(xjmkb->win->app->dpy);
     quit(xjmkb->win);
     XFlush(xjmkb->win->app->dpy);
@@ -945,19 +1056,19 @@ void XJackKeyBoard::signal_handle (int sig, XJackKeyBoard *xjmkb) {
 }
 
 // static
-void XJackKeyBoard::exit_handle (int sig, XJackKeyBoard *xjmkb) {
-    jack_client_close (xjmkb->client);
-    xjmkb->client = NULL;
+void XKeyBoard::exit_handle (int sig, XKeyBoard *xjmkb) {
+    if(xjmkb->xjack->client) jack_client_close (xjmkb->xjack->client);
+    xjmkb->xjack->client = NULL;
     fprintf (stderr, "\n%s: signal %i received, exiting ...\n",xjmkb->client_name.c_str(), sig);
     exit (0);
 }
 
 
 // static
-void XJackKeyBoard::win_mem_free(void *w_, void* user_data) {
+void XKeyBoard::win_mem_free(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XJackKeyBoard *xjmkb = (XJackKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     if(xjmkb->icon) {
         XFreePixmap(xjmkb->win->app->dpy, *xjmkb->icon);
         xjmkb->icon = NULL;
@@ -971,7 +1082,7 @@ void XJackKeyBoard::win_mem_free(void *w_, void* user_data) {
  ** 
  */
 
-PosixSignalHandler::PosixSignalHandler(XJackKeyBoard *xjmkb_)
+PosixSignalHandler::PosixSignalHandler(XKeyBoard *xjmkb_)
     : waitset(),
       thread(nullptr),
       xjmkb(xjmkb_),
@@ -1054,7 +1165,8 @@ int main (int argc, char *argv[]) {
     midikeyboard::MidiMessenger mmessage;
     nsmhandler::NsmSignalHandler nsmsig;
     midikeyboard::AnimatedKeyBoard  animidi;
-    midikeyboard::XJackKeyBoard xjmkb(&mmessage, nsmsig, &animidi);
+    midikeyboard::XJack xjack(&mmessage);
+    midikeyboard::XKeyBoard xjmkb(&xjack, &mmessage, nsmsig, &animidi);
     midikeyboard::PosixSignalHandler xsig(&xjmkb);
     nsmhandler::NsmHandler nsmh(&nsmsig);
 
@@ -1065,7 +1177,7 @@ int main (int argc, char *argv[]) {
     main_init(&app);
     
     xjmkb.init_ui(&app);
-    xjmkb.init_jack();
+    xjack.init_jack();
 
     xjmkb.show_ui(xjmkb.visible);
 
@@ -1076,7 +1188,7 @@ int main (int argc, char *argv[]) {
 
     if(!nsmsig.nsm_session_control) xjmkb.save_config();
 
-    if (xjmkb.client) jack_client_close (xjmkb.client);
+    if (xjack.client) jack_client_close (xjack.client);
 
     exit (0);
 

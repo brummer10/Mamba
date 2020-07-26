@@ -28,10 +28,12 @@
 #include <cstdlib>
 #include <cmath>
 #include <atomic>
+#include <vector>
 #include <thread>
 #include <system_error>
 #include <sigc++/sigc++.h>
 #include <fstream>
+#include <iostream>
 
 #include <jack/jack.h>
 #include <jack/midiport.h>
@@ -66,6 +68,15 @@ typedef enum {
     LAYOUT,
     
 }ControlPorts;
+
+
+typedef struct {
+    unsigned char cc_num;
+    unsigned char pg_num;
+    unsigned char bg_num;
+    int me_num;
+    jack_time_t deltaTime;
+} MidiEvent;
 
 
 /****************************************************************
@@ -114,29 +125,23 @@ public:
 
 
 /****************************************************************
- ** class XJackKeyBoard
+ ** class XJack
  **
- ** Create Keyboard layout and connect via MidiMessenger to jack_midi out
+ ** Connect via MidiMessenger to jack_midi out
  ** pass all incoming midi events to jack_midi out.
+ ** send all incomming midi events to the KeyBoard
  */
 
-class XJackKeyBoard {
+class XJack {
 private:
     MidiMessenger *mmessage;
-    AnimatedKeyBoard * animidi;
-    nsmhandler::NsmSignalHandler& nsmsig;
     jack_port_t *in_port;
     jack_port_t *out_port;
+    jack_time_t start;
+    jack_time_t stop;
+    jack_time_t deltaTime;
 
-    Widget_t *w[CPORTS];
-    Widget_t *channel;
-    Widget_t *bank;
-    Widget_t *program;
-    Widget_t *layout;
-    Widget_t *keymap;
-    Pixmap *icon;
-
-    inline void process_midi_cc(void *buf, jack_nframes_t nframes);
+    inline void process_midi_out(void *buf, jack_nframes_t nframes);
     inline void process_midi_in(void* buf, void *arg);
     static void jack_shutdown (void *arg);
     static int jack_xrun_callback(void *arg);
@@ -144,8 +149,61 @@ private:
     static int jack_buffersize_callback(jack_nframes_t nframes, void* arg);
     static int jack_process(jack_nframes_t nframes, void *arg);
 
-    static void get_note(Widget_t *w, int *key, bool on_off);
-    static void get_all_notes_off(Widget_t *w,int *value);
+public:
+    XJack(MidiMessenger *mmessage);
+    ~XJack();
+    jack_client_t *client;
+    std::string client_name;
+    void init_jack();
+    std::vector<MidiEvent> store;
+    int record;
+    int play;
+    bool fresh_take;
+
+
+    sigc::signal<void > trigger_quit_by_jack;
+    sigc::signal<void >& signal_trigger_quit_by_jack() { return trigger_quit_by_jack; }
+
+    sigc::signal<void, int, bool> trigger_get_midi_in;
+    sigc::signal<void, int, bool>& signal_trigger_get_midi_in() { return trigger_get_midi_in; }
+};
+
+/****************************************************************
+ ** class XKeyBoard
+ **
+ ** Create Keyboard layout and connect via MidiMessenger to jack_midi out
+ ** pass all incoming midi events to jack_midi out.
+ */
+
+class XKeyBoard {
+private:
+    XJack *xjack;
+    MidiMessenger *mmessage;
+    AnimatedKeyBoard * animidi;
+    nsmhandler::NsmSignalHandler& nsmsig;
+
+    Widget_t *w[CPORTS];
+    Widget_t *channel;
+    Widget_t *bank;
+    Widget_t *program;
+    Widget_t *layout;
+    Widget_t *keymap;
+    Widget_t *record;
+    Widget_t *play;
+    Pixmap *icon;
+    int main_x;
+    int main_y;
+    int main_w;
+    int main_h;
+    int velocity;
+    int mbank;
+    int mprogram;
+    int keylayout;
+    int mchannel;
+    int run_one_more;
+
+    static void get_note(Widget_t *w, const int *key, const bool on_off);
+    static void get_all_notes_off(Widget_t *w, const int *value);
 
     static void channel_callback(void *w_, void* user_data);
     static void bank_callback(void *w_, void* user_data);
@@ -163,6 +221,8 @@ private:
     static void balance_callback(void *w_, void* user_data);
     static void sustain_callback(void *w_, void* user_data);
     static void sostenuto_callback(void *w_, void* user_data);
+    static void record_callback(void *w_, void* user_data);
+    static void play_callback(void *w_, void* user_data);
     static void animate_midi_keyboard(void *w_);
     
     static void key_press(void *w_, void *key_, void *user_data);
@@ -177,38 +237,28 @@ private:
                                 int x, int y, int width, int height);
     void nsm_show_ui();
     void nsm_hide_ui();
+    void quit_by_jack();
+    void get_midi_in(int n, bool on);
 public:
-    XJackKeyBoard(MidiMessenger *mmessage,
+    XKeyBoard(XJack *xjack, MidiMessenger *mmessage,
         nsmhandler::NsmSignalHandler& nsmsig, AnimatedKeyBoard * animidi);
-    ~XJackKeyBoard();
-    jack_client_t *client;
+    ~XKeyBoard();
     std::string client_name;
     std::string config_file;
     std::string path;
     bool has_config;
     Widget_t *win;
     Widget_t *wid;
-    int main_x;
-    int main_y;
-    int main_w;
-    int main_h;
     int visible;
-    int velocity;
-    int mbank;
-    int mprogram;
-    int keylayout;
-    int mchannel;
-    int run_one_more;
 
     void init_ui(Xputty *app);
-    void init_jack();
     void show_ui(int present);
     void read_config();
     void save_config();
     void set_config(const char *name, const char *client_id, bool op_gui);
 
-    static void signal_handle (int sig, XJackKeyBoard *xjmkb);
-    static void exit_handle (int sig, XJackKeyBoard *xjmkb);
+    static void signal_handle (int sig, XKeyBoard *xjmkb);
+    static void exit_handle (int sig, XKeyBoard *xjmkb);
 };
 
 
@@ -223,13 +273,13 @@ class PosixSignalHandler {
 private:
     sigset_t waitset;
     std::thread *thread;
-    XJackKeyBoard *xjmkb;
+    XKeyBoard *xjmkb;
     volatile bool exit;
     void signal_helper_thread();
     void create_thread();
     
 public:
-    PosixSignalHandler(XJackKeyBoard *xjmkb);
+    PosixSignalHandler(XKeyBoard *xjmkb);
     ~PosixSignalHandler();
 };
 
