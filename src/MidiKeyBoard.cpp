@@ -179,17 +179,17 @@ void XJack::init_jack() {
 inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
     int i = mmessage->next();
     for (unsigned int n = 0; n < nframes; n++) {
+        if (record) {
+            if (fresh_take) start = jack_get_time();
+            fresh_take = false;
+        }
         if (i >= 0) {
             unsigned char* midi_send = jack_midi_event_reserve(buf, n, mmessage->size(i));
             if (midi_send) {
                 mmessage->fill(midi_send, i);
                 if (record) {
-                    if (fresh_take) start = jack_get_time();
                     stop = jack_get_time();
                     deltaTime = (double)(stop-start);
-                    if (fresh_take) {
-                        fresh_take = false;
-                    }
                     MidiEvent ev = {midi_send[0], midi_send[1], midi_send[2], mmessage->size(i), deltaTime};
                     store.push_back(ev);
                     start = jack_get_time();
@@ -197,7 +197,7 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
             }
             i = mmessage->next(i);
         } else if (play && store.size()) {
-            static int p = 0;
+            static unsigned int p = 0;
             stop = jack_get_time();
             deltaTime = (double)(stop-start);
             MidiEvent ev = store[p];
