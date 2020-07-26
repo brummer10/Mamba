@@ -206,7 +206,8 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
                 if (midi_send) {
                     midi_send[0] = ev.cc_num;
                     midi_send[1] = ev.pg_num;
-                    midi_send[2] = ev.bg_num;
+                    if(ev.me_num > 2)
+                        midi_send[2] = ev.bg_num;
                     bool ch = true;
                     if ((mmessage->channel) != (int(ev.cc_num&0x0f))) {
                         ch = false;
