@@ -156,10 +156,11 @@ public:
     std::string client_name;
     void init_jack();
     std::vector<MidiEvent> store;
+    static void save_data(MidiEvent ev, XJack* xjack) { xjack->store.push_back(ev);}
     int record;
     int play;
     bool fresh_take;
-
+    bool first_play;
 
     sigc::signal<void > trigger_quit_by_jack;
     sigc::signal<void >& signal_trigger_quit_by_jack() { return trigger_quit_by_jack; }
