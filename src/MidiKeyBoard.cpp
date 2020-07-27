@@ -123,6 +123,55 @@ bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) {
 
 
 /****************************************************************
+ ** class MidiRecord
+ **
+ ** record the keyboard input in a extra thread
+ ** 
+ */
+
+MidiRecord::MidiRecord() 
+    :_execute(false) {
+    st = NULL;
+}
+
+MidiRecord::~MidiRecord() {
+    if( _execute.load(std::memory_order_acquire) ) {
+        stop();
+    };
+}
+
+void MidiRecord::stop() {
+    _execute.store(false, std::memory_order_release);
+    if (_thd.joinable()) {
+        cv.notify_one();
+        _thd.join();
+    }
+}
+
+void MidiRecord::start() {
+    if( _execute.load(std::memory_order_acquire) ) {
+        stop();
+    };
+    _execute.store(true, std::memory_order_release);
+    _thd = std::thread([this]() {
+        while (_execute.load(std::memory_order_acquire)) {
+            std::unique_lock<std::mutex> lk(m);
+            cv.wait(lk);
+            
+            for (unsigned int i=0; i<st->size(); i++) 
+                play.push_back((*st)[i]); 
+            st->clear();
+        }
+    });
+}
+
+bool MidiRecord::is_running() const noexcept {
+    return ( _execute.load(std::memory_order_acquire) && 
+             _thd.joinable() );
+}
+
+
+/****************************************************************
  ** class XJack
  **
  ** Send content from MidiMessenger to jack_midi out
@@ -140,11 +189,16 @@ XJack::XJack(MidiMessenger *mmessage_)
         play = 0;
         fresh_take = true;
         first_play = true;
+        store1.reserve(256);
+        store2.reserve(256);
+        st = &store1;
+        rec.st = &store1;
         client_name = "Mamba";
 }
 
 XJack::~XJack() {
     if (client) jack_client_close (client);
+    if (rec.is_running()) rec.stop();
 }
 
 void XJack::init_jack() {
@@ -193,12 +247,21 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
                     deltaTime = (double)(stop-start);
                     unsigned char d = mmessage->size(i) > 2 ? midi_send[2] : 0;
                     MidiEvent ev = {midi_send[0], midi_send[1], d, mmessage->size(i), deltaTime};
-                    std::async(std::launch::async, save_data, ev, this);
+                    st->push_back(ev);
+                    if (store1.size() >= 256) {
+                        st = &store2;
+                        rec.st = &store1;
+                        rec.cv.notify_one();
+                    } else if (store2.size() >= 256) {
+                        st = &store1;
+                        rec.st = &store2;
+                        rec.cv.notify_one();
+                    }
                     start = jack_get_time();
                 }
             }
             i = mmessage->next(i);
-        } else if (play && store.size()) {
+        } else if (play && rec.play.size()) {
             if (first_play) {
                 start = jack_get_time();
                 first_play = false;
@@ -206,7 +269,7 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
             static unsigned int p = 0;
             stop = jack_get_time();
             deltaTime = (double)(stop-start);
-            MidiEvent ev = store[p];
+            MidiEvent ev = rec.play[p];
             if (deltaTime >= ev.deltaTime) {
                 unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.me_num);
                 if (midi_send) {
@@ -226,7 +289,7 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
                 }
                 start = jack_get_time();
                 p++;
-                if (p>=store.size()) p = 0;
+                if (p>=rec.play.size()) p = 0;
             }
         }
         
@@ -1007,9 +1070,19 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
     xjmkb->xjack->record = value;
     if (value > 0) {
         adj_set_value(xjmkb->play->adj,0.0);
-        xjmkb->xjack->store.clear();
+        xjmkb->xjack->store1.clear();
+        xjmkb->xjack->store2.clear();
+        xjmkb->xjack->rec.play.clear();
         xjmkb->xjack->fresh_take = true;
         xjmkb->xjack->first_play = true;
+        xjmkb->xjack->rec.start();
+    } else if ( xjmkb->xjack->rec.is_running()) {
+        if (xjmkb->xjack->rec.st == &xjmkb->xjack->store1 && xjmkb->xjack->store2.size()) {
+            xjmkb->xjack->rec.st = &xjmkb->xjack->store2;
+        } else {
+            xjmkb->xjack->rec.st = &xjmkb->xjack->store1;
+        }
+        xjmkb->xjack->rec.stop();
     }
 }
 
@@ -1023,6 +1096,7 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
     if (value < 1) {
         MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
         clear_key_matrix(keys->in_key_matrix);
+        xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3);
     } else {
         adj_set_value(xjmkb->record->adj,0.0);
     }

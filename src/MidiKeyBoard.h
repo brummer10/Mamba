@@ -30,6 +30,7 @@
 #include <atomic>
 #include <vector>
 #include <thread>
+#include <condition_variable>
 #include <system_error>
 #include <sigc++/sigc++.h>
 #include <fstream>
@@ -69,6 +70,13 @@ typedef enum {
     
 }ControlPorts;
 
+
+/****************************************************************
+ ** struct MidiEvent
+ **
+ ** store midi events in a vector
+ ** 
+ */
 
 typedef struct {
     unsigned char cc_num;
@@ -125,6 +133,32 @@ public:
 
 
 /****************************************************************
+ ** class MidiRecord
+ **
+ ** record the keyboard input in a extra thread
+ ** 
+ */
+
+class MidiRecord {
+private:
+    std::atomic<bool> _execute;
+    std::thread _thd;
+    std::mutex m;
+
+public:
+    MidiRecord();
+    ~MidiRecord();
+    void stop();
+    void start();
+    bool is_running() const noexcept;
+    std::condition_variable cv;
+    MidiEvent ev;
+    std::vector<MidiEvent> *st;
+    std::vector<MidiEvent> play;
+};
+
+
+/****************************************************************
  ** class XJack
  **
  ** Connect via MidiMessenger to jack_midi out
@@ -155,8 +189,11 @@ public:
     jack_client_t *client;
     std::string client_name;
     void init_jack();
-    std::vector<MidiEvent> store;
-    static void save_data(MidiEvent ev, XJack* xjack) { xjack->store.push_back(ev);}
+    MidiRecord rec;
+    std::vector<MidiEvent> store1;
+    std::vector<MidiEvent> store2;
+    std::vector<MidiEvent> *st;
+
     int record;
     int play;
     bool fresh_take;
