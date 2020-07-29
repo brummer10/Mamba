@@ -28,7 +28,7 @@
 	NAME = Mamba
 	EXEC_NAME  = $(shell echo $(NAME) | tr A-Z a-z)
 	BUILD_DIR = build
-	VER = 1.0
+	VER = 1.1
 
 	LIB_DIR := ../libxputty/libxputty/
 	HEADER_DIR := $(LIB_DIR)include/
@@ -82,10 +82,6 @@ else
 endif
 
 uninstall :
-	@rm -rf $(DESTDIR)$(BIN_DIR)/$(OLDEXEC_NAME)
-	@rm -rf $(DESTDIR)$(DESKAPPS_DIR)/$(OLDNAME).desktop
-	@rm -rf $(DESTDIR)$(PIXMAPS_DIR)/$(OLDNAME).png
-
 	@rm -rf $(DESTDIR)$(BIN_DIR)/$(EXEC_NAME)
 	@rm -rf $(DESTDIR)$(DESKAPPS_DIR)/$(NAME).desktop
 	@rm -rf $(DESTDIR)$(PIXMAPS_DIR)/$(NAME).png
