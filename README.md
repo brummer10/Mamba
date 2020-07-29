@@ -17,7 +17,10 @@ Virtual Midi Keyboard for Jack Audio Connection Kit
 - Midi Through: forward midi input to output
 - Midi input highlighting
 - Resizable to a full range 127 key view
-- Record and play Midi-Loops 
+- Record and play Midi-Loops
+- Keyboard Shortcuts
+- `ctrl + r` toggle Record Button
+- `ctrl + p` toggle Play Button
 
 ## Dependencies
 

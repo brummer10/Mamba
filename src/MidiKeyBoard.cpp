@@ -1132,7 +1132,21 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    xjmkb->wid->func.key_press_callback(xjmkb->wid, key_, user_data);
+    XKeyEvent *key = (XKeyEvent*)key_;
+    if ((key->state & (ShiftMask | ControlMask | Mod1Mask | Mod4Mask)) == (ControlMask)) {
+        KeySym sym = XLookupKeysym (key, 0);
+        if (sym == 112) {
+            int value = (int)adj_get_value(xjmkb->play->adj);
+            if (value) adj_set_value(xjmkb->play->adj,0.0);
+            else adj_set_value(xjmkb->play->adj,1.0);
+        } else if (sym == 114) {
+            int value = (int)adj_get_value(xjmkb->record->adj);
+            if (value) adj_set_value(xjmkb->record->adj,0.0);
+            else adj_set_value(xjmkb->record->adj,1.0);
+        }
+    } else {
+        xjmkb->wid->func.key_press_callback(xjmkb->wid, key_, user_data);
+    }
 }
 
 // static
