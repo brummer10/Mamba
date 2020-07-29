@@ -157,6 +157,7 @@ void MidiRecord::start() {
         while (_execute.load(std::memory_order_acquire)) {
             std::unique_lock<std::mutex> lk(m);
             cv.wait(lk);
+            play.resize(play.size() + st->size());
             
             for (unsigned int i=0; i<st->size(); i++) 
                 play.push_back((*st)[i]); 
@@ -184,7 +185,8 @@ XJack::XJack(MidiMessenger *mmessage_)
      start(0),
      stop(0),
      deltaTime(0),
-     client(NULL) {
+     client(NULL),
+     rec() {
         record = 0;
         play = 0;
         fresh_take = true;
@@ -235,7 +237,7 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
     int i = mmessage->next();
     for (unsigned int n = 0; n < nframes; n++) {
         if (record) {
-            if (fresh_take) start = jack_get_time();
+            if (fresh_take) start = jack_last_frame_time(client);
             fresh_take = false;
         }
         if (i >= 0) {
@@ -243,7 +245,7 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
             if (midi_send) {
                 mmessage->fill(midi_send, i);
                 if (record) {
-                    stop = jack_get_time();
+                    stop = jack_last_frame_time(client);
                     deltaTime = (double)(stop-start);
                     unsigned char d = mmessage->size(i) > 2 ? midi_send[2] : 0;
                     MidiEvent ev = {midi_send[0], midi_send[1], d, mmessage->size(i), deltaTime};
@@ -257,17 +259,18 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
                         rec.st = &store2;
                         rec.cv.notify_one();
                     }
-                    start = jack_get_time();
+                    start = jack_last_frame_time(client);
                 }
             }
             i = mmessage->next(i);
         } else if (play && rec.play.size()) {
-            if (first_play) {
-                start = jack_get_time();
-                first_play = false;
-            }
             static unsigned int p = 0;
-            stop = jack_get_time();
+            if (first_play) {
+                start = jack_last_frame_time(client);
+                first_play = false;
+                p = 0;
+            }
+            stop = jack_last_frame_time(client);
             deltaTime = (double)(stop-start);
             MidiEvent ev = rec.play[p];
             if (deltaTime >= ev.deltaTime) {
@@ -287,7 +290,7 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
                         std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, false);
                     }
                 }
-                start = jack_get_time();
+                start = jack_last_frame_time(client);
                 p++;
                 if (p>=rec.play.size()) p = 0;
             }
@@ -816,11 +819,13 @@ void XKeyBoard::init_ui(Xputty *app) {
     w[8]->func.key_release_callback = key_release;
 
     record = add_toggle_button(win, "Record", 640, 45, 50, 30);
+    record->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     record->func.value_changed_callback = record_callback;
     record->func.key_press_callback = key_press;
     record->func.key_release_callback = key_release;
 
     play = add_toggle_button(win, "Play", 640, 80, 50, 30);
+    play->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     play->func.value_changed_callback = play_callback;
     play->func.key_press_callback = key_press;
     play->func.key_release_callback = key_release;
@@ -868,7 +873,7 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         XFlush(w->app->dpy);
         XUnlockDisplay(w->app->dpy);
         if (xjmkb->run_one_more == 0)
-            xjmkb->run_one_more = 20;
+            xjmkb->run_one_more = 40;
     }
     xjmkb->run_one_more = max(0,xjmkb->run_one_more-1);
 }
@@ -1097,6 +1102,7 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
         MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
         clear_key_matrix(keys->in_key_matrix);
         xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3);
+        xjmkb->xjack->first_play = true;
     } else {
         adj_set_value(xjmkb->record->adj,0.0);
     }

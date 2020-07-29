@@ -171,9 +171,9 @@ private:
     MidiMessenger *mmessage;
     jack_port_t *in_port;
     jack_port_t *out_port;
-    jack_time_t start;
-    jack_time_t stop;
-    jack_time_t deltaTime;
+    jack_nframes_t start;
+    jack_nframes_t stop;
+    jack_nframes_t deltaTime;
 
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
     inline void process_midi_in(void* buf, void *arg);
