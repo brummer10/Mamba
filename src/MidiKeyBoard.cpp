@@ -755,7 +755,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_release_callback = key_release;
 
 
-    keymap = add_hslider(win, "Keyboard mapping", 540, 2, 150, 32);
+    keymap = add_hslider(win, "Octave mapping", 540, 2, 150, 32);
     keymap->data = KEYMAP;
     keymap->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     keymap->scale.gravity = ASPECT;
@@ -802,7 +802,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     set_adjustment(w[6]->adj,127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[6]->func.value_changed_callback = velocity_callback;
 
-    w[7] = add_toggle_button(win, "Sustain", 550, 45, 80, 30);
+    w[7] = add_toggle_button(win, "Sustain", 550, 45, 75, 30);
     w[7]->data = SUSTAIN;
     w[7]->scale.gravity = ASPECT;
     w[7]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -810,7 +810,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     w[7]->func.key_press_callback = key_press;
     w[7]->func.key_release_callback = key_release;
 
-    w[8] = add_toggle_button(win, "Sostenuto", 550, 80, 80, 30);
+    w[8] = add_toggle_button(win, "Sostenuto", 550, 80, 75, 30);
     w[8]->data = SOSTENUTO;
     w[8]->scale.gravity = ASPECT;
     w[8]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -818,13 +818,13 @@ void XKeyBoard::init_ui(Xputty *app) {
     w[8]->func.key_press_callback = key_press;
     w[8]->func.key_release_callback = key_release;
 
-    record = add_toggle_button(win, "Record", 640, 45, 50, 30);
+    record = add_toggle_button(win, "_Record", 635, 45, 55, 30);
     record->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     record->func.value_changed_callback = record_callback;
     record->func.key_press_callback = key_press;
     record->func.key_release_callback = key_release;
 
-    play = add_toggle_button(win, "Play", 640, 80, 50, 30);
+    play = add_toggle_button(win, "_Play", 635, 80, 55, 30);
     play->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     play->func.value_changed_callback = play_callback;
     play->func.key_press_callback = key_press;
