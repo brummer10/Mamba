@@ -187,6 +187,8 @@ XJack::XJack(MidiMessenger *mmessage_)
      deltaTime(0),
      client(NULL),
      rec() {
+        transport_state = JackTransportStopped;
+        old_transport_state = JackTransportStopped;
         record = 0;
         play = 0;
         fresh_take = true;
@@ -346,6 +348,7 @@ int XJack::jack_buffersize_callback(jack_nframes_t nframes, void* arg) {
 // static
 int XJack::jack_process(jack_nframes_t nframes, void *arg) {
     XJack *xjack = (XJack*)arg;
+    xjack->transport_state = jack_transport_query (xjack->client, &xjack->current);
     void *in = jack_port_get_buffer (xjack->in_port, nframes);
     void *out = jack_port_get_buffer (xjack->out_port, nframes);
     xjack->process_midi_in(in, arg);
@@ -861,12 +864,26 @@ void XKeyBoard::init_ui(Xputty *app) {
     animidi->start(30, std::bind(animate_midi_keyboard,(void*)wid));
 }
 
+void dummy_callback(void *w_, void* user_data) {
+}
+
 // static
 void XKeyBoard::animate_midi_keyboard(void *w_) {
     Widget_t *w = (Widget_t*)w_;
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    if (xjmkb->xjack->transport_state != xjmkb->xjack->old_transport_state) {
+        xjmkb->xjack->old_transport_state = xjmkb->xjack->transport_state;
+        XLockDisplay(w->app->dpy);
+        xjmkb->play->func.adj_callback = dummy_callback;
+        adj_set_value(xjmkb->play->adj,(float)xjmkb->xjack->transport_state);
+        expose_widget(xjmkb->play);
+        XFlush(w->app->dpy);
+        xjmkb->play->func.adj_callback = transparent_draw;
+        XUnlockDisplay(w->app->dpy);
+    }
+
     if ((need_redraw(keys) || xjmkb->run_one_more) && xjmkb->xjack->client) {
         XLockDisplay(w->app->dpy);
         expose_widget(w);
@@ -1143,6 +1160,8 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             int value = (int)adj_get_value(xjmkb->record->adj);
             if (value) adj_set_value(xjmkb->record->adj,0.0);
             else adj_set_value(xjmkb->record->adj,1.0);
+        } else if (sym == 99) {
+            xjmkb->signal_handle (2, xjmkb);
         }
     } else {
         xjmkb->wid->func.key_press_callback(xjmkb->wid, key_, user_data);
