@@ -157,6 +157,7 @@ void MidiRecord::start() {
         while (_execute.load(std::memory_order_acquire)) {
             std::unique_lock<std::mutex> lk(m);
             cv.wait(lk);
+            play.reserve(play.size() + st->size());
             
             for (unsigned int i=0; i<st->size(); i++) 
                 play.push_back((*st)[i]); 
