@@ -369,7 +369,7 @@ int XJack::jack_process(jack_nframes_t nframes, void *arg) {
     }
     void *in = jack_port_get_buffer (xjack->in_port, nframes);
     void *out = jack_port_get_buffer (xjack->out_port, nframes);
-    jack_midi_reset_buffer(out);
+    jack_midi_clear_buffer(out);
     xjack->process_midi_in(in, out, arg);
     xjack->process_midi_out(out,nframes);
     return 0;
