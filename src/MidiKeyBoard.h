@@ -179,8 +179,8 @@ private:
     jack_transport_state_t transport_state;
     unsigned int pos;
 
-    inline void record_midi(unsigned char* midi_send, int i);
-    inline void play_midi(void *buf, int n);
+    inline void record_midi(unsigned char* midi_send, unsigned int i);
+    inline void play_midi(void *buf, unsigned int n);
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
     inline void process_midi_in(void* buf, void* out_buf, void *arg);
     static void jack_shutdown (void *arg);

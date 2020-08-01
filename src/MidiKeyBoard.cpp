@@ -237,7 +237,7 @@ void XJack::init_jack() {
     }
 }
 
-inline void XJack::record_midi(unsigned char* midi_send, int i) {
+inline void XJack::record_midi(unsigned char* midi_send, unsigned int i) {
     stop = jack_last_frame_time(client);
     deltaTime = (double)(stop-start);
     start = jack_last_frame_time(client);
@@ -255,7 +255,7 @@ inline void XJack::record_midi(unsigned char* midi_send, int i) {
     }
 }
 
-inline void XJack::play_midi(void *buf, int n) {
+inline void XJack::play_midi(void *buf, unsigned int n) {
     if (!rec.play.size()) return;
     if (first_play) {
         start = jack_last_frame_time(client);
