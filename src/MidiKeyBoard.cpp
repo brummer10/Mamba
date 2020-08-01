@@ -187,8 +187,9 @@ XJack::XJack(MidiMessenger *mmessage_)
      deltaTime(0),
      client(NULL),
      rec() {
+        transport_state_changed.store(false, std::memory_order_release);
+        transport_set.store(0, std::memory_order_release);
         transport_state = JackTransportStopped;
-        old_transport_state = JackTransportStopped;
         record = 0;
         play = 0;
         fresh_take = true;
@@ -348,7 +349,11 @@ int XJack::jack_buffersize_callback(jack_nframes_t nframes, void* arg) {
 // static
 int XJack::jack_process(jack_nframes_t nframes, void *arg) {
     XJack *xjack = (XJack*)arg;
-    xjack->transport_state = jack_transport_query (xjack->client, &xjack->current);
+    if (xjack->transport_state != jack_transport_query (xjack->client, &xjack->current)) {
+        xjack->transport_state = jack_transport_query (xjack->client, &xjack->current);
+        xjack->transport_state_changed.store(true, std::memory_order_release);
+        xjack->transport_set.store((int)xjack->transport_state, std::memory_order_release);
+    }
     void *in = jack_port_get_buffer (xjack->in_port, nframes);
     void *out = jack_port_get_buffer (xjack->out_port, nframes);
     xjack->process_midi_in(in, arg);
@@ -864,7 +869,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     animidi->start(30, std::bind(animate_midi_keyboard,(void*)wid));
 }
 
+// temporary disable adj_callback from play button to redraw it from animate thread
 void dummy_callback(void *w_, void* user_data) {
+
 }
 
 // static
@@ -873,11 +880,12 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    if (xjmkb->xjack->transport_state != xjmkb->xjack->old_transport_state) {
-        xjmkb->xjack->old_transport_state = xjmkb->xjack->transport_state;
+    if (xjmkb->xjack->transport_state_changed.load(std::memory_order_acquire)) {
+        xjmkb->xjack->transport_state_changed.store(false, std::memory_order_release);
         XLockDisplay(w->app->dpy);
         xjmkb->play->func.adj_callback = dummy_callback;
-        adj_set_value(xjmkb->play->adj,(float)xjmkb->xjack->transport_state);
+        adj_set_value(xjmkb->play->adj,
+            (float)xjmkb->xjack->transport_set.load(std::memory_order_acquire));
         expose_widget(xjmkb->play);
         XFlush(w->app->dpy);
         xjmkb->play->func.adj_callback = transparent_draw;

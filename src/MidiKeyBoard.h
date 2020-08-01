@@ -175,6 +175,7 @@ private:
     jack_nframes_t stop;
     jack_nframes_t deltaTime;
     jack_position_t current;
+    jack_transport_state_t transport_state;
 
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
     inline void process_midi_in(void* buf, void *arg);
@@ -187,9 +188,8 @@ private:
 public:
     XJack(MidiMessenger *mmessage);
     ~XJack();
-    std::atomic<bool> _execute;
-    jack_transport_state_t transport_state;
-    jack_transport_state_t old_transport_state;
+    std::atomic<bool> transport_state_changed;
+    std::atomic<int> transport_set;
     jack_client_t *client;
     std::string client_name;
     void init_jack();
