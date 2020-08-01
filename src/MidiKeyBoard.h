@@ -171,14 +171,18 @@ private:
     MidiMessenger *mmessage;
     jack_port_t *in_port;
     jack_port_t *out_port;
+    jack_nframes_t event_count;
     jack_nframes_t start;
     jack_nframes_t stop;
     jack_nframes_t deltaTime;
     jack_position_t current;
     jack_transport_state_t transport_state;
+    unsigned int pos;
 
+    inline void record_midi(unsigned char* midi_send, int i);
+    inline void play_midi(void *buf, int n);
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
-    inline void process_midi_in(void* buf, void *arg);
+    inline void process_midi_in(void* buf, void* out_buf, void *arg);
     static void jack_shutdown (void *arg);
     static int jack_xrun_callback(void *arg);
     static int jack_srate_callback(jack_nframes_t samplerate, void* arg);

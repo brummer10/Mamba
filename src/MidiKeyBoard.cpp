@@ -182,6 +182,7 @@ bool MidiRecord::is_running() const noexcept {
 
 XJack::XJack(MidiMessenger *mmessage_)
     : mmessage(mmessage_),
+     event_count(0),
      start(0),
      stop(0),
      deltaTime(0),
@@ -192,6 +193,7 @@ XJack::XJack(MidiMessenger *mmessage_)
         transport_state = JackTransportStopped;
         record = 0;
         play = 0;
+        pos = 0;
         fresh_take = true;
         first_play = true;
         store1.reserve(256);
@@ -235,81 +237,92 @@ void XJack::init_jack() {
     }
 }
 
+inline void XJack::record_midi(unsigned char* midi_send, int i) {
+    stop = jack_last_frame_time(client);
+    deltaTime = (double)(stop-start);
+    start = jack_last_frame_time(client);
+    unsigned char d = mmessage->size(i) > 2 ? midi_send[2] : 0;
+    MidiEvent ev = {midi_send[0], midi_send[1], d, mmessage->size(i), deltaTime};
+    st->push_back(ev);
+    if (store1.size() >= 256) {
+        st = &store2;
+        rec.st = &store1;
+        rec.cv.notify_one();
+    } else if (store2.size() >= 256) {
+        st = &store1;
+        rec.st = &store2;
+        rec.cv.notify_one();
+    }
+}
+
+inline void XJack::play_midi(void *buf, int n) {
+    if (!rec.play.size()) return;
+    if (first_play) {
+        start = jack_last_frame_time(client);
+        first_play = false;
+        pos = 0;
+    }
+    stop = jack_last_frame_time(client);
+    deltaTime = (double)(stop-start);
+    MidiEvent ev = rec.play[pos];
+    if (deltaTime >= ev.deltaTime) {
+        unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.me_num);
+        if (midi_send) {
+            midi_send[0] = ev.cc_num;
+            midi_send[1] = ev.pg_num;
+            if(ev.me_num > 2)
+                midi_send[2] = ev.bg_num;
+            bool ch = true;
+            if ((mmessage->channel) != (int(ev.cc_num&0x0f))) {
+                ch = false;
+            }
+            if ((ev.cc_num & 0xf0) == 0x90 && ch) {   // Note On
+                std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, true);
+            } else if ((ev.cc_num & 0xf0) == 0x80 && ch) {   // Note Off
+                std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, false);
+            }
+        }
+        start = jack_last_frame_time(client);
+        pos++;
+        if (pos >= rec.play.size()) pos = 0;
+    }
+}
+
 // jack process callback for the midi output
 inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
     int i = mmessage->next();
-    for (unsigned int n = 0; n < nframes; n++) {
-        if (record) {
-            if (fresh_take) start = jack_last_frame_time(client);
+    for (unsigned int n = event_count; n < nframes; n++) {
+        if (record && fresh_take) {
+            start = jack_last_frame_time(client);
             fresh_take = false;
         }
         if (i >= 0) {
             unsigned char* midi_send = jack_midi_event_reserve(buf, n, mmessage->size(i));
             if (midi_send) {
                 mmessage->fill(midi_send, i);
-                if (record) {
-                    stop = jack_last_frame_time(client);
-                    deltaTime = (double)(stop-start);
-                    unsigned char d = mmessage->size(i) > 2 ? midi_send[2] : 0;
-                    MidiEvent ev = {midi_send[0], midi_send[1], d, mmessage->size(i), deltaTime};
-                    st->push_back(ev);
-                    if (store1.size() >= 256) {
-                        st = &store2;
-                        rec.st = &store1;
-                        rec.cv.notify_one();
-                    } else if (store2.size() >= 256) {
-                        st = &store1;
-                        rec.st = &store2;
-                        rec.cv.notify_one();
-                    }
-                    start = jack_last_frame_time(client);
-                }
+                if (record) record_midi(midi_send, i);
             }
             i = mmessage->next(i);
-        } else if (play && rec.play.size()) {
-            static unsigned int p = 0;
-            if (first_play) {
-                start = jack_last_frame_time(client);
-                first_play = false;
-                p = 0;
-            }
-            stop = jack_last_frame_time(client);
-            deltaTime = (double)(stop-start);
-            MidiEvent ev = rec.play[p];
-            if (deltaTime >= ev.deltaTime) {
-                unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.me_num);
-                if (midi_send) {
-                    midi_send[0] = ev.cc_num;
-                    midi_send[1] = ev.pg_num;
-                    if(ev.me_num > 2)
-                        midi_send[2] = ev.bg_num;
-                    bool ch = true;
-                    if ((mmessage->channel) != (int(ev.cc_num&0x0f))) {
-                        ch = false;
-                    }
-                    if ((ev.cc_num & 0xf0) == 0x90 && ch) {   // Note On
-                        std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, true);
-                    } else if ((ev.cc_num & 0xf0) == 0x80 && ch) {   // Note Off
-                        std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, false);
-                    }
-                }
-                start = jack_last_frame_time(client);
-                p++;
-                if (p>=rec.play.size()) p = 0;
-            }
+        } else if (play) {
+            play_midi(buf, n);
         }
         
     }
 }
 
 // jack process callback for the midi input
-void XJack::process_midi_in(void* buf, void *arg) {
+inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
     XJack *xjack = (XJack*)arg;
     jack_midi_event_t in_event;
-    jack_nframes_t event_count = jack_midi_get_event_count(buf);
+    event_count = jack_midi_get_event_count(buf);
     unsigned int i;
     for (i = 0; i < event_count; i++) {
         jack_midi_event_get(&in_event, buf, i);
+        unsigned char* midi_send = jack_midi_event_reserve(out_buf, i, in_event.size);
+        midi_send[0] = in_event.buffer[0];
+        midi_send[1] = in_event.buffer[1];
+        if (in_event.size>2) 
+            midi_send[2] = in_event.buffer[2];
         bool ch = true;
         if ((xjack->mmessage->channel) != (int(in_event.buffer[0]&0x0f))) {
             ch = false;
@@ -356,9 +369,8 @@ int XJack::jack_process(jack_nframes_t nframes, void *arg) {
     }
     void *in = jack_port_get_buffer (xjack->in_port, nframes);
     void *out = jack_port_get_buffer (xjack->out_port, nframes);
-    xjack->process_midi_in(in, arg);
-    memcpy (out, in,
-        sizeof (unsigned char) * nframes);
+    jack_midi_reset_buffer(out);
+    xjack->process_midi_in(in, out, arg);
     xjack->process_midi_out(out,nframes);
     return 0;
 }
