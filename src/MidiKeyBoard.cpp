@@ -237,12 +237,12 @@ void XJack::init_jack() {
     }
 }
 
-inline void XJack::record_midi(unsigned char* midi_send, unsigned int i) {
+inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, unsigned int i) {
     stop = jack_last_frame_time(client);
-    deltaTime = (double)(stop-start);
-    start = jack_last_frame_time(client);
+    deltaTime = (double)((stop + n) - start);
+    start = jack_last_frame_time(client) + n;
     unsigned char d = mmessage->size(i) > 2 ? midi_send[2] : 0;
-    MidiEvent ev = {midi_send[0], midi_send[1], d, mmessage->size(i), deltaTime};
+    MidiEvent ev = {{midi_send[0], midi_send[1], d}, mmessage->size(i), deltaTime};
     st->push_back(ev);
     if (store1.size() >= 256) {
         st = &store2;
@@ -263,26 +263,26 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
         pos = 0;
     }
     stop = jack_last_frame_time(client);
-    deltaTime = (double)(stop-start);
+    deltaTime = (double)((stop + n) - start);
     MidiEvent ev = rec.play[pos];
     if (deltaTime >= ev.deltaTime) {
-        unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.me_num);
+        unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.num);
         if (midi_send) {
-            midi_send[0] = ev.cc_num;
-            midi_send[1] = ev.pg_num;
-            if(ev.me_num > 2)
-                midi_send[2] = ev.bg_num;
+            midi_send[0] = ev.buffer[0];
+            midi_send[1] = ev.buffer[1];
+            if(ev.num > 2)
+                midi_send[2] = ev.buffer[2];
             bool ch = true;
-            if ((mmessage->channel) != (int(ev.cc_num&0x0f))) {
+            if ((mmessage->channel) != (int(ev.buffer[0]&0x0f))) {
                 ch = false;
             }
-            if ((ev.cc_num & 0xf0) == 0x90 && ch) {   // Note On
-                std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, true);
-            } else if ((ev.cc_num & 0xf0) == 0x80 && ch) {   // Note Off
-                std::async(std::launch::async, trigger_get_midi_in, ev.pg_num, false);
+            if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
+                std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], true);
+            } else if ((ev.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
+                std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
             }
         }
-        start = jack_last_frame_time(client);
+        start = jack_last_frame_time(client) + n;
         pos++;
         if (pos >= rec.play.size()) pos = 0;
     }
@@ -293,14 +293,14 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
     int i = mmessage->next();
     for (unsigned int n = event_count; n < nframes; n++) {
         if (record && fresh_take) {
-            start = jack_last_frame_time(client);
+            start = jack_last_frame_time(client)+n;
             fresh_take = false;
         }
         if (i >= 0) {
             unsigned char* midi_send = jack_midi_event_reserve(buf, n, mmessage->size(i));
             if (midi_send) {
                 mmessage->fill(midi_send, i);
-                if (record) record_midi(midi_send, i);
+                if (record) record_midi(midi_send, n, i);
             }
             i = mmessage->next(i);
         } else if (play) {
@@ -410,6 +410,7 @@ XKeyBoard::XKeyBoard(XJack *xjack_, MidiMessenger *mmessage_,
     keylayout = 0;
     mchannel = 0;
     run_one_more = 0;
+    need_save = false;
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
         sigc::mem_fun(this, &XKeyBoard::nsm_show_ui));
@@ -455,32 +456,54 @@ void XKeyBoard::read_config() {
     std::ifstream infile(config_file);
     std::string line;
     if (infile.is_open()) {
-        getline( infile, line );
+        std::getline( infile, line );
         if (!line.empty()) main_x = std::stoi(line);
-        getline( infile, line );
+        std::getline( infile, line );
         if (!line.empty()) main_y = std::stoi(line);
-        getline( infile, line );
+        std::getline( infile, line );
         if (!line.empty()) main_w = std::stoi(line);
-        getline( infile, line );
+        std::getline( infile, line );
         if (!line.empty()) main_h = std::stoi(line);
-        getline( infile, line );
+        std::getline( infile, line );
         if (!line.empty()) visible = std::stoi(line);
-        getline( infile, line );
+        std::getline( infile, line );
         if (!line.empty()) keylayout = std::stoi(line);
-        getline( infile, line );
+        std::getline( infile, line );
         if (!line.empty()) mchannel = std::stoi(line);
-        getline( infile, line );
+        std::getline( infile, line );
         if (!line.empty()) velocity = std::stoi(line);
         infile.close();
         has_config = true;
     }
+    
+    std::ifstream vinfile(config_file+"vec");
+    if (vinfile.is_open()) {
+        MidiEvent ev;
+        std::string word;
+        while (std::getline(vinfile, line)) {
+            std::istringstream buf(line);
+            buf >> word;
+            ev.buffer[0] = std::stoi(word);
+            buf >> word;
+            ev.buffer[1] = std::stoi(word);
+            buf >> word;
+            ev.buffer[2] = std::stoi(word);
+            buf >> word;
+            ev.num = std::stoi(word);
+            buf >> word;
+            ev.deltaTime = std::stoi(word);
+            xjack->rec.play.push_back(ev);
+        }
+        vinfile.close();
+    }
+    
 }
 
 void XKeyBoard::save_config() {
     if(nsmsig.nsm_session_control)
         XLockDisplay(win->app->dpy);
     std::ofstream outfile(config_file);
-     if (outfile.is_open()) {
+    if (outfile.is_open()) {
          outfile << main_x << std::endl;
          outfile << main_y << std::endl;
          outfile << main_w << std::endl;
@@ -490,7 +513,18 @@ void XKeyBoard::save_config() {
          outfile << mchannel << std::endl;
          outfile << velocity << std::endl;
          outfile.close();
-     }
+    }
+    if (need_save && xjack->rec.play.size()) {
+        std::ofstream outfile(config_file+"vec");
+        if (outfile.is_open()) {
+            for(std::vector<MidiEvent>::const_iterator i = xjack->rec.play.begin(); i != xjack->rec.play.end(); ++i) {
+                outfile << (int)(*i).buffer[0] << " " << (int)(*i).buffer[1] << " " 
+                    << (int)(*i).buffer[2] << " " << (*i).num << " " << (*i).deltaTime << std::endl;
+            }
+            outfile.close();
+        }
+    }
+    
     if(nsmsig.nsm_session_control)
         XUnlockDisplay(win->app->dpy);
 }
@@ -1118,6 +1152,7 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
         xjmkb->xjack->fresh_take = true;
         xjmkb->xjack->first_play = true;
         xjmkb->xjack->rec.start();
+        xjmkb->need_save = true;
     } else if ( xjmkb->xjack->rec.is_running()) {
         if (xjmkb->xjack->rec.st == &xjmkb->xjack->store1 && xjmkb->xjack->store2.size()) {
             xjmkb->xjack->rec.st = &xjmkb->xjack->store2;

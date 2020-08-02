@@ -35,6 +35,7 @@
 #include <sigc++/sigc++.h>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include <jack/jack.h>
 #include <jack/midiport.h>
@@ -79,10 +80,8 @@ typedef enum {
  */
 
 typedef struct {
-    unsigned char cc_num;
-    unsigned char pg_num;
-    unsigned char bg_num;
-    int me_num;
+    unsigned char buffer[3];
+    int num;
     jack_time_t deltaTime;
 } MidiEvent;
 
@@ -179,7 +178,7 @@ private:
     jack_transport_state_t transport_state;
     unsigned int pos;
 
-    inline void record_midi(unsigned char* midi_send, unsigned int i);
+    inline void record_midi(unsigned char* midi_send, unsigned int n, unsigned int i);
     inline void play_midi(void *buf, unsigned int n);
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
     inline void process_midi_in(void* buf, void* out_buf, void *arg);
@@ -247,6 +246,7 @@ private:
     int keylayout;
     int mchannel;
     int run_one_more;
+    bool need_save;
 
     static void get_note(Widget_t *w, const int *key, const bool on_off);
     static void get_all_notes_off(Widget_t *w, const int *value);
