@@ -24,6 +24,7 @@
 
 #include <unistd.h>
 #include <signal.h>
+#include <smf.h>
 
 #include <cstdlib>
 #include <cmath>
@@ -42,6 +43,8 @@
 
 #include "NsmHandler.h"
 #include "xwidgets.h"
+#include "xfile-dialog.h"
+
 
 
 #pragma once
@@ -82,7 +85,7 @@ typedef enum {
 typedef struct {
     unsigned char buffer[3];
     int num;
-    jack_time_t deltaTime;
+    double deltaTime;
 } MidiEvent;
 
 
@@ -132,6 +135,48 @@ public:
 
 
 /****************************************************************
+ ** class MidiLoad
+ **
+ ** load data from midi file
+ ** 
+ */
+
+class MidiLoad {
+private:
+    smf_t *smf;
+    smf_track_t *tracks;
+    smf_event_t *smf_event;
+    MidiEvent ev;
+    void reset_smf();
+
+public:
+     MidiLoad();
+    ~MidiLoad();
+    void load_from_file(std::vector<MidiEvent> *play, const char* file_name);
+};
+
+/****************************************************************
+ ** class MidiSave
+ **
+ ** save data to midi file
+ ** 
+ */
+
+class MidiSave {
+private:
+    smf_t *smf;
+    std::vector<smf_track_t*> tracks;
+    smf_event_t *smf_event;
+    int channel;
+    void reset_smf();
+
+public:
+    MidiSave();
+    ~MidiSave();
+    void save_to_file(std::vector<MidiEvent> *play, const char* file_name);
+};
+
+/****************************************************************
  ** class MidiRecord
  **
  ** record the keyboard input in a extra thread
@@ -173,12 +218,12 @@ private:
     jack_nframes_t event_count;
     jack_nframes_t start;
     jack_nframes_t stop;
-    jack_nframes_t deltaTime;
+    double deltaTime;
     jack_position_t current;
     jack_transport_state_t transport_state;
     unsigned int pos;
 
-    inline void record_midi(unsigned char* midi_send, unsigned int n, unsigned int i);
+    inline void record_midi(unsigned char* midi_send, unsigned int n, int i);
     inline void play_midi(void *buf, unsigned int n);
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
     inline void process_midi_in(void* buf, void* out_buf, void *arg);
@@ -205,6 +250,8 @@ public:
     int play;
     bool fresh_take;
     bool first_play;
+    unsigned int SampleRate;
+    double srms;
 
     sigc::signal<void > trigger_quit_by_jack;
     sigc::signal<void >& signal_trigger_quit_by_jack() { return trigger_quit_by_jack; }
@@ -223,6 +270,8 @@ public:
 class XKeyBoard {
 private:
     XJack *xjack;
+    MidiSave save;
+    MidiLoad load;
     MidiMessenger *mmessage;
     AnimatedKeyBoard * animidi;
     nsmhandler::NsmSignalHandler& nsmsig;
@@ -235,6 +284,7 @@ private:
     Widget_t *keymap;
     Widget_t *record;
     Widget_t *play;
+    Widget_t *menubar;
     Pixmap *icon;
     int main_x;
     int main_y;
@@ -251,6 +301,7 @@ private:
     static void get_note(Widget_t *w, const int *key, const bool on_off);
     static void get_all_notes_off(Widget_t *w, const int *value);
 
+    static void file_callback(void *w_, void* user_data);
     static void channel_callback(void *w_, void* user_data);
     static void bank_callback(void *w_, void* user_data);
     static void program_callback(void *w_, void* user_data);
@@ -270,7 +321,9 @@ private:
     static void record_callback(void *w_, void* user_data);
     static void play_callback(void *w_, void* user_data);
     static void animate_midi_keyboard(void *w_);
-    
+    static void dialog_save_response(void *w_, void* user_data);
+    static void dialog_load_response(void *w_, void* user_data);
+
     static void key_press(void *w_, void *key_, void *user_data);
     static void key_release(void *w_, void *key_, void *user_data);
     static void win_configure_callback(void *w_, void* user_data);

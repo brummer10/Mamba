@@ -40,7 +40,7 @@
 
 	# set compile flags
 	CXXFLAGS += -O2 -D_FORTIFY_SOURCE=2 -Wall $(SSE_CFLAGS) 
-	LDFLAGS += -I./ -I../libxputty/libxputty/include/ `pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo` -lm -pthread
+	LDFLAGS += -I./ -I../libxputty/libxputty/include/ `pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo smf` -lm -pthread
 	# invoke build files
 	OBJECTS = $(OLDNAME).cpp NsmHandler.cpp xkeyboard.c
 	## output style (bash colours)

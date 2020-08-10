@@ -123,6 +123,119 @@ bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) {
 
 
 /****************************************************************
+ ** class MidiLoad
+ **
+ ** load data from midi file
+ ** 
+ */
+
+MidiLoad::MidiLoad() {
+    smf = NULL;
+    smf_event = NULL;
+}
+
+MidiLoad::~MidiLoad() {
+    if (smf) smf_delete(smf);
+}
+
+void MidiLoad::load_from_file(std::vector<MidiEvent> *play, const char* file_name) {
+    smf = smf_new();
+    smf = smf_load(file_name);
+    play->clear();
+    while ((smf_event = smf_get_next_event(smf)) !=NULL) {
+        if (smf_event_is_metadata(smf_event)) continue;
+        ev = {{smf_event->midi_buffer[0], smf_event->midi_buffer[1], smf_event->midi_buffer[2]},
+                                        smf_event->midi_buffer_length, smf_event->time_seconds};
+        play->push_back(ev);
+    }
+    if (smf) smf_delete(smf);
+    smf = NULL;
+}
+
+/****************************************************************
+ ** class MidiSave
+ **
+ ** save data to midi file
+ ** 
+ */
+
+MidiSave::MidiSave() {
+    smf = smf_new();
+    tracks.reserve(16);
+
+    for (int i = 0; i < 16; i++) {
+        tracks.push_back(smf_track_new());
+        if (tracks[i] == NULL)
+            exit(-1);
+        smf_add_track(smf, tracks[i]);
+    }    
+}
+
+MidiSave::~MidiSave() {
+    for (int i = 0; i < 16; i++) {
+        if (tracks[i] != NULL) {
+            smf_track_delete(tracks[i]);
+        }
+    }
+    if (smf) smf_delete(smf);
+}
+
+void MidiSave::reset_smf() {
+    // delete all tracks
+    for (int i = 0; i < 16; i++) {
+        if (tracks[i] != NULL) {
+            smf_track_delete(tracks[i]);
+            tracks[i] = NULL;
+        }
+    }
+    // clear vector
+    tracks.clear();
+    // delete smf
+    if (smf) smf_delete(smf);
+    smf = NULL;
+    // init new smf instance
+    smf = smf_new();
+    // prefill vector with empty tracks and add tracks to smf
+    for (int i = 0; i < 16; i++) {
+        tracks.push_back(smf_track_new());
+        if (tracks[i] == NULL)
+            exit(-1);
+        smf_add_track(smf, tracks[i]);
+    }    
+}
+
+void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name) {
+    for(std::vector<MidiEvent>::const_iterator i = play->begin(); i != play->end(); ++i) {
+        smf_event = smf_event_new_from_pointer((void*)(*i).buffer, (*i).num);
+        if (smf_event == NULL) {
+            continue;
+        }
+
+        if(smf_event->midi_buffer_length < 1) continue;
+        channel = smf_event->midi_buffer[0] & 0x0F;
+
+        smf_track_add_event_seconds(tracks[channel], smf_event,(*i).deltaTime);
+    }
+
+    smf_rewind(smf);
+
+    for (int i = 0; i < 16; i++) {
+        if (tracks[i] != NULL && tracks[i]->number_of_events == 0) {
+            smf_track_delete(tracks[i]);
+            tracks[i] = NULL;
+        }
+    }
+
+    if (smf->number_of_tracks != 0) {
+        if (smf_save(smf, file_name)) {
+            fprintf( stderr, "Could not save to file '%s'.\n", file_name);
+        }
+    }
+    reset_smf();
+}
+
+
+/****************************************************************
  ** class MidiRecord
  **
  ** record the keyboard input in a extra thread
@@ -130,7 +243,7 @@ bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) {
  */
 
 MidiRecord::MidiRecord() 
-    :_execute(false) {
+    : _execute(false) {
     st = NULL;
 }
 
@@ -237,12 +350,12 @@ void XJack::init_jack() {
     }
 }
 
-inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, unsigned int i) {
-    stop = jack_last_frame_time(client);
-    deltaTime = (double)((stop + n) - start);
-    start = jack_last_frame_time(client) + n;
-    unsigned char d = mmessage->size(i) > 2 ? midi_send[2] : 0;
-    MidiEvent ev = {{midi_send[0], midi_send[1], d}, mmessage->size(i), deltaTime};
+inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, int i) {
+    stop = jack_last_frame_time(client)+n;
+    deltaTime = (double)(((stop) - start)/(double)SampleRate); // seconds
+    //start = jack_last_frame_time(client)+n;
+    unsigned char d = i > 2 ? midi_send[2] : 0;
+    MidiEvent ev = {{midi_send[0], midi_send[1], d}, i, deltaTime};
     st->push_back(ev);
     if (store1.size() >= 256) {
         st = &store2;
@@ -258,12 +371,12 @@ inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, unsigne
 inline void XJack::play_midi(void *buf, unsigned int n) {
     if (!rec.play.size()) return;
     if (first_play) {
-        start = jack_last_frame_time(client);
+        start = jack_last_frame_time(client)+n;
         first_play = false;
         pos = 0;
     }
-    stop = jack_last_frame_time(client);
-    deltaTime = (double)((stop + n) - start);
+    stop = jack_last_frame_time(client)+n;
+    deltaTime = (double)(((stop) - start)/(double)SampleRate); // seconds
     MidiEvent ev = rec.play[pos];
     if (deltaTime >= ev.deltaTime) {
         unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.num);
@@ -272,19 +385,18 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
             midi_send[1] = ev.buffer[1];
             if(ev.num > 2)
                 midi_send[2] = ev.buffer[2];
-            bool ch = true;
-            if ((mmessage->channel) != (int(ev.buffer[0]&0x0f))) {
-                ch = false;
-            }
-            if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
+            if ((ev.buffer[0] & 0xf0) == 0x90) {   // Note On
                 std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], true);
-            } else if ((ev.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
+            } else if ((ev.buffer[0] & 0xf0) == 0x80) {   // Note Off
                 std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
             }
         }
-        start = jack_last_frame_time(client) + n;
+        //start = jack_last_frame_time(client)+n;
         pos++;
-        if (pos >= rec.play.size()) pos = 0;
+        if (pos >= rec.play.size()) {
+            pos = 0;
+            start = jack_last_frame_time(client)+n;
+        }
     }
 }
 
@@ -292,27 +404,26 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
 inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
     int i = mmessage->next();
     for (unsigned int n = event_count; n < nframes; n++) {
-        if (record && fresh_take) {
-            start = jack_last_frame_time(client)+n;
-            fresh_take = false;
-        }
         if (i >= 0) {
             unsigned char* midi_send = jack_midi_event_reserve(buf, n, mmessage->size(i));
             if (midi_send) {
                 mmessage->fill(midi_send, i);
-                if (record) record_midi(midi_send, n, i);
+                if (record) record_midi(midi_send, n, mmessage->size(i));
             }
             i = mmessage->next(i);
         } else if (play) {
             play_midi(buf, n);
         }
-        
     }
 }
 
 // jack process callback for the midi input
 inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
     XJack *xjack = (XJack*)arg;
+    if (xjack->record && xjack->fresh_take) {
+        xjack->start = jack_last_frame_time(xjack->client);
+        xjack->fresh_take = false;
+    }
     jack_midi_event_t in_event;
     event_count = jack_midi_get_event_count(buf);
     unsigned int i;
@@ -323,6 +434,8 @@ inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
         midi_send[1] = in_event.buffer[1];
         if (in_event.size>2) 
             midi_send[2] = in_event.buffer[2];
+        if (record)
+            record_midi(midi_send, i, in_event.size);
         bool ch = true;
         if ((xjack->mmessage->channel) != (int(in_event.buffer[0]&0x0f))) {
             ch = false;
@@ -349,6 +462,9 @@ int XJack::jack_xrun_callback(void *arg) {
 
 // static
 int XJack::jack_srate_callback(jack_nframes_t samplerate, void* arg) {
+    XJack *xjack = (XJack*)arg;
+    xjack->SampleRate = samplerate;
+    xjack->srms = xjack->SampleRate/1000;
     fprintf (stderr, "Samplerate %iHz \n", samplerate);
     return 0;
 }
@@ -386,6 +502,8 @@ int XJack::jack_process(jack_nframes_t nframes, void *arg) {
 XKeyBoard::XKeyBoard(XJack *xjack_, MidiMessenger *mmessage_,
         nsmhandler::NsmSignalHandler& nsmsig_, AnimatedKeyBoard * animidi_)
     : xjack(xjack_),
+    save(),
+    load(),
     mmessage(mmessage_),
     animidi(animidi_),
     nsmsig(nsmsig_),
@@ -479,19 +597,20 @@ void XKeyBoard::read_config() {
     std::ifstream vinfile(config_file+"vec");
     if (vinfile.is_open()) {
         MidiEvent ev;
-        std::string word;
+        int word = 0;
+        double time = 0;
         while (std::getline(vinfile, line)) {
             std::istringstream buf(line);
             buf >> word;
-            ev.buffer[0] = std::stoi(word);
+            ev.buffer[0] = word;
             buf >> word;
-            ev.buffer[1] = std::stoi(word);
+            ev.buffer[1] = word;
             buf >> word;
-            ev.buffer[2] = std::stoi(word);
+            ev.buffer[2] = word;
             buf >> word;
-            ev.num = std::stoi(word);
-            buf >> word;
-            ev.deltaTime = std::stoi(word);
+            ev.num = word;
+            buf >> time;
+            ev.deltaTime = time;
             xjack->rec.play.push_back(ev);
         }
         vinfile.close();
@@ -683,17 +802,20 @@ void XKeyBoard::draw_board(void *w_, void* user_data) {
     set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
     cairo_paint (w->crb);
     use_bg_color_scheme(w, NORMAL_);
-    cairo_rectangle(w->crb,0,0,width,40);
+    cairo_rectangle(w->crb,0,0,width,65);
     cairo_fill (w->crb);
 
     use_fg_color_scheme(w, SELECTED_);
-    cairo_rectangle(w->crb,0,117,width,2);
+    cairo_rectangle(w->crb,0,142,width,2);
     cairo_fill_preserve (w->crb);
     use_bg_color_scheme(w, ACTIVE_);
     cairo_set_line_width(w->crb, 1.0);
     cairo_stroke(w->crb);
+    cairo_rectangle(w->crb,0,23,width,2);
+    cairo_fill(w->crb);
+    
 
-    cairo_rectangle(w->crb,0,38,width,2);
+    cairo_rectangle(w->crb,0,63,width,2);
     cairo_fill_preserve (w->crb);
     cairo_stroke(w->crb);
 }
@@ -710,7 +832,7 @@ Widget_t *XKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
 }
 
 void XKeyBoard::init_ui(Xputty *app) {
-    win = create_window(app, DefaultRootWindow(app->dpy), 0, 0, 700, 240);
+    win = create_window(app, DefaultRootWindow(app->dpy), 0, 0, 700, 265);
     XSelectInput(win->app->dpy, win->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
@@ -732,22 +854,27 @@ void XKeyBoard::init_ui(Xputty *app) {
     win_size_hints = XAllocSizeHints();
     win_size_hints->flags =  PMinSize|PBaseSize|PMaxSize|PWinGravity|PResizeInc;
     win_size_hints->min_width = 700;
-    win_size_hints->min_height = 240;
+    win_size_hints->min_height = 265;
     win_size_hints->base_width = 700;
-    win_size_hints->base_height = 240;
+    win_size_hints->base_height = 265;
     win_size_hints->max_width = 1875;
-    win_size_hints->max_height = 241; //need to be 1 more then min to avoid flicker in the UI!!
+    win_size_hints->max_height = 266; //need to be 1 more then min to avoid flicker in the UI!!
     win_size_hints->width_inc = 25;
     win_size_hints->height_inc = 0;
     win_size_hints->win_gravity = CenterGravity;
     XSetWMNormalHints(win->app->dpy, win->widget, win_size_hints);
     XFree(win_size_hints);
 
+    menubar = add_menu(win,"_File",0,0,60,20);
+    menu_add_entry(menubar,"_Load");
+    menu_add_entry(menubar,"_Save as");
+    menu_add_entry(menubar,"_Quit");
+    menubar->func.value_changed_callback = file_callback;
 
-    Widget_t * tmp = add_label(win,"Channel:",10,5,60,20);
+    Widget_t * tmp = add_label(win,"Channel:",10,30,60,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    channel =  add_combobox(win, "Channel", 70, 5, 60, 30);
+    channel =  add_combobox(win, "Channel", 70, 30, 60, 30);
     channel->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     channel->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(channel,1,16);
@@ -760,10 +887,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,"Bank:",140,5,60,20);
+    tmp = add_label(win,"Bank:",140,30,60,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    bank =  add_combobox(win, "Bank", 200, 5, 60, 30);
+    bank =  add_combobox(win, "Bank", 200, 30, 60, 30);
     bank->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bank->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(bank,0,127);
@@ -776,10 +903,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,"Program:",260,5,60,20);
+    tmp = add_label(win,"Program:",260,30,60,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    program =  add_combobox(win, "Program", 320, 5, 60, 30);
+    program =  add_combobox(win, "Program", 320, 30, 60, 30);
     program->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     program->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(program,0,127);
@@ -792,7 +919,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    layout = add_combobox(win, "", 390, 5, 130, 30);
+    layout = add_combobox(win, "", 390, 30, 130, 30);
     layout->data = LAYOUT;
     layout->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     layout->scale.gravity = ASPECT;
@@ -809,7 +936,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_release_callback = key_release;
 
 
-    keymap = add_hslider(win, "Octave mapping", 540, 2, 150, 32);
+    keymap = add_hslider(win, "Octave mapping", 540, 27, 150, 32);
     keymap->data = KEYMAP;
     keymap->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     keymap->scale.gravity = ASPECT;
@@ -819,44 +946,44 @@ void XKeyBoard::init_ui(Xputty *app) {
     keymap->func.key_press_callback = key_press;
     keymap->func.key_release_callback = key_release;
 
-    w[0] = add_keyboard_knob(win, "PitchBend", 5, 40, 60, 75);
+    w[0] = add_keyboard_knob(win, "PitchBend", 5, 65, 60, 75);
     w[0]->data = PITCHBEND;
     w[0]->func.value_changed_callback = pitchwheel_callback;
     
-    w[9] = add_keyboard_knob(win, "Balance", 65, 40, 60, 75);
+    w[9] = add_keyboard_knob(win, "Balance", 65, 65, 60, 75);
     w[9]->data = BALANCE;
     w[9]->func.value_changed_callback = balance_callback;
 
-    w[1] = add_keyboard_knob(win, "ModWheel", 125, 40, 60, 75);
+    w[1] = add_keyboard_knob(win, "ModWheel", 125, 65, 60, 75);
     w[1]->data = MODULATION;
     w[1]->func.value_changed_callback = modwheel_callback;
 
-    w[2] = add_keyboard_knob(win, "Detune", 185, 40, 60, 75);
+    w[2] = add_keyboard_knob(win, "Detune", 185, 65, 60, 75);
     w[2]->data = CELESTE;
     w[2]->func.value_changed_callback = detune_callback;
 
-    w[10] = add_keyboard_knob(win, "Expression", 245, 40, 60, 75);
+    w[10] = add_keyboard_knob(win, "Expression", 245, 65, 60, 75);
     w[10]->data = EXPRESSION;
     w[10]->func.value_changed_callback = expression_callback;
 
-    w[3] = add_keyboard_knob(win, "Attack", 305, 40, 60, 75);
+    w[3] = add_keyboard_knob(win, "Attack", 305, 65, 60, 75);
     w[3]->data = ATTACK_TIME;
     w[3]->func.value_changed_callback = attack_callback;
 
-    w[4] = add_keyboard_knob(win, "Release", 365, 40, 60, 75);
+    w[4] = add_keyboard_knob(win, "Release", 365, 65, 60, 75);
     w[4]->data = RELEASE_TIME;
     w[4]->func.value_changed_callback = release_callback;
 
-    w[5] = add_keyboard_knob(win, "Volume", 425, 40, 60, 75);
+    w[5] = add_keyboard_knob(win, "Volume", 425, 65, 60, 75);
     w[5]->data = VOLUME;
     w[5]->func.value_changed_callback = volume_callback;
 
-    w[6] = add_keyboard_knob(win, "Velocity", 485, 40, 60, 75);
+    w[6] = add_keyboard_knob(win, "Velocity", 485, 65, 60, 75);
     w[6]->data = VELOCITY;
     set_adjustment(w[6]->adj,127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[6]->func.value_changed_callback = velocity_callback;
 
-    w[7] = add_toggle_button(win, "Sustain", 550, 45, 75, 30);
+    w[7] = add_toggle_button(win, "Sustain", 550, 70, 75, 30);
     w[7]->data = SUSTAIN;
     w[7]->scale.gravity = ASPECT;
     w[7]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -864,7 +991,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     w[7]->func.key_press_callback = key_press;
     w[7]->func.key_release_callback = key_release;
 
-    w[8] = add_toggle_button(win, "Sostenuto", 550, 80, 75, 30);
+    w[8] = add_toggle_button(win, "Sostenuto", 550, 105, 75, 30);
     w[8]->data = SOSTENUTO;
     w[8]->scale.gravity = ASPECT;
     w[8]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -872,20 +999,20 @@ void XKeyBoard::init_ui(Xputty *app) {
     w[8]->func.key_press_callback = key_press;
     w[8]->func.key_release_callback = key_release;
 
-    record = add_toggle_button(win, "_Record", 635, 45, 55, 30);
+    record = add_toggle_button(win, "_Record", 635, 70, 55, 30);
     record->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     record->func.value_changed_callback = record_callback;
     record->func.key_press_callback = key_press;
     record->func.key_release_callback = key_release;
 
-    play = add_toggle_button(win, "_Play", 635, 80, 55, 30);
+    play = add_toggle_button(win, "_Play", 635, 105, 55, 30);
     play->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     play->func.value_changed_callback = play_callback;
     play->func.key_press_callback = key_press;
     play->func.key_release_callback = key_release;
 
     // open a widget for the keyboard layout
-    wid = create_widget(app, win, 0, 120, 700, 120);
+    wid = create_widget(app, win, 0, 145, 700, 120);
     wid->flags &= ~USE_TRANSPARENCY;
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     wid->scale.gravity = NORTHEAST;
@@ -1000,6 +1127,55 @@ void XKeyBoard::get_all_notes_off(Widget_t *w, const int *value) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3);
+}
+
+// static
+void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
+    Widget_t *win = (Widget_t*)w_;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    if(user_data !=NULL) {
+        adj_set_value(xjmkb->play->adj,0.0);
+        adj_set_value(xjmkb->record->adj,0.0);
+        xjmkb->load.load_from_file(&xjmkb->xjack->rec.play, *(const char**)user_data);
+    }
+}
+
+// static
+void XKeyBoard::dialog_save_response(void *w_, void* user_data) {
+    Widget_t *win = (Widget_t*)w_;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    if(user_data !=NULL) {
+        adj_set_value(xjmkb->play->adj,0.0);
+        adj_set_value(xjmkb->record->adj,0.0);
+        xjmkb->save.save_to_file(&xjmkb->xjack->rec.play, *(const char**)user_data);
+    }
+}
+
+//static
+void XKeyBoard::file_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int value = (int)adj_get_value(w->adj);
+    switch (value) {
+        case(0):
+        {
+            open_file_dialog(xjmkb->win,  getenv("HOME") ? getenv("HOME") : "/", "midi");
+            xjmkb->win->func.dialog_callback = dialog_load_response;
+        }
+        break;
+        case(1):
+        {
+            save_file_dialog(xjmkb->win, getenv("HOME") ? getenv("HOME") : "/", "midi");
+            xjmkb->win->func.dialog_callback = dialog_save_response;
+        }
+        break;
+        case(2):
+            quit(xjmkb->win);
+        break;
+        default:
+        break;
+    }
 }
 
 // static
@@ -1207,16 +1383,33 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
     XKeyEvent *key = (XKeyEvent*)key_;
     if ((key->state & (ShiftMask | ControlMask | Mod1Mask | Mod4Mask)) == (ControlMask)) {
         KeySym sym = XLookupKeysym (key, 0);
-        if (sym == 112) {
+        if (sym == 112) { //p
             int value = (int)adj_get_value(xjmkb->play->adj);
             if (value) adj_set_value(xjmkb->play->adj,0.0);
             else adj_set_value(xjmkb->play->adj,1.0);
-        } else if (sym == 114) {
+        } else if (sym == 114) { //r
             int value = (int)adj_get_value(xjmkb->record->adj);
             if (value) adj_set_value(xjmkb->record->adj,0.0);
             else adj_set_value(xjmkb->record->adj,1.0);
-        } else if (sym == 99) {
+        } else if (sym == 99) { //c
             xjmkb->signal_handle (2, xjmkb);
+        } else if (sym == 113) { //q
+            quit(xjmkb->win);
+        } else if (sym == 108) { //l
+            open_file_dialog(xjmkb->win,  getenv("HOME") ? getenv("HOME") : "/", "midi");
+            xjmkb->win->func.dialog_callback = dialog_load_response;
+        } else if (sym == 115) { //s
+            save_file_dialog(xjmkb->win, getenv("HOME") ? getenv("HOME") : "/", "midi");
+            xjmkb->win->func.dialog_callback = dialog_save_response;
+        } else if (sym == 102) { //f
+            Widget_t *menu = xjmkb->menubar->childlist->childs[0];
+            XWindowAttributes attrs;
+            XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
+            if (attrs.map_state != IsViewable) {
+                pop_menu_show(xjmkb->menubar, menu, 6, true);
+            } else {
+                widget_hide(menu);
+            }
         }
     } else {
         xjmkb->wid->func.key_press_callback(xjmkb->wid, key_, user_data);
