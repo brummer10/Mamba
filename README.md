@@ -24,15 +24,15 @@ Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Ki
 - Keyboard Shortcuts
 - `ctrl + r` toggle Record Button
 - `ctrl + p` toggle Play Button
-- `ctrl + l` open load file dialoge
-- `ctrl + s` open save file dialoge
+- `ctrl + l` open load file dialog
+- `ctrl + s` open save file dialog
 - `ctrl + a` show info box
 - `ctrl + q` quit
 - `ctrl + c` quit
 
 ## Dependencies
 
-- libsmf
+- libsmf-dev
 - libcairo2-dev
 - libx11-dev
 - liblo-dev
