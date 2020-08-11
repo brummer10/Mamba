@@ -92,7 +92,7 @@ private:
 public:
      MidiLoad();
     ~MidiLoad();
-    void load_from_file(std::vector<MidiEvent> *play, const char* file_name);
+    bool load_from_file(std::vector<MidiEvent> *play, const char* file_name);
 };
 
 

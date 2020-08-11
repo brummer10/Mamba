@@ -718,7 +718,10 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
     if(user_data !=NULL) {
         adj_set_value(xjmkb->play->adj,0.0);
         adj_set_value(xjmkb->record->adj,0.0);
-        xjmkb->load.load_from_file(&xjmkb->xjack->rec.play, *(const char**)user_data);
+        if (!xjmkb->load.load_from_file(&xjmkb->xjack->rec.play, *(const char**)user_data)) {
+            open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            "Couldn't load file, is that a MIDI file?",NULL);
+        }
     }
 }
 
@@ -760,6 +763,7 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
     }
 }
 
+// static
 void XKeyBoard::info_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);

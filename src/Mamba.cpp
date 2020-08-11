@@ -92,9 +92,9 @@ MidiLoad::~MidiLoad() {
     if (smf) smf_delete(smf);
 }
 
-void MidiLoad::load_from_file(std::vector<MidiEvent> *play, const char* file_name) {
+bool MidiLoad::load_from_file(std::vector<MidiEvent> *play, const char* file_name) {
     smf = smf_new();
-    smf = smf_load(file_name);
+    if(!(smf = smf_load(file_name))) return false;
     play->clear();
     while ((smf_event = smf_get_next_event(smf)) !=NULL) {
         if (smf_event_is_metadata(smf_event)) continue;
@@ -104,6 +104,7 @@ void MidiLoad::load_from_file(std::vector<MidiEvent> *play, const char* file_nam
     }
     if (smf) smf_delete(smf);
     smf = NULL;
+    return true;
 }
 
 /****************************************************************
