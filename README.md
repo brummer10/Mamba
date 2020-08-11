@@ -18,6 +18,7 @@ Virtual Midi Keyboard for Jack Audio Connection Kit
 - Midi input highlighting
 - Resizable to a full range 127 key view
 - Save and load Midi-files
+- Load Midi-files on command-line
 - Record and play Midi-Loops
 - Support jack_transport to start/stop Midi-Loops
 - Keyboard Shortcuts
