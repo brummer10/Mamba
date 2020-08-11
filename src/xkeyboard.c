@@ -510,7 +510,7 @@ static void key_press(void *w_, void *key_, void *user_data) {
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
     XKeyEvent *key = (XKeyEvent*)key_;
     if (!key) return;
-    if ((key->state & (ShiftMask | ControlMask | Mod1Mask | Mod4Mask)) == (ControlMask)) {
+    if (key->state & ControlMask) {
         p->func.key_press_callback(p, key_, user_data);
         return;
     }
