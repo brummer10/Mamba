@@ -17,14 +17,21 @@ Virtual Midi Keyboard for Jack Audio Connection Kit
 - Midi Through: forward midi input to output
 - Midi input highlighting
 - Resizable to a full range 127 key view
+- Save and load Midi-files
 - Record and play Midi-Loops
 - Support jack_transport to start/stop Midi-Loops
 - Keyboard Shortcuts
 - `ctrl + r` toggle Record Button
 - `ctrl + p` toggle Play Button
+- `ctrl + l` open load file dialoge
+- `ctrl + s` open save file dialoge
+- `ctrl + a` show info box
+- `ctrl + q` quit
+- `ctrl + c` quit
 
 ## Dependencies
 
+- libsmf
 - libcairo2-dev
 - libx11-dev
 - liblo-dev

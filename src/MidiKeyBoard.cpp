@@ -22,7 +22,6 @@
 #include "MidiKeyBoard.h"
 #include "xkeyboard.h"
 
-//   g++ -Wall NsmHandler.cpp MidiKeyBoard.cpp xkeyboard.c -L. ../libxputty/libxputty/libxputty.a -o midikeyboard -I./ -I../libxputty/libxputty/include/ `pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo` -lm -pthread
 
 namespace midikeyboard {
 
@@ -72,434 +71,13 @@ bool AnimatedKeyBoard::is_running() const noexcept {
 
 
 /****************************************************************
- ** class MidiMessenger
- **
- ** create, collect and send all midi events to jack_midi out buffer
- */
-
-MidiMessenger::MidiMessenger() {
-    channel = 0;
-    for (int i = 0; i < max_midi_cc_cnt; i++) {
-        send_cc[i] = false;
-    }
-}
-
-inline int MidiMessenger::next(int i) const {
-    while (++i < max_midi_cc_cnt) {
-        if (send_cc[i].load(std::memory_order_acquire)) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-inline void MidiMessenger::fill(unsigned char *midi_send, int i) {
-    if (size(i) == 3) {
-        midi_send[2] =  bg_num[i];
-    }
-    midi_send[1] = pg_num[i];    // program value
-    midi_send[0] = cc_num[i];    // controller+ channel
-    send_cc[i].store(false, std::memory_order_release);
-}
-
-bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) {
-    _cc |=channel;
-    for(int i = 0; i < max_midi_cc_cnt; i++) {
-        if (send_cc[i].load(std::memory_order_acquire)) {
-            if (cc_num[i] == _cc && pg_num[i] == _pg &&
-                bg_num[i] == _bgn && me_num[i] == _num)
-                return true;
-        } else if (!send_cc[i].load(std::memory_order_acquire)) {
-            cc_num[i] = _cc;
-            pg_num[i] = _pg;
-            bg_num[i] = _bgn;
-            me_num[i] = _num;
-            send_cc[i].store(true, std::memory_order_release);
-            return true;
-        }
-    }
-    return false;
-}
-
-
-/****************************************************************
- ** class MidiLoad
- **
- ** load data from midi file
- ** 
- */
-
-MidiLoad::MidiLoad() {
-    smf = NULL;
-    smf_event = NULL;
-}
-
-MidiLoad::~MidiLoad() {
-    if (smf) smf_delete(smf);
-}
-
-void MidiLoad::load_from_file(std::vector<MidiEvent> *play, const char* file_name) {
-    smf = smf_new();
-    smf = smf_load(file_name);
-    play->clear();
-    while ((smf_event = smf_get_next_event(smf)) !=NULL) {
-        if (smf_event_is_metadata(smf_event)) continue;
-        ev = {{smf_event->midi_buffer[0], smf_event->midi_buffer[1], smf_event->midi_buffer[2]},
-                                        smf_event->midi_buffer_length, smf_event->time_seconds};
-        play->push_back(ev);
-    }
-    if (smf) smf_delete(smf);
-    smf = NULL;
-}
-
-/****************************************************************
- ** class MidiSave
- **
- ** save data to midi file
- ** 
- */
-
-MidiSave::MidiSave() {
-    smf = smf_new();
-    tracks.reserve(16);
-
-    for (int i = 0; i < 16; i++) {
-        tracks.push_back(smf_track_new());
-        if (tracks[i] == NULL)
-            exit(-1);
-        smf_add_track(smf, tracks[i]);
-    }    
-}
-
-MidiSave::~MidiSave() {
-    for (int i = 0; i < 16; i++) {
-        if (tracks[i] != NULL) {
-            smf_track_delete(tracks[i]);
-        }
-    }
-    if (smf) smf_delete(smf);
-}
-
-void MidiSave::reset_smf() {
-    // delete all tracks
-    for (int i = 0; i < 16; i++) {
-        if (tracks[i] != NULL) {
-            smf_track_delete(tracks[i]);
-            tracks[i] = NULL;
-        }
-    }
-    // clear vector
-    tracks.clear();
-    // delete smf
-    if (smf) smf_delete(smf);
-    smf = NULL;
-    // init new smf instance
-    smf = smf_new();
-    // prefill vector with empty tracks and add tracks to smf
-    for (int i = 0; i < 16; i++) {
-        tracks.push_back(smf_track_new());
-        if (tracks[i] == NULL)
-            exit(-1);
-        smf_add_track(smf, tracks[i]);
-    }    
-}
-
-void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name) {
-    for(std::vector<MidiEvent>::const_iterator i = play->begin(); i != play->end(); ++i) {
-        smf_event = smf_event_new_from_pointer((void*)(*i).buffer, (*i).num);
-        if (smf_event == NULL) {
-            continue;
-        }
-
-        if(smf_event->midi_buffer_length < 1) continue;
-        channel = smf_event->midi_buffer[0] & 0x0F;
-
-        smf_track_add_event_seconds(tracks[channel], smf_event,(*i).deltaTime);
-    }
-
-    smf_rewind(smf);
-
-    for (int i = 0; i < 16; i++) {
-        if (tracks[i] != NULL && tracks[i]->number_of_events == 0) {
-            smf_track_delete(tracks[i]);
-            tracks[i] = NULL;
-        }
-    }
-
-    if (smf->number_of_tracks != 0) {
-        if (smf_save(smf, file_name)) {
-            fprintf( stderr, "Could not save to file '%s'.\n", file_name);
-        }
-    }
-    reset_smf();
-}
-
-
-/****************************************************************
- ** class MidiRecord
- **
- ** record the keyboard input in a extra thread
- ** 
- */
-
-MidiRecord::MidiRecord() 
-    : _execute(false) {
-    st = NULL;
-}
-
-MidiRecord::~MidiRecord() {
-    if( _execute.load(std::memory_order_acquire) ) {
-        stop();
-    };
-}
-
-void MidiRecord::stop() {
-    _execute.store(false, std::memory_order_release);
-    if (_thd.joinable()) {
-        cv.notify_one();
-        _thd.join();
-    }
-}
-
-void MidiRecord::start() {
-    if( _execute.load(std::memory_order_acquire) ) {
-        stop();
-    };
-    _execute.store(true, std::memory_order_release);
-    _thd = std::thread([this]() {
-        while (_execute.load(std::memory_order_acquire)) {
-            std::unique_lock<std::mutex> lk(m);
-            cv.wait(lk);
-            play.reserve(play.size() + st->size());
-            
-            for (unsigned int i=0; i<st->size(); i++) 
-                play.push_back((*st)[i]); 
-            st->clear();
-        }
-    });
-}
-
-bool MidiRecord::is_running() const noexcept {
-    return ( _execute.load(std::memory_order_acquire) && 
-             _thd.joinable() );
-}
-
-
-/****************************************************************
- ** class XJack
- **
- ** Send content from MidiMessenger to jack_midi out
- ** pass all incoming midi events to jack_midi out.
- ** send all incomming midi events to XKeyBoard
- */
-
-XJack::XJack(MidiMessenger *mmessage_)
-    : mmessage(mmessage_),
-     event_count(0),
-     start(0),
-     stop(0),
-     deltaTime(0),
-     client(NULL),
-     rec() {
-        transport_state_changed.store(false, std::memory_order_release);
-        transport_set.store(0, std::memory_order_release);
-        transport_state = JackTransportStopped;
-        record = 0;
-        play = 0;
-        pos = 0;
-        fresh_take = true;
-        first_play = true;
-        store1.reserve(256);
-        store2.reserve(256);
-        st = &store1;
-        rec.st = &store1;
-        client_name = "Mamba";
-}
-
-XJack::~XJack() {
-    if (client) jack_client_close (client);
-    if (rec.is_running()) rec.stop();
-}
-
-void XJack::init_jack() {
-    if ((client = jack_client_open (client_name.c_str(), JackNullOption, NULL)) == 0) {
-        fprintf (stderr, "jack server not running?\n");
-        trigger_quit_by_jack();
-    }
-
-    in_port = jack_port_register(
-                  client, "in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
-    out_port = jack_port_register(
-                   client, "out", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0);
-
-    jack_set_xrun_callback(client, jack_xrun_callback, this);
-    jack_set_sample_rate_callback(client, jack_srate_callback, this);
-    jack_set_buffer_size_callback(client, jack_buffersize_callback, this);
-    jack_set_process_callback(client, jack_process, this);
-    jack_on_shutdown (client, jack_shutdown, this);
-
-    if (jack_activate (client)) {
-        fprintf (stderr, "cannot activate client");
-        trigger_quit_by_jack();
-    }
-
-    if (!jack_is_realtime(client)) {
-        fprintf (stderr, "jack isn't running with realtime priority\n");
-    } else {
-        fprintf (stderr, "jack running with realtime priority\n");
-    }
-}
-
-inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, int i) {
-    stop = jack_last_frame_time(client)+n;
-    deltaTime = (double)(((stop) - start)/(double)SampleRate); // seconds
-    //start = jack_last_frame_time(client)+n;
-    unsigned char d = i > 2 ? midi_send[2] : 0;
-    MidiEvent ev = {{midi_send[0], midi_send[1], d}, i, deltaTime};
-    st->push_back(ev);
-    if (store1.size() >= 256) {
-        st = &store2;
-        rec.st = &store1;
-        rec.cv.notify_one();
-    } else if (store2.size() >= 256) {
-        st = &store1;
-        rec.st = &store2;
-        rec.cv.notify_one();
-    }
-}
-
-inline void XJack::play_midi(void *buf, unsigned int n) {
-    if (!rec.play.size()) return;
-    if (first_play) {
-        start = jack_last_frame_time(client)+n;
-        first_play = false;
-        pos = 0;
-    }
-    stop = jack_last_frame_time(client)+n;
-    deltaTime = (double)(((stop) - start)/(double)SampleRate); // seconds
-    MidiEvent ev = rec.play[pos];
-    if (deltaTime >= ev.deltaTime) {
-        unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.num);
-        if (midi_send) {
-            midi_send[0] = ev.buffer[0];
-            midi_send[1] = ev.buffer[1];
-            if(ev.num > 2)
-                midi_send[2] = ev.buffer[2];
-            if ((ev.buffer[0] & 0xf0) == 0x90) {   // Note On
-                std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], true);
-            } else if ((ev.buffer[0] & 0xf0) == 0x80) {   // Note Off
-                std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
-            }
-        }
-        //start = jack_last_frame_time(client)+n;
-        pos++;
-        if (pos >= rec.play.size()) {
-            pos = 0;
-            start = jack_last_frame_time(client)+n;
-        }
-    }
-}
-
-// jack process callback for the midi output
-inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
-    int i = mmessage->next();
-    for (unsigned int n = event_count; n < nframes; n++) {
-        if (i >= 0) {
-            unsigned char* midi_send = jack_midi_event_reserve(buf, n, mmessage->size(i));
-            if (midi_send) {
-                mmessage->fill(midi_send, i);
-                if (record) record_midi(midi_send, n, mmessage->size(i));
-            }
-            i = mmessage->next(i);
-        } else if (play) {
-            play_midi(buf, n);
-        }
-    }
-}
-
-// jack process callback for the midi input
-inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
-    XJack *xjack = (XJack*)arg;
-    if (xjack->record && xjack->fresh_take) {
-        xjack->start = jack_last_frame_time(xjack->client);
-        xjack->fresh_take = false;
-    }
-    jack_midi_event_t in_event;
-    event_count = jack_midi_get_event_count(buf);
-    unsigned int i;
-    for (i = 0; i < event_count; i++) {
-        jack_midi_event_get(&in_event, buf, i);
-        unsigned char* midi_send = jack_midi_event_reserve(out_buf, i, in_event.size);
-        midi_send[0] = in_event.buffer[0];
-        midi_send[1] = in_event.buffer[1];
-        if (in_event.size>2) 
-            midi_send[2] = in_event.buffer[2];
-        if (record)
-            record_midi(midi_send, i, in_event.size);
-        bool ch = true;
-        if ((xjack->mmessage->channel) != (int(in_event.buffer[0]&0x0f))) {
-            ch = false;
-        }
-        if ((in_event.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
-            std::async(std::launch::async, xjack->trigger_get_midi_in, in_event.buffer[1], true);
-        } else if ((in_event.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
-            std::async(std::launch::async, xjack->trigger_get_midi_in, in_event.buffer[1], false);
-        }
-    }
-}
-
-// static
-void XJack::jack_shutdown (void *arg) {
-    XJack *xjack = (XJack*)arg;
-    xjack->trigger_quit_by_jack();
-}
-
-// static
-int XJack::jack_xrun_callback(void *arg) {
-    fprintf (stderr, "Xrun \r");
-    return 0;
-}
-
-// static
-int XJack::jack_srate_callback(jack_nframes_t samplerate, void* arg) {
-    XJack *xjack = (XJack*)arg;
-    xjack->SampleRate = samplerate;
-    xjack->srms = xjack->SampleRate/1000;
-    fprintf (stderr, "Samplerate %iHz \n", samplerate);
-    return 0;
-}
-
-// static
-int XJack::jack_buffersize_callback(jack_nframes_t nframes, void* arg) {
-    fprintf (stderr, "Buffersize is %i samples \n", nframes);
-    return 0;
-}
-
-// static
-int XJack::jack_process(jack_nframes_t nframes, void *arg) {
-    XJack *xjack = (XJack*)arg;
-    if (xjack->transport_state != jack_transport_query (xjack->client, &xjack->current)) {
-        xjack->transport_state = jack_transport_query (xjack->client, &xjack->current);
-        xjack->transport_state_changed.store(true, std::memory_order_release);
-        xjack->transport_set.store((int)xjack->transport_state, std::memory_order_release);
-    }
-    void *in = jack_port_get_buffer (xjack->in_port, nframes);
-    void *out = jack_port_get_buffer (xjack->out_port, nframes);
-    jack_midi_clear_buffer(out);
-    xjack->process_midi_in(in, out, arg);
-    xjack->process_midi_out(out,nframes);
-    return 0;
-}
-
-
-/****************************************************************
  ** class XKeyBoard
  **
  ** Create Keyboard layout and send events to MidiMessenger
  ** 
  */
 
-XKeyBoard::XKeyBoard(XJack *xjack_, MidiMessenger *mmessage_,
+XKeyBoard::XKeyBoard(xjack::XJack *xjack_, mamba::MidiMessenger *mmessage_,
         nsmhandler::NsmSignalHandler& nsmsig_, AnimatedKeyBoard * animidi_)
     : xjack(xjack_),
     save(),
@@ -596,7 +174,7 @@ void XKeyBoard::read_config() {
     
     std::ifstream vinfile(config_file+"vec");
     if (vinfile.is_open()) {
-        MidiEvent ev;
+        mamba::MidiEvent ev;
         int word = 0;
         double time = 0;
         while (std::getline(vinfile, line)) {
@@ -636,7 +214,7 @@ void XKeyBoard::save_config() {
     if (need_save && xjack->rec.play.size()) {
         std::ofstream outfile(config_file+"vec");
         if (outfile.is_open()) {
-            for(std::vector<MidiEvent>::const_iterator i = xjack->rec.play.begin(); i != xjack->rec.play.end(); ++i) {
+            for(std::vector<mamba::MidiEvent>::const_iterator i = xjack->rec.play.begin(); i != xjack->rec.play.end(); ++i) {
                 outfile << (int)(*i).buffer[0] << " " << (int)(*i).buffer[1] << " " 
                     << (int)(*i).buffer[2] << " " << (*i).num << " " << (*i).deltaTime << std::endl;
             }
@@ -870,6 +448,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_entry(menubar,"_Save as");
     menu_add_entry(menubar,"_Quit");
     menubar->func.value_changed_callback = file_callback;
+
+    info = add_menu(win,"_Info",60,0,60,20);
+    menu_add_entry(info,"_About");
+    info->func.value_changed_callback = info_callback;
 
     Widget_t * tmp = add_label(win,"Channel:",10,30,60,20);
     tmp->func.key_press_callback = key_press;
@@ -1178,6 +760,17 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
     }
 }
 
+void XKeyBoard::info_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    open_message_dialog(xjmkb->win, INFO_BOX, "Mamba", 
+        "Mamba is written by Hermann Meyer|released under the BSD Zero Clause License"
+        "|https://github.com/brummer10/Mamba"
+        "|For midi file handling it use libsmf|a BSD-licensed C library|written by Edward Tomasz Napierała"
+        "|https://github.com/stump/libsmf",NULL);
+}
+
 // static
 void XKeyBoard::channel_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
@@ -1401,12 +994,23 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
         } else if (sym == 115) { //s
             save_file_dialog(xjmkb->win, getenv("HOME") ? getenv("HOME") : "/", "midi");
             xjmkb->win->func.dialog_callback = dialog_save_response;
+        } else if (sym == 97) { //a
+            xjmkb->info_callback(xjmkb->info,NULL);
         } else if (sym == 102) { //f
             Widget_t *menu = xjmkb->menubar->childlist->childs[0];
             XWindowAttributes attrs;
             XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
             if (attrs.map_state != IsViewable) {
                 pop_menu_show(xjmkb->menubar, menu, 6, true);
+            } else {
+                widget_hide(menu);
+            }
+        } else if (sym == 105) { //i
+            Widget_t *menu = xjmkb->info->childlist->childs[0];
+            XWindowAttributes attrs;
+            XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
+            if (attrs.map_state != IsViewable) {
+                pop_menu_show(xjmkb->info, menu, 6, true);
             } else {
                 widget_hide(menu);
             }
@@ -1543,10 +1147,10 @@ int main (int argc, char *argv[]) {
         fprintf(stderr, "Warning: XInitThreads() failed\n");
     Xputty app;
 
-    midikeyboard::MidiMessenger mmessage;
+    mamba::MidiMessenger mmessage;
     nsmhandler::NsmSignalHandler nsmsig;
     midikeyboard::AnimatedKeyBoard  animidi;
-    midikeyboard::XJack xjack(&mmessage);
+    xjack::XJack xjack(&mmessage);
     midikeyboard::XKeyBoard xjmkb(&xjack, &mmessage, nsmsig, &animidi);
     midikeyboard::PosixSignalHandler xsig(&xjmkb);
     nsmhandler::NsmHandler nsmh(&nsmsig);

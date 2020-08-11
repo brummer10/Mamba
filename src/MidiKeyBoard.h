@@ -24,7 +24,6 @@
 
 #include <unistd.h>
 #include <signal.h>
-#include <smf.h>
 
 #include <cstdlib>
 #include <cmath>
@@ -38,13 +37,12 @@
 #include <iostream>
 #include <sstream>
 
-#include <jack/jack.h>
-#include <jack/midiport.h>
-
 #include "NsmHandler.h"
+#include "Mamba.h"
+#include "XJack.h"
 #include "xwidgets.h"
 #include "xfile-dialog.h"
-
+#include "xmessage-dialog.h"
 
 
 #pragma once
@@ -76,20 +74,6 @@ typedef enum {
 
 
 /****************************************************************
- ** struct MidiEvent
- **
- ** store midi events in a vector
- ** 
- */
-
-typedef struct {
-    unsigned char buffer[3];
-    int num;
-    double deltaTime;
-} MidiEvent;
-
-
-/****************************************************************
  ** class AnimatedKeyBoard
  **
  ** animate midi input from jack on the keyboard in a extra thread
@@ -111,156 +95,6 @@ public:
 
 
 /****************************************************************
- ** class MidiMessenger
- **
- ** create, collect and send all midi events to jack_midi out buffer
- */
-
-class MidiMessenger {
-private:
-    static const int max_midi_cc_cnt = 25;
-    std::atomic<bool> send_cc[max_midi_cc_cnt];
-    int cc_num[max_midi_cc_cnt];
-    int pg_num[max_midi_cc_cnt];
-    int bg_num[max_midi_cc_cnt];
-    int me_num[max_midi_cc_cnt];
-public:
-    MidiMessenger();
-    int channel;
-    bool send_midi_cc(int _cc, int _pg, int _bgn, int _num);
-    inline int next(int i = -1) const;
-    inline int size(int i)  const { return me_num[i]; }
-    inline void fill(unsigned char *midi_send, int i);
-};
-
-
-/****************************************************************
- ** class MidiLoad
- **
- ** load data from midi file
- ** 
- */
-
-class MidiLoad {
-private:
-    smf_t *smf;
-    smf_track_t *tracks;
-    smf_event_t *smf_event;
-    MidiEvent ev;
-    void reset_smf();
-
-public:
-     MidiLoad();
-    ~MidiLoad();
-    void load_from_file(std::vector<MidiEvent> *play, const char* file_name);
-};
-
-/****************************************************************
- ** class MidiSave
- **
- ** save data to midi file
- ** 
- */
-
-class MidiSave {
-private:
-    smf_t *smf;
-    std::vector<smf_track_t*> tracks;
-    smf_event_t *smf_event;
-    int channel;
-    void reset_smf();
-
-public:
-    MidiSave();
-    ~MidiSave();
-    void save_to_file(std::vector<MidiEvent> *play, const char* file_name);
-};
-
-/****************************************************************
- ** class MidiRecord
- **
- ** record the keyboard input in a extra thread
- ** 
- */
-
-class MidiRecord {
-private:
-    std::atomic<bool> _execute;
-    std::thread _thd;
-    std::mutex m;
-
-public:
-    MidiRecord();
-    ~MidiRecord();
-    void stop();
-    void start();
-    bool is_running() const noexcept;
-    std::condition_variable cv;
-    MidiEvent ev;
-    std::vector<MidiEvent> *st;
-    std::vector<MidiEvent> play;
-};
-
-
-/****************************************************************
- ** class XJack
- **
- ** Connect via MidiMessenger to jack_midi out
- ** pass all incoming midi events to jack_midi out.
- ** send all incomming midi events to the KeyBoard
- */
-
-class XJack {
-private:
-    MidiMessenger *mmessage;
-    jack_port_t *in_port;
-    jack_port_t *out_port;
-    jack_nframes_t event_count;
-    jack_nframes_t start;
-    jack_nframes_t stop;
-    double deltaTime;
-    jack_position_t current;
-    jack_transport_state_t transport_state;
-    unsigned int pos;
-
-    inline void record_midi(unsigned char* midi_send, unsigned int n, int i);
-    inline void play_midi(void *buf, unsigned int n);
-    inline void process_midi_out(void *buf, jack_nframes_t nframes);
-    inline void process_midi_in(void* buf, void* out_buf, void *arg);
-    static void jack_shutdown (void *arg);
-    static int jack_xrun_callback(void *arg);
-    static int jack_srate_callback(jack_nframes_t samplerate, void* arg);
-    static int jack_buffersize_callback(jack_nframes_t nframes, void* arg);
-    static int jack_process(jack_nframes_t nframes, void *arg);
-
-public:
-    XJack(MidiMessenger *mmessage);
-    ~XJack();
-    std::atomic<bool> transport_state_changed;
-    std::atomic<int> transport_set;
-    jack_client_t *client;
-    std::string client_name;
-    void init_jack();
-    MidiRecord rec;
-    std::vector<MidiEvent> store1;
-    std::vector<MidiEvent> store2;
-    std::vector<MidiEvent> *st;
-
-    int record;
-    int play;
-    bool fresh_take;
-    bool first_play;
-    unsigned int SampleRate;
-    double srms;
-
-    sigc::signal<void > trigger_quit_by_jack;
-    sigc::signal<void >& signal_trigger_quit_by_jack() { return trigger_quit_by_jack; }
-
-    sigc::signal<void, int, bool> trigger_get_midi_in;
-    sigc::signal<void, int, bool>& signal_trigger_get_midi_in() { return trigger_get_midi_in; }
-};
-
-/****************************************************************
  ** class XKeyBoard
  **
  ** Create Keyboard layout and connect via MidiMessenger to jack_midi out
@@ -269,10 +103,10 @@ public:
 
 class XKeyBoard {
 private:
-    XJack *xjack;
-    MidiSave save;
-    MidiLoad load;
-    MidiMessenger *mmessage;
+    xjack::XJack *xjack;
+    mamba::MidiSave save;
+    mamba::MidiLoad load;
+    mamba::MidiMessenger *mmessage;
     AnimatedKeyBoard * animidi;
     nsmhandler::NsmSignalHandler& nsmsig;
 
@@ -285,6 +119,7 @@ private:
     Widget_t *record;
     Widget_t *play;
     Widget_t *menubar;
+    Widget_t *info;
     Pixmap *icon;
     int main_x;
     int main_y;
@@ -301,6 +136,7 @@ private:
     static void get_note(Widget_t *w, const int *key, const bool on_off);
     static void get_all_notes_off(Widget_t *w, const int *value);
 
+    static void info_callback(void *w_, void* user_data);
     static void file_callback(void *w_, void* user_data);
     static void channel_callback(void *w_, void* user_data);
     static void bank_callback(void *w_, void* user_data);
@@ -339,7 +175,7 @@ private:
     void quit_by_jack();
     void get_midi_in(int n, bool on);
 public:
-    XKeyBoard(XJack *xjack, MidiMessenger *mmessage,
+    XKeyBoard(xjack::XJack *xjack, mamba::MidiMessenger *mmessage,
         nsmhandler::NsmSignalHandler& nsmsig, AnimatedKeyBoard * animidi);
     ~XKeyBoard();
     std::string client_name;
