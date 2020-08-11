@@ -39,7 +39,8 @@
 	PIXMAPS_DIR ?= $(SHARE_DIR)/pixmaps
 
 	# set compile flags
-	CXXFLAGS += -O2 -D_FORTIFY_SOURCE=2 -Wall $(SSE_CFLAGS) 
+	CXXFLAGS += -O2 -D_FORTIFY_SOURCE=2 -Wall $(SSE_CFLAGS)
+	DEBUG_CXXFLAGS += -g -D DEBUG
 	LDFLAGS += -I./ -I../libxputty/libxputty/include/ `pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo smf` -lm -pthread
 	# invoke build files
 	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XJack.cpp NsmHandler.cpp xkeyboard.c
@@ -48,7 +49,7 @@
 	RED =  "\033[1;31m"
 	NONE = "\033[0m"
 
-.PHONY : $(HEADER_DIR)*.h all clean install uninstall 
+.PHONY : $(HEADER_DIR)*.h all debug clean install uninstall 
 
 all : check $(NAME)
 	@mkdir -p ./$(BUILD_DIR)
@@ -56,6 +57,9 @@ all : check $(NAME)
 	@if [ -f ./$(BUILD_DIR)/$(EXEC_NAME) ]; then echo $(BLUE)"build finish, now run make install"; \
 	else echo $(RED)"sorry, build failed"; fi
 	@echo $(NONE)
+
+debug: CXXFLAGS = $(DEBUG_CXXFLAGS) 
+debug: all
 
 check :
 ifdef ARMCPU
