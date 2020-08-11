@@ -992,7 +992,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     XKeyEvent *key = (XKeyEvent*)key_;
-    if ((key->state & (ShiftMask | ControlMask | Mod1Mask | Mod4Mask)) == (ControlMask)) {
+    if (key->state & ControlMask) {
         KeySym sym = XLookupKeysym (key, 0);
         if (sym == 112) { //p
             int value = (int)adj_get_value(xjmkb->play->adj);
