@@ -716,7 +716,7 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
     Widget_t *win = (Widget_t*)w_;
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     if(user_data !=NULL) {
-
+         
 #ifdef __XDG_MIME_H__
         if(!strstr(xdg_mime_get_mime_type_from_file_name(*(const char**)user_data), "midi")) {
             open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
@@ -729,6 +729,10 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
         if (!xjmkb->load.load_from_file(&xjmkb->xjack->rec.play, *(const char**)user_data)) {
             open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
             "Couldn't load file, is that a MIDI file?",NULL);
+        } else {
+            std::string file(basename(*(char**)user_data));
+            std::string tittle = xjmkb->client_name + " - Virtual Midi Keyboard" + " - " + file;
+            widget_set_title(xjmkb->win, tittle.c_str());
         }
     }
 }
@@ -926,6 +930,8 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
     int value = (int)adj_get_value(w->adj);
     xjmkb->xjack->record = value;
     if (value > 0) {
+        std::string tittle = xjmkb->client_name + " - Virtual Midi Keyboard";
+        widget_set_title(xjmkb->win, tittle.c_str());
         adj_set_value(xjmkb->play->adj,0.0);
         xjmkb->xjack->store1.clear();
         xjmkb->xjack->store2.clear();
@@ -1184,7 +1190,6 @@ int main (int argc, char *argv[]) {
         if( access(argv[1], F_OK ) != -1 ) {
 #endif
             xjmkb.dialog_load_response(xjmkb.win, (void*) &argv[1]);
-            fprintf(stderr, "Load %s\n", argv[1]);
         }
     }
 
