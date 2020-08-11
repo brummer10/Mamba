@@ -1,12 +1,12 @@
 # Mamba
-Virtual Midi Keyboard for Jack Audio Connection Kit
+Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Kit
 
 ![Mamba](https://github.com/brummer10/Mamba/raw/master/Mamba.png)
 
 
 ## Features
 
-- Virtual Midi Keyboard and Midi file player/recorder  for [Jack Audio Connection Kit](https://jackaudio.org/)
+- Virtual Midi Keyboard for [Jack Audio Connection Kit](https://jackaudio.org/)
 - Including [NSM](https://linuxaudio.github.io/new-session-manager/) support
 - Channel selector
 - Bank and Program selector
