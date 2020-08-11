@@ -7,4 +7,5 @@ Comment[fr]=Clavier Midi virtuel pour le kit de connexion audio Jack
 Exec=mamba
 Icon=Mamba
 Categories=AudioVideo;Audio;Midi;
+MimeType=audio/x-midi
 Terminal=false

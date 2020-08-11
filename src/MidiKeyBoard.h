@@ -158,7 +158,6 @@ private:
     static void play_callback(void *w_, void* user_data);
     static void animate_midi_keyboard(void *w_);
     static void dialog_save_response(void *w_, void* user_data);
-    static void dialog_load_response(void *w_, void* user_data);
 
     static void key_press(void *w_, void *key_, void *user_data);
     static void key_release(void *w_, void *key_, void *user_data);
@@ -192,6 +191,7 @@ public:
     void save_config();
     void set_config(const char *name, const char *client_id, bool op_gui);
 
+    static void dialog_load_response(void *w_, void* user_data);
     static void signal_handle (int sig, XKeyBoard *xjmkb);
     static void exit_handle (int sig, XKeyBoard *xjmkb);
 };

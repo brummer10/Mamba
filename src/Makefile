@@ -28,7 +28,7 @@
 	NAME = Mamba
 	EXEC_NAME  = $(shell echo $(NAME) | tr A-Z a-z)
 	BUILD_DIR = build
-	VER = 1.1
+	VER = 1.2
 
 	LIB_DIR := ../libxputty/libxputty/
 	HEADER_DIR := $(LIB_DIR)include/
@@ -77,6 +77,7 @@ ifneq ("$(wildcard ./$(BUILD_DIR))","")
 	mkdir -p $(DESTDIR)$(PIXMAPS_DIR)
 	cp $(NAME).png $(DESTDIR)$(PIXMAPS_DIR)
 	@echo ". ." $(BLUE)", done"$(NONE)
+	update-desktop-database
 else
 	@echo ". ." $(BLUE)", you must build first"$(NONE)
 endif
