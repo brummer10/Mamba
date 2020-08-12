@@ -992,46 +992,79 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     XKeyEvent *key = (XKeyEvent*)key_;
+    if (!key) return;
     if (key->state & ControlMask) {
         KeySym sym = XLookupKeysym (key, 0);
-        if (sym == 112) { //p
-            int value = (int)adj_get_value(xjmkb->play->adj);
-            if (value) adj_set_value(xjmkb->play->adj,0.0);
-            else adj_set_value(xjmkb->play->adj,1.0);
-        } else if (sym == 114) { //r
-            int value = (int)adj_get_value(xjmkb->record->adj);
-            if (value) adj_set_value(xjmkb->record->adj,0.0);
-            else adj_set_value(xjmkb->record->adj,1.0);
-        } else if (sym == 99) { //c
-            xjmkb->signal_handle (2, xjmkb);
-        } else if (sym == 113) { //q
-            quit(xjmkb->win);
-        } else if (sym == 108) { //l
-            open_file_dialog(xjmkb->win,  getenv("HOME") ? getenv("HOME") : "/", "midi");
-            xjmkb->win->func.dialog_callback = dialog_load_response;
-        } else if (sym == 115) { //s
-            save_file_dialog(xjmkb->win, getenv("HOME") ? getenv("HOME") : "/", "midi");
-            xjmkb->win->func.dialog_callback = dialog_save_response;
-        } else if (sym == 97) { //a
-            xjmkb->info_callback(xjmkb->info,NULL);
-        } else if (sym == 102) { //f
-            Widget_t *menu = xjmkb->menubar->childlist->childs[0];
-            XWindowAttributes attrs;
-            XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
-            if (attrs.map_state != IsViewable) {
-                pop_menu_show(xjmkb->menubar, menu, 6, true);
-            } else {
-                widget_hide(menu);
+        if (!sym) return;
+        switch (sym) {
+            case (XK_p):
+            {
+                int value = (int)adj_get_value(xjmkb->play->adj);
+                if (value) adj_set_value(xjmkb->play->adj,0.0);
+                else adj_set_value(xjmkb->play->adj,1.0);
             }
-        } else if (sym == 105) { //i
-            Widget_t *menu = xjmkb->info->childlist->childs[0];
-            XWindowAttributes attrs;
-            XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
-            if (attrs.map_state != IsViewable) {
-                pop_menu_show(xjmkb->info, menu, 6, true);
-            } else {
-                widget_hide(menu);
+            break;
+            case (XK_r):
+            { 
+                int value = (int)adj_get_value(xjmkb->record->adj);
+                if (value) adj_set_value(xjmkb->record->adj,0.0);
+                else adj_set_value(xjmkb->record->adj,1.0);
             }
+            break;
+            case (XK_c):
+            {
+                xjmkb->signal_handle (2, xjmkb);
+            }
+            break;
+            case (XK_q):
+            {
+                fprintf(stderr, "ctrl +q received, quit now\n");
+                quit(xjmkb->win);
+            }
+            break;
+            case (XK_l):
+            {
+                open_file_dialog(xjmkb->win,  getenv("HOME") ? getenv("HOME") : "/", "midi");
+                xjmkb->win->func.dialog_callback = dialog_load_response;
+            }
+            break;
+            case (XK_s):
+            {
+                save_file_dialog(xjmkb->win, getenv("HOME") ? getenv("HOME") : "/", "midi");
+                xjmkb->win->func.dialog_callback = dialog_save_response;
+            }
+            break;
+            case (XK_a):
+            {
+                xjmkb->info_callback(xjmkb->info,NULL);
+            }
+            break;
+            case (XK_f):
+            {
+                Widget_t *menu = xjmkb->menubar->childlist->childs[0];
+                XWindowAttributes attrs;
+                XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
+                if (attrs.map_state != IsViewable) {
+                    pop_menu_show(xjmkb->menubar, menu, 6, true);
+                } else {
+                    widget_hide(menu);
+                }
+            }
+            break;
+            case (XK_i):
+            {
+                Widget_t *menu = xjmkb->info->childlist->childs[0];
+                XWindowAttributes attrs;
+                XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
+                if (attrs.map_state != IsViewable) {
+                    pop_menu_show(xjmkb->info, menu, 6, true);
+                } else {
+                    widget_hide(menu);
+                }
+            }
+            break;
+            default:
+            break;
         }
     } else {
         xjmkb->wid->func.key_press_callback(xjmkb->wid, key_, user_data);
