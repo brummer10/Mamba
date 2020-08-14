@@ -31,7 +31,8 @@ namespace xjack {
  */
 
 XJack::XJack(mamba::MidiMessenger *mmessage_)
-    : mmessage(mmessage_),
+    : sigc::trackable(),
+     mmessage(mmessage_),
      event_count(0),
      start(0),
      stop(0),

@@ -44,7 +44,7 @@ namespace xjack {
  ** send all incomming midi events to the KeyBoard
  */
 
-class XJack {
+class XJack : public sigc::trackable {
 private:
     mamba::MidiMessenger *mmessage;
     jack_port_t *in_port;

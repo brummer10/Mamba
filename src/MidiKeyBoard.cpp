@@ -262,6 +262,7 @@ void XKeyBoard::get_midi_in(int n, bool on) {
 }
 
 void XKeyBoard::quit_by_jack() {
+    fprintf (stderr, "Quit by jack \n");
     XLockDisplay(win->app->dpy);
     quit(win);
     XFlush(win->app->dpy);

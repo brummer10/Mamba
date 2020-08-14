@@ -512,24 +512,24 @@ static void key_press(void *w_, void *key_, void *user_data) {
     if (!key) return;
     if (key->state & ControlMask) {
         p->func.key_press_callback(p, key_, user_data);
-        return;
-    }
-    float outkey = 0.0;
-    KeySym sym = XLookupKeysym (key, 0);
-    get_outkey(keys, sym, &outkey);
+    } else {
+        float outkey = 0.0;
+        KeySym sym = XLookupKeysym (key, 0);
+        get_outkey(keys, sym, &outkey);
 
-    if ((int)outkey && !is_key_in_matrix(keys->key_matrix, (int)outkey+keys->octave)) {
-        set_key_in_matrix(keys->key_matrix,(int)outkey+keys->octave,true);
-        keys->send_key = (int)outkey+keys->octave;
-        if (keys->send_key>=0 && keys->send_key<128)
-            keys->mk_send_note(p, &keys->send_key,true);
-        //expose_widget(w);
-    } 
-    if (sym == XK_space) {
-        clear_key_matrix(&keys->key_matrix[0]);
-        keys->mk_send_all_sound_off(p, NULL);
-        //expose_widget(w);
-    } 
+        if ((int)outkey && !is_key_in_matrix(keys->key_matrix, (int)outkey+keys->octave)) {
+            set_key_in_matrix(keys->key_matrix,(int)outkey+keys->octave,true);
+            keys->send_key = (int)outkey+keys->octave;
+            if (keys->send_key>=0 && keys->send_key<128)
+                keys->mk_send_note(p, &keys->send_key,true);
+            //expose_widget(w);
+        } 
+        if (sym == XK_space) {
+            clear_key_matrix(&keys->key_matrix[0]);
+            keys->mk_send_all_sound_off(p, NULL);
+            //expose_widget(w);
+        }
+    }
 }
 
 static void key_release(void *w_, void *key_, void *user_data) {
