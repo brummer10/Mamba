@@ -720,16 +720,18 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
          
 #ifdef __XDG_MIME_H__
         if(!strstr(xdg_mime_get_mime_type_from_file_name(*(const char**)user_data), "midi")) {
-            open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
             "Couldn't load file, is that a MIDI file?",NULL);
+            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
             return;
         }
 #endif
         adj_set_value(xjmkb->play->adj,0.0);
         adj_set_value(xjmkb->record->adj,0.0);
         if (!xjmkb->load.load_from_file(&xjmkb->xjack->rec.play, *(const char**)user_data)) {
-            open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
             "Couldn't load file, is that a MIDI file?",NULL);
+            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
         } else {
             std::string file(basename(*(char**)user_data));
             std::string tittle = xjmkb->client_name + " - Virtual Midi Keyboard" + " - " + file;
@@ -758,13 +760,15 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
     switch (value) {
         case(0):
         {
-            open_file_dialog(xjmkb->win,  getenv("HOME") ? getenv("HOME") : "/", "midi");
+            Widget_t *dia = open_file_dialog(xjmkb->win,  getenv("HOME") ? getenv("HOME") : "/", "midi");
+            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
             xjmkb->win->func.dialog_callback = dialog_load_response;
         }
         break;
         case(1):
         {
-            save_file_dialog(xjmkb->win, getenv("HOME") ? getenv("HOME") : "/", "midi");
+            Widget_t *dia = save_file_dialog(xjmkb->win, getenv("HOME") ? getenv("HOME") : "/", "midi");
+            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
             xjmkb->win->func.dialog_callback = dialog_save_response;
         }
         break;
@@ -781,11 +785,12 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    open_message_dialog(xjmkb->win, INFO_BOX, "Mamba", 
+    Widget_t *dia = open_message_dialog(xjmkb->win, INFO_BOX, "Mamba", 
         "Mamba v1.3 is written by Hermann Meyer|released under the BSD Zero Clause License"
         "|https://github.com/brummer10/Mamba"
         "|For midi file handling it use libsmf|a BSD-licensed C library|written by Edward Tomasz Napierała"
         "|https://github.com/stump/libsmf",NULL);
+    XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
 }
 
 // static
