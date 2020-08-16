@@ -124,7 +124,10 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
             if(ev.num > 2)
                 midi_send[2] = ev.buffer[2];
             if ((ev.buffer[0] & 0xf0) == 0x90) {   // Note On
-                std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], true);
+                if (ev.buffer[2] > 0) // velocity 0 treaded as Note Off
+                    std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], true);
+                else 
+                    std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
             } else if ((ev.buffer[0] & 0xf0) == 0x80) {   // Note Off
                 std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
             }
