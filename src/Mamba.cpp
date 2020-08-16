@@ -95,6 +95,7 @@ MidiLoad::~MidiLoad() {
 bool MidiLoad::load_from_file(std::vector<MidiEvent> *play, const char* file_name) {
     smf = smf_new();
     if(!(smf = smf_load(file_name))) return false;
+    // fprintf(stderr, "ppqn = %i\n", smf->ppqn);
     play->clear();
     while ((smf_event = smf_get_next_event(smf)) !=NULL) {
         if (smf_event_is_metadata(smf_event)) continue;
