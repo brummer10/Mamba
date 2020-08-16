@@ -81,7 +81,7 @@ ifneq ("$(wildcard ./$(BUILD_DIR))","")
 	mkdir -p $(DESTDIR)$(PIXMAPS_DIR)
 	cp $(NAME).png $(DESTDIR)$(PIXMAPS_DIR)
 	@echo ". ." $(BLUE)", done"$(NONE)
-	update-desktop-database
+	update-desktop-database || true
 else
 	@echo ". ." $(BLUE)", you must build first"$(NONE)
 endif
