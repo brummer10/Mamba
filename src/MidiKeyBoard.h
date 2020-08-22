@@ -114,12 +114,14 @@ private:
     Widget_t *channel;
     Widget_t *bank;
     Widget_t *program;
-    Widget_t *layout;
     Widget_t *keymap;
     Widget_t *record;
     Widget_t *play;
     Widget_t *menubar;
     Widget_t *info;
+    Widget_t *mapping;
+    Widget_t *bpm;
+    Widget_t *songbpm;
     Pixmap *icon;
     int main_x;
     int main_y;
@@ -128,6 +130,8 @@ private:
     int velocity;
     int mbank;
     int mprogram;
+    int mbpm;
+    int song_bpm;
     int keylayout;
     int mchannel;
     int run_one_more;
@@ -141,6 +145,7 @@ private:
     static void channel_callback(void *w_, void* user_data);
     static void bank_callback(void *w_, void* user_data);
     static void program_callback(void *w_, void* user_data);
+    static void bpm_callback(void *w_, void* user_data);
     static void layout_callback(void *w_, void* user_data);
     static void octave_callback(void *w_, void* user_data);
     static void modwheel_callback(void *w_, void* user_data);
@@ -180,6 +185,7 @@ public:
     std::string client_name;
     std::string config_file;
     std::string path;
+    std::string filepath;
     bool has_config;
     Widget_t *win;
     Widget_t *wid;

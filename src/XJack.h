@@ -37,6 +37,31 @@ namespace xjack {
 
 
 /****************************************************************
+ ** class MidiClockToBpm
+ **
+ ** calculate BPM from Midi Beat Clock events
+ */
+
+class MidiClockToBpm {
+private:
+    double time1;
+    double time_diff;
+    int collect;
+    int collect_;
+    double bpm;
+    double bpm_new;
+    unsigned int bpm_old;
+    bool ret;
+
+public:
+    MidiClockToBpm();
+    ~MidiClockToBpm() {}
+    unsigned int rounded(float f);
+    bool time_to_bpm(double time, unsigned int* bpm_);
+};
+
+
+/****************************************************************
  ** class XJack
  **
  ** Connect via MidiMessenger to jack_midi out
@@ -47,6 +72,8 @@ namespace xjack {
 class XJack : public sigc::trackable {
 private:
     mamba::MidiMessenger *mmessage;
+    MidiClockToBpm mp;
+    timespec ts1;
     jack_port_t *in_port;
     jack_port_t *out_port;
     jack_nframes_t event_count;
@@ -72,6 +99,8 @@ public:
     ~XJack();
     std::atomic<bool> transport_state_changed;
     std::atomic<int> transport_set;
+    std::atomic<bool> bpm_changed;
+    std::atomic<int> bpm_set;
     jack_client_t *client;
     std::string client_name;
     void init_jack();
@@ -86,6 +115,8 @@ public:
     bool first_play;
     unsigned int SampleRate;
     double srms;
+    double bpm_ratio;
+    unsigned int bpm;
 
     sigc::signal<void > trigger_quit_by_jack;
     sigc::signal<void >& signal_trigger_quit_by_jack() { return trigger_quit_by_jack; }

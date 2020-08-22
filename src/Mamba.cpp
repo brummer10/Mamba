@@ -57,7 +57,7 @@ void MidiMessenger::fill(unsigned char *midi_send, int i) {
 }
 
 bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) {
-    _cc |=channel;
+    if (channel < 16) _cc |=channel;
     for(int i = 0; i < max_midi_cc_cnt; i++) {
         if (send_cc[i].load(std::memory_order_acquire)) {
             if (cc_num[i] == _cc && pg_num[i] == _pg &&
@@ -86,22 +86,37 @@ bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) {
 MidiLoad::MidiLoad() {
     smf = NULL;
     smf_event = NULL;
+    deltaTime = 0.0;
 }
 
 MidiLoad::~MidiLoad() {
     if (smf) smf_delete(smf);
 }
 
-bool MidiLoad::load_from_file(std::vector<MidiEvent> *play, const char* file_name) {
+bool MidiLoad::load_from_file(std::vector<MidiEvent> *play, int *song_bpm, const char* file_name) {
     smf = smf_new();
+    deltaTime = 0.0;
     if(!(smf = smf_load(file_name))) return false;
     // fprintf(stderr, "ppqn = %i\n", smf->ppqn);
+    // fprintf(stderr, "length = %f sec\n", smf_get_length_seconds(smf));
+    // fprintf(stderr, "tracks %i\n", smf->number_of_tracks);
     play->clear();
+    *(song_bpm) = 120;
     while ((smf_event = smf_get_next_event(smf)) !=NULL) {
-        if (smf_event_is_metadata(smf_event)) continue;
+        if (smf_event_is_metadata(smf_event)) {
+            // Fetch Song BPM
+            if (smf_event->midi_buffer[1]==0x51) {
+                int mspqn = (smf_event->midi_buffer[3] << 16) + (smf_event->midi_buffer[4] << 8) + smf_event->midi_buffer[5];
+                *(song_bpm) = 60000000.0 / (double)mspqn;
+               //  fprintf(stderr,"SONG BPM: %i\n",*(song_bpm));
+            } else {
+                continue;
+            }
+        }
         ev = {{smf_event->midi_buffer[0], smf_event->midi_buffer[1], smf_event->midi_buffer[2]},
-                                        smf_event->midi_buffer_length, smf_event->time_seconds};
+                                        smf_event->midi_buffer_length, smf_event->time_seconds - deltaTime};
         play->push_back(ev);
+        deltaTime = smf_event->time_seconds;
     }
     if (smf) smf_delete(smf);
     smf = NULL;

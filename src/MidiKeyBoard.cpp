@@ -103,10 +103,13 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, mamba::MidiMessenger *mmessage_,
     velocity = 127;
     mbank = 0;
     mprogram = 0;
+    mbpm = 120;
+    song_bpm = 120;
     keylayout = 0;
     mchannel = 0;
     run_one_more = 0;
     need_save = false;
+    filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
         sigc::mem_fun(this, &XKeyBoard::nsm_show_ui));
@@ -168,6 +171,8 @@ void XKeyBoard::read_config() {
         if (!line.empty()) mchannel = std::stoi(line);
         std::getline( infile, line );
         if (!line.empty()) velocity = std::stoi(line);
+        std::getline( infile, line );
+        if (!line.empty()) filepath = line;
         infile.close();
         has_config = true;
     }
@@ -209,6 +214,7 @@ void XKeyBoard::save_config() {
          outfile << keylayout << std::endl;
          outfile << mchannel << std::endl;
          outfile << velocity << std::endl;
+         outfile << filepath << std::endl;
          outfile.close();
     }
     if (need_save && xjack->rec.play.size()) {
@@ -449,8 +455,24 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_entry(menubar,"_Save as");
     menu_add_entry(menubar,"_Quit");
     menubar->func.value_changed_callback = file_callback;
+    
+    mapping = add_menu(win,"_Keyboard",60,0,60,20);
+    menu_add_radio_entry(mapping,"qwertz");
+    menu_add_radio_entry(mapping,"qwerty");
+    menu_add_radio_entry(mapping,"azerty");
+    mapping->func.value_changed_callback = layout_callback;
 
-    info = add_menu(win,"_Info",60,0,60,20);
+    keymap = add_menu(win,"_Octave",120,0,60,20);
+    menu_add_radio_entry(keymap,"C 0");
+    menu_add_radio_entry(keymap,"C 1");
+    menu_add_radio_entry(keymap,"C 2");
+    menu_add_radio_entry(keymap,"C 3");
+    menu_add_radio_entry(keymap,"C 4");
+    adj_set_value(keymap->adj, 2.0);
+    keymap->func.value_changed_callback = octave_callback;
+    
+
+    info = add_menu(win,"_Info",180,0,60,20);
     menu_add_entry(info,"_About");
     info->func.value_changed_callback = info_callback;
 
@@ -461,8 +483,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     channel->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     channel->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(channel,1,16);
+    combobox_add_entry(channel,"--");
     combobox_set_active_entry(channel, 0);
-    set_adjustment(channel->adj,0.0, 0.0, 0.0, 15.0, 1.0, CL_ENUM);
+    set_adjustment(channel->adj,0.0, 0.0, 0.0, 16.0, 1.0, CL_ENUM);
     channel->func.value_changed_callback = channel_callback;
     channel->func.key_press_callback = key_press;
     channel->func.key_release_callback = key_release;
@@ -502,32 +525,20 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    layout = add_combobox(win, "", 390, 30, 130, 30);
-    layout->data = LAYOUT;
-    layout->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    layout->scale.gravity = ASPECT;
-    combobox_add_entry(layout,"qwertz");
-    combobox_add_entry(layout,"qwerty");
-    combobox_add_entry(layout,"azerty");
-    combobox_set_active_entry(layout, 0);
-    set_adjustment(layout->adj,0.0, 0.0, 0.0, 2.0, 1.0, CL_ENUM);
-    layout->func.value_changed_callback = layout_callback;
-    layout->func.key_press_callback = key_press;
-    layout->func.key_release_callback = key_release;
-    tmp = layout->childlist->childs[0];
+    tmp = add_label(win,"BPM:",380,30,60,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
+    bpm = add_valuedisplay(win, "BPM", 440, 30, 60, 30);
+    bpm->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    bpm->scale.gravity = ASPECT;
+    set_adjustment(bpm->adj,120.0, mbpm, 24.0, 360.0, 1.0, CL_CONTINUOS);
+    bpm->func.value_changed_callback = bpm_callback;
+    bpm->func.key_press_callback = key_press;
+    bpm->func.key_release_callback = key_release;
 
-
-    keymap = add_hslider(win, "Octave mapping", 540, 27, 150, 32);
-    keymap->data = KEYMAP;
-    keymap->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    keymap->scale.gravity = ASPECT;
-    set_adjustment(keymap->adj,2.0, 2.0, 0.0, 4.0, 1.0, CL_CONTINUOS);
-    adj_set_scale(keymap->adj, 0.05);
-    keymap->func.value_changed_callback = octave_callback;
-    keymap->func.key_press_callback = key_press;
-    keymap->func.key_release_callback = key_release;
+    songbpm = add_label(win,"File BPM:",500,30,100,20);
+    snprintf(songbpm->input_label, 31,"File BPM: %d",  (int) song_bpm);
+    songbpm->label = songbpm->input_label;
 
     w[0] = add_keyboard_knob(win, "PitchBend", 5, 65, 60, 75);
     w[0]->data = PITCHBEND;
@@ -615,7 +626,8 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     // set controllers to saved values
     combobox_set_active_entry(channel, mchannel);
-    combobox_set_active_entry(layout, keylayout);
+    //combobox_set_active_entry(layout, keylayout);
+    adj_set_value(mapping->adj,keylayout);
     adj_set_value(w[6]->adj, velocity);
 
     // set window to saved size
@@ -636,6 +648,7 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+
     if (xjmkb->xjack->transport_state_changed.load(std::memory_order_acquire)) {
         xjmkb->xjack->transport_state_changed.store(false, std::memory_order_release);
         XLockDisplay(w->app->dpy);
@@ -645,6 +658,18 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         expose_widget(xjmkb->play);
         XFlush(w->app->dpy);
         xjmkb->play->func.adj_callback = transparent_draw;
+        XUnlockDisplay(w->app->dpy);
+    }
+
+    if (xjmkb->xjack->bpm_changed.load(std::memory_order_acquire)) {
+        xjmkb->xjack->bpm_changed.store(false, std::memory_order_release);
+        XLockDisplay(w->app->dpy);
+        xjmkb->bpm->func.adj_callback = dummy_callback;
+        adj_set_value(xjmkb->bpm->adj,
+            (float)xjmkb->xjack->bpm_set.load(std::memory_order_acquire));
+        expose_widget(xjmkb->bpm);
+        XFlush(w->app->dpy);
+        xjmkb->bpm->func.adj_callback = transparent_draw;
         XUnlockDisplay(w->app->dpy);
     }
 
@@ -709,7 +734,7 @@ void XKeyBoard::get_note(Widget_t *w, const int *key, const bool on_off) {
 void XKeyBoard::get_all_notes_off(Widget_t *w, const int *value) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 120, 0, 3);
 }
 
 // static
@@ -728,14 +753,19 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
 #endif
         adj_set_value(xjmkb->play->adj,0.0);
         adj_set_value(xjmkb->record->adj,0.0);
-        if (!xjmkb->load.load_from_file(&xjmkb->xjack->rec.play, *(const char**)user_data)) {
+        if (!xjmkb->load.load_from_file(&xjmkb->xjack->rec.play, &xjmkb->song_bpm, *(const char**)user_data)) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
             "Couldn't load file, is that a MIDI file?",NULL);
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
         } else {
             std::string file(basename(*(char**)user_data));
+            xjmkb->filepath = dirname(*(char**)user_data);
             std::string tittle = xjmkb->client_name + " - Virtual Midi Keyboard" + " - " + file;
             widget_set_title(xjmkb->win, tittle.c_str());
+            adj_set_value(xjmkb->bpm->adj, xjmkb->song_bpm);
+            snprintf(xjmkb->songbpm->input_label, 31,"File BPM: %d",  (int) xjmkb->song_bpm);
+            xjmkb->songbpm->label = xjmkb->songbpm->input_label;
+            expose_widget(xjmkb->songbpm);
         }
     }
 }
@@ -760,14 +790,14 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
     switch (value) {
         case(0):
         {
-            Widget_t *dia = open_file_dialog(xjmkb->win,  getenv("HOME") ? getenv("HOME") : "/", "midi");
+            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
             xjmkb->win->func.dialog_callback = dialog_load_response;
         }
         break;
         case(1):
         {
-            Widget_t *dia = save_file_dialog(xjmkb->win, getenv("HOME") ? getenv("HOME") : "/", "midi");
+            Widget_t *dia = save_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
             xjmkb->win->func.dialog_callback = dialog_save_response;
         }
@@ -825,6 +855,14 @@ void XKeyBoard::program_callback(void *w_, void* user_data) {
     xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2);
 }
 
+// static
+void XKeyBoard::bpm_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->mbpm = (int)adj_get_value(w->adj);
+    xjmkb->xjack->bpm_ratio = (double)xjmkb->song_bpm/(double)xjmkb->mbpm;
+}
 
 // static
 void XKeyBoard::modwheel_callback(void *w_, void* user_data) {
@@ -938,6 +976,11 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
     if (value > 0) {
         std::string tittle = xjmkb->client_name + " - Virtual Midi Keyboard";
         widget_set_title(xjmkb->win, tittle.c_str());
+        xjmkb->song_bpm = 120;
+        adj_set_value(xjmkb->bpm->adj, xjmkb->song_bpm);
+        snprintf(xjmkb->songbpm->input_label, 31,"File BPM: %d",  (int) xjmkb->song_bpm);
+        xjmkb->songbpm->label = xjmkb->songbpm->input_label;
+        expose_widget(xjmkb->songbpm);
         adj_set_value(xjmkb->play->adj,0.0);
         xjmkb->xjack->store1.clear();
         xjmkb->xjack->store2.clear();
@@ -1052,6 +1095,30 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                 XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
                 if (attrs.map_state != IsViewable) {
                     pop_menu_show(xjmkb->menubar, menu, 6, true);
+                } else {
+                    widget_hide(menu);
+                }
+            }
+            break;
+            case (XK_k):
+            {
+                Widget_t *menu = xjmkb->mapping->childlist->childs[0];
+                XWindowAttributes attrs;
+                XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
+                if (attrs.map_state != IsViewable) {
+                    pop_menu_show(xjmkb->mapping, menu, 6, true);
+                } else {
+                    widget_hide(menu);
+                }
+            }
+            break;
+            case (XK_o):
+            {
+                Widget_t *menu = xjmkb->keymap->childlist->childs[0];
+                XWindowAttributes attrs;
+                XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
+                if (attrs.map_state != IsViewable) {
+                    pop_menu_show(xjmkb->keymap, menu, 6, true);
                 } else {
                     widget_hide(menu);
                 }
@@ -1200,6 +1267,7 @@ void PosixSignalHandler::signal_helper_thread() {
  */
 
 int main (int argc, char *argv[]) {
+    auto t1 = std::chrono::high_resolution_clock::now();
     if(0 == XInitThreads()) 
         fprintf(stderr, "Warning: XInitThreads() failed\n");
     Xputty app;
@@ -1233,6 +1301,9 @@ int main (int argc, char *argv[]) {
     }
 
     xjmkb.show_ui(xjmkb.visible);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+    debug_print("%f sec\n",duration/1e+6);
 
     main_run(&app);
     

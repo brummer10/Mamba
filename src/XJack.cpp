@@ -22,6 +22,59 @@
 
 namespace xjack {
 
+
+/****************************************************************
+ ** class MidiClockToBpm
+ **
+ ** calculate BPM from Midi Beat Clock events
+ */
+
+MidiClockToBpm::MidiClockToBpm()
+    : time1(0),
+      time_diff(0),
+      collect(0),
+      collect_(0),
+      bpm(0),
+      bpm_new(0),
+      bpm_old(0),
+      ret(false) {}
+
+unsigned int MidiClockToBpm::rounded(float f) {
+    if (f >= 0x1.0p23) return (unsigned int) f;
+    return (unsigned int) (f + 0.49999997f);
+}
+
+bool MidiClockToBpm::time_to_bpm(double time, unsigned int* bpm_) {
+    ret = false;
+    // if time drift to far, reset bpm detection.
+    if ((time-time1)> (1.05*time_diff) || (time-time1)*1.05 < (time_diff)) { 
+        bpm = 0;
+        collect = 0;
+        collect_ = 0;
+    } else {
+        bpm_new = ((1000000000. / (time-time1) / 24) * 60);
+        bpm += bpm_new;
+        collect++;
+        
+        if (collect >= (bpm_new*bpm_new*0.0002)+1) {
+            bpm = (bpm/collect);
+            if (collect_>=2) {
+                (*bpm_) = rounded(std::min(360.,std::max(24.,bpm))); 
+                collect_ = 0;
+                if (bpm_old != (*bpm_)) {
+                    ret = true;
+                    bpm_old = (*bpm_);
+                }
+            }
+            collect_++;
+            collect = 1;
+        }
+    }
+    time_diff = time-time1;
+    time1 = time;
+    return ret;
+}
+
 /****************************************************************
  ** class XJack
  **
@@ -33,6 +86,7 @@ namespace xjack {
 XJack::XJack(mamba::MidiMessenger *mmessage_)
     : sigc::trackable(),
      mmessage(mmessage_),
+     mp(),
      event_count(0),
      start(0),
      stop(0),
@@ -42,6 +96,8 @@ XJack::XJack(mamba::MidiMessenger *mmessage_)
         transport_state_changed.store(false, std::memory_order_release);
         transport_set.store(0, std::memory_order_release);
         transport_state = JackTransportStopped;
+        bpm_changed.store(false, std::memory_order_release);
+        bpm_set.store(0, std::memory_order_release);
         record = 0;
         play = 0;
         pos = 0;
@@ -52,6 +108,7 @@ XJack::XJack(mamba::MidiMessenger *mmessage_)
         st = &store1;
         rec.st = &store1;
         client_name = "Mamba";
+        bpm_ratio = 1.0;
 }
 
 XJack::~XJack() {
@@ -91,7 +148,7 @@ void XJack::init_jack() {
 inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, int i) {
     stop = jack_last_frame_time(client)+n;
     deltaTime = (double)(((stop) - start)/(double)SampleRate); // seconds
-    //start = jack_last_frame_time(client)+n;
+    start = jack_last_frame_time(client)+n;
     unsigned char d = i > 2 ? midi_send[2] : 0;
     mamba::MidiEvent ev = {{midi_send[0], midi_send[1], d}, i, deltaTime};
     st->push_back(ev);
@@ -116,23 +173,29 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
     stop = jack_last_frame_time(client)+n;
     deltaTime = (double)(((stop) - start)/(double)SampleRate); // seconds
     mamba::MidiEvent ev = rec.play[pos];
-    if (deltaTime >= ev.deltaTime) {
+    if (deltaTime >= ev.deltaTime * bpm_ratio) {
         unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.num);
         if (midi_send) {
             midi_send[0] = ev.buffer[0];
             midi_send[1] = ev.buffer[1];
             if(ev.num > 2)
                 midi_send[2] = ev.buffer[2];
-            if ((ev.buffer[0] & 0xf0) == 0x90) {   // Note On
+            bool ch = true;
+            if (mmessage->channel < 16) {
+                if ((mmessage->channel) != (int(ev.buffer[0]&0x0f))) {
+                    ch = false;
+                }
+            }
+            if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
                 if (ev.buffer[2] > 0) // velocity 0 treaded as Note Off
                     std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], true);
                 else 
                     std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
-            } else if ((ev.buffer[0] & 0xf0) == 0x80) {   // Note Off
+            } else if ((ev.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
                 std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
             }
         }
-        //start = jack_last_frame_time(client)+n;
+        start = jack_last_frame_time(client)+n;
         pos++;
         if (pos >= rec.play.size()) {
             pos = 0;
@@ -178,13 +241,23 @@ inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
         if (record)
             record_midi(midi_send, i, in_event.size);
         bool ch = true;
-        if ((xjack->mmessage->channel) != (int(in_event.buffer[0]&0x0f))) {
-            ch = false;
+        if (xjack->mmessage->channel < 16) {
+            if ((xjack->mmessage->channel) != (int(in_event.buffer[0]&0x0f))) {
+                ch = false;
+            }
         }
         if ((in_event.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
             std::async(std::launch::async, xjack->trigger_get_midi_in, in_event.buffer[1], true);
         } else if ((in_event.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
             std::async(std::launch::async, xjack->trigger_get_midi_in, in_event.buffer[1], false);
+        } else if ((in_event.buffer[0] ) == 0xf8) {   // midi beat clock
+            clock_gettime(CLOCK_MONOTONIC, &xjack->ts1);
+            double time0 = (ts1.tv_sec*1000000000.0)+(xjack->ts1.tv_nsec)+
+                    (1000000000.0/(double)(xjack->SampleRate/(double)in_event.time));
+            if (mp.time_to_bpm(time0, &xjack->bpm)) {
+                xjack->bpm_changed.store(true, std::memory_order_release);
+                xjack->bpm_set.store((int)xjack->bpm, std::memory_order_release);
+            }
         }
     }
 }
