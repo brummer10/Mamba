@@ -176,6 +176,7 @@ void MidiSave::reset_smf() {
 }
 
 void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name) {
+    double t = 0.0;
     for(std::vector<MidiEvent>::const_iterator i = play->begin(); i != play->end(); ++i) {
         smf_event = smf_event_new_from_pointer((void*)(*i).buffer, (*i).num);
         if (smf_event == NULL) {
@@ -185,7 +186,8 @@ void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name)
         if(smf_event->midi_buffer_length < 1) continue;
         channel = smf_event->midi_buffer[0] & 0x0F;
 
-        smf_track_add_event_seconds(tracks[channel], smf_event,(*i).deltaTime);
+        smf_track_add_event_seconds(tracks[channel], smf_event,(*i).deltaTime + t);
+        t += (*i).deltaTime;
     }
 
     smf_rewind(smf);
