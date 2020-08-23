@@ -14,6 +14,7 @@ Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Ki
 - PC Keyboard mapping selector from C0 to C4
 - Pitchbend, Balance, Modwheel, Detune, Expression, Attack, Release, Volume and Velocity controllers
 - Sustain and Sostenuto switches
+- BPM controller
 - Midi Through: forward midi input to output
 - Midi input highlighting
 - Resizable to a full range 127 key view
@@ -21,6 +22,7 @@ Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Ki
 - Load Midi-files on command-line
 - Record and play Midi-Loops
 - Support jack_transport to start/stop Midi-Loops
+- Support Midi Beat Clock
 - Keyboard Shortcuts
 - `ctrl + r` toggle Record Button
 - `ctrl + p` toggle Play Button

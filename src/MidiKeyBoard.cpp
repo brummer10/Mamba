@@ -976,8 +976,7 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
     if (value > 0) {
         std::string tittle = xjmkb->client_name + " - Virtual Midi Keyboard";
         widget_set_title(xjmkb->win, tittle.c_str());
-        xjmkb->song_bpm = 120;
-        adj_set_value(xjmkb->bpm->adj, xjmkb->song_bpm);
+        xjmkb->song_bpm = adj_get_value(xjmkb->bpm->adj);
         snprintf(xjmkb->songbpm->input_label, 31,"File BPM: %d",  (int) xjmkb->song_bpm);
         xjmkb->songbpm->label = xjmkb->songbpm->input_label;
         expose_widget(xjmkb->songbpm);
