@@ -106,6 +106,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, mamba::MidiMessenger *mmessage_,
     mbpm = 120;
     song_bpm = 120;
     keylayout = 0;
+    octave = 2;
     mchannel = 0;
     run_one_more = 0;
     need_save = false;
@@ -173,6 +174,8 @@ void XKeyBoard::read_config() {
         if (!line.empty()) velocity = std::stoi(line);
         std::getline( infile, line );
         if (!line.empty()) filepath = line;
+        std::getline( infile, line );
+        if (!line.empty()) octave = std::stoi(line);
         infile.close();
         has_config = true;
     }
@@ -215,6 +218,7 @@ void XKeyBoard::save_config() {
          outfile << mchannel << std::endl;
          outfile << velocity << std::endl;
          outfile << filepath << std::endl;
+         outfile << octave << std::endl;
          outfile.close();
     }
     if (need_save && xjack->rec.play.size()) {
@@ -455,14 +459,15 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_entry(menubar,"_Save as");
     menu_add_entry(menubar,"_Quit");
     menubar->func.value_changed_callback = file_callback;
-    
-    mapping = add_menu(win,"_Keyboard",60,0,60,20);
+
+    m = add_menu(win,"_Mapping",60,0,60,20);
+    mapping = menu_add_submenu(m,"Keyboard");
     menu_add_radio_entry(mapping,"qwertz");
     menu_add_radio_entry(mapping,"qwerty");
     menu_add_radio_entry(mapping,"azerty");
     mapping->func.value_changed_callback = layout_callback;
 
-    keymap = add_menu(win,"_Octave",120,0,60,20);
+    keymap = menu_add_submenu(m,"Octave");
     menu_add_radio_entry(keymap,"C 0");
     menu_add_radio_entry(keymap,"C 1");
     menu_add_radio_entry(keymap,"C 2");
@@ -470,9 +475,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_radio_entry(keymap,"C 4");
     adj_set_value(keymap->adj, 2.0);
     keymap->func.value_changed_callback = octave_callback;
-    
 
-    info = add_menu(win,"_Info",180,0,60,20);
+    info = add_menu(win,"_Info",120,0,60,20);
     menu_add_entry(info,"_About");
     info->func.value_changed_callback = info_callback;
 
@@ -628,6 +632,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     combobox_set_active_entry(channel, mchannel);
     //combobox_set_active_entry(layout, keylayout);
     adj_set_value(mapping->adj,keylayout);
+    adj_set_value(keymap->adj,octave);
     adj_set_value(w[6]->adj, velocity);
 
     // set window to saved size
@@ -1031,6 +1036,7 @@ void XKeyBoard::octave_callback(void *w_, void* user_data) {
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     keys->octave = (int)12*adj_get_value(w->adj);
+    xjmkb->octave = (int)adj_get_value(w->adj);
     expose_widget(xjmkb->wid);
 }
 
@@ -1099,25 +1105,13 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                 }
             }
             break;
-            case (XK_k):
+            case (XK_m):
             {
-                Widget_t *menu = xjmkb->mapping->childlist->childs[0];
+                Widget_t *menu = xjmkb->m->childlist->childs[0];
                 XWindowAttributes attrs;
                 XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
                 if (attrs.map_state != IsViewable) {
-                    pop_menu_show(xjmkb->mapping, menu, 6, true);
-                } else {
-                    widget_hide(menu);
-                }
-            }
-            break;
-            case (XK_o):
-            {
-                Widget_t *menu = xjmkb->keymap->childlist->childs[0];
-                XWindowAttributes attrs;
-                XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
-                if (attrs.map_state != IsViewable) {
-                    pop_menu_show(xjmkb->keymap, menu, 6, true);
+                    pop_menu_show(xjmkb->m, menu, 6, true);
                 } else {
                     widget_hide(menu);
                 }

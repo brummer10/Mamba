@@ -167,6 +167,7 @@ void MidiSave::reset_smf() {
     // init new smf instance
     smf = smf_new();
     // prefill vector with empty tracks and add tracks to smf
+    tracks.reserve(16);
     for (int i = 0; i < 16; i++) {
         tracks.push_back(smf_track_new());
         if (tracks[i] == NULL)

@@ -120,6 +120,7 @@ private:
     Widget_t *menubar;
     Widget_t *info;
     Widget_t *mapping;
+    Widget_t *m;
     Widget_t *bpm;
     Widget_t *songbpm;
     Pixmap *icon;
@@ -133,6 +134,7 @@ private:
     int mbpm;
     int song_bpm;
     int keylayout;
+    int octave;
     int mchannel;
     int run_one_more;
     bool need_save;

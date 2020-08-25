@@ -120,6 +120,7 @@ void XJack::init_jack() {
     if ((client = jack_client_open (client_name.c_str(), JackNullOption, NULL)) == 0) {
         fprintf (stderr, "jack server not running?\n");
         trigger_quit_by_jack();
+        return;
     }
 
     in_port = jack_port_register(
@@ -136,6 +137,7 @@ void XJack::init_jack() {
     if (jack_activate (client)) {
         fprintf (stderr, "cannot activate client");
         trigger_quit_by_jack();
+        return;
     }
 
     if (!jack_is_realtime(client)) {
