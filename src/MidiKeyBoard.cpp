@@ -78,13 +78,15 @@ bool AnimatedKeyBoard::is_running() const noexcept {
  */
 
 XKeyBoard::XKeyBoard(xjack::XJack *xjack_, mamba::MidiMessenger *mmessage_,
-        nsmhandler::NsmSignalHandler& nsmsig_, AnimatedKeyBoard * animidi_)
+        nsmhandler::NsmSignalHandler& nsmsig_, PosixSignalHandler& xsig_,
+        AnimatedKeyBoard * animidi_)
     : xjack(xjack_),
     save(),
     load(),
     mmessage(mmessage_),
     animidi(animidi_),
     nsmsig(nsmsig_),
+    xsig(xsig_),
     icon(NULL) {
     client_name = "Mamba";
     if (getenv("XDG_CONFIG_HOME")) {
@@ -123,6 +125,12 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, mamba::MidiMessenger *mmessage_,
 
     nsmsig.signal_trigger_nsm_gui_open().connect(
         sigc::mem_fun(this, &XKeyBoard::set_config));
+
+    xsig.signal_trigger_quit_by_posix().connect(
+        sigc::mem_fun(this, &XKeyBoard::signal_handle));
+
+    xsig.signal_trigger_kill_by_posix().connect(
+        sigc::mem_fun(this, &XKeyBoard::exit_handle));
 
     xjack->signal_trigger_get_midi_in().connect(
         sigc::mem_fun(this, &XKeyBoard::get_midi_in));
@@ -460,21 +468,21 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_entry(menubar,"_Quit");
     menubar->func.value_changed_callback = file_callback;
 
-    m = add_menu(win,"_Mapping",60,0,60,20);
-    mapping = menu_add_submenu(m,"Keyboard");
-    menu_add_radio_entry(mapping,"qwertz");
-    menu_add_radio_entry(mapping,"qwerty");
-    menu_add_radio_entry(mapping,"azerty");
-    mapping->func.value_changed_callback = layout_callback;
+    mapping = add_menu(win,"_Mapping",60,0,60,20);
+    keymap = menu_add_submenu(mapping,"Keyboard");
+    menu_add_radio_entry(keymap,"qwertz");
+    menu_add_radio_entry(keymap,"qwerty");
+    menu_add_radio_entry(keymap,"azerty");
+    keymap->func.value_changed_callback = layout_callback;
 
-    keymap = menu_add_submenu(m,"Octave");
-    menu_add_radio_entry(keymap,"C 0");
-    menu_add_radio_entry(keymap,"C 1");
-    menu_add_radio_entry(keymap,"C 2");
-    menu_add_radio_entry(keymap,"C 3");
-    menu_add_radio_entry(keymap,"C 4");
-    adj_set_value(keymap->adj, 2.0);
-    keymap->func.value_changed_callback = octave_callback;
+    octavemap = menu_add_submenu(mapping,"Octave");
+    menu_add_radio_entry(octavemap,"C 0");
+    menu_add_radio_entry(octavemap,"C 1");
+    menu_add_radio_entry(octavemap,"C 2");
+    menu_add_radio_entry(octavemap,"C 3");
+    menu_add_radio_entry(octavemap,"C 4");
+    adj_set_value(octavemap->adj, 2.0);
+    octavemap->func.value_changed_callback = octave_callback;
 
     info = add_menu(win,"_Info",120,0,60,20);
     menu_add_entry(info,"_About");
@@ -631,8 +639,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     // set controllers to saved values
     combobox_set_active_entry(channel, mchannel);
     //combobox_set_active_entry(layout, keylayout);
-    adj_set_value(mapping->adj,keylayout);
-    adj_set_value(keymap->adj,octave);
+    adj_set_value(keymap->adj,keylayout);
+    adj_set_value(octavemap->adj,octave);
     adj_set_value(w[6]->adj, velocity);
 
     // set window to saved size
@@ -678,13 +686,14 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         XUnlockDisplay(w->app->dpy);
     }
 
-    if ((need_redraw(keys) || xjmkb->run_one_more) && xjmkb->xjack->client) {
+    bool repeat = need_redraw(keys);
+    if ((repeat || xjmkb->run_one_more) && xjmkb->xjack->client) {
         XLockDisplay(w->app->dpy);
         expose_widget(w);
         XFlush(w->app->dpy);
         XUnlockDisplay(w->app->dpy);
-        if (xjmkb->run_one_more == 0)
-            xjmkb->run_one_more = 40;
+        if (repeat)
+            xjmkb->run_one_more = 10;
     }
     xjmkb->run_one_more = max(0,xjmkb->run_one_more-1);
 }
@@ -1067,7 +1076,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_c):
             {
-                xjmkb->signal_handle (2, xjmkb);
+                xjmkb->signal_handle (2);
             }
             break;
             case (XK_q):
@@ -1078,13 +1087,13 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_l):
             {
-                open_file_dialog(xjmkb->win,  getenv("HOME") ? getenv("HOME") : "/", "midi");
+                open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
                 xjmkb->win->func.dialog_callback = dialog_load_response;
             }
             break;
             case (XK_s):
             {
-                save_file_dialog(xjmkb->win, getenv("HOME") ? getenv("HOME") : "/", "midi");
+                save_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
                 xjmkb->win->func.dialog_callback = dialog_save_response;
             }
             break;
@@ -1107,11 +1116,11 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_m):
             {
-                Widget_t *menu = xjmkb->m->childlist->childs[0];
+                Widget_t *menu = xjmkb->mapping->childlist->childs[0];
                 XWindowAttributes attrs;
                 XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
                 if (attrs.map_state != IsViewable) {
-                    pop_menu_show(xjmkb->m, menu, 6, true);
+                    pop_menu_show(xjmkb->mapping, menu, 6, true);
                 } else {
                     widget_hide(menu);
                 }
@@ -1145,26 +1154,22 @@ void XKeyBoard::key_release(void *w_, void *key_, void *user_data) {
     xjmkb->wid->func.key_release_callback(xjmkb->wid, key_, user_data);
 }
 
-
-// static
-void XKeyBoard::signal_handle (int sig, XKeyBoard *xjmkb) {
-    if(xjmkb->xjack->client) jack_client_close (xjmkb->xjack->client);
-    xjmkb->xjack->client = NULL;
-    XLockDisplay(xjmkb->win->app->dpy);
-    quit(xjmkb->win);
-    XFlush(xjmkb->win->app->dpy);
-    XUnlockDisplay(xjmkb->win->app->dpy);
-    fprintf (stderr, "\n%s: signal %i received, bye bye ...\n",xjmkb->client_name.c_str(), sig);
+void XKeyBoard::signal_handle (int sig) {
+    if(xjack->client) jack_client_close (xjack->client);
+    xjack->client = NULL;
+    XLockDisplay(win->app->dpy);
+    quit(win);
+    XFlush(win->app->dpy);
+    XUnlockDisplay(win->app->dpy);
+    fprintf (stderr, "\n%s: signal %i received, bye bye ...\n",client_name.c_str(), sig);
 }
 
-// static
-void XKeyBoard::exit_handle (int sig, XKeyBoard *xjmkb) {
-    if(xjmkb->xjack->client) jack_client_close (xjmkb->xjack->client);
-    xjmkb->xjack->client = NULL;
-    fprintf (stderr, "\n%s: signal %i received, exiting ...\n",xjmkb->client_name.c_str(), sig);
+void XKeyBoard::exit_handle (int sig) {
+    if(xjack->client) jack_client_close (xjack->client);
+    xjack->client = NULL;
+    fprintf (stderr, "\n%s: signal %i received, exiting ...\n",client_name.c_str(), sig);
     exit (0);
 }
-
 
 // static
 void XKeyBoard::win_mem_free(void *w_, void* user_data) {
@@ -1184,10 +1189,10 @@ void XKeyBoard::win_mem_free(void *w_, void* user_data) {
  ** 
  */
 
-PosixSignalHandler::PosixSignalHandler(XKeyBoard *xjmkb_)
-    : waitset(),
+PosixSignalHandler::PosixSignalHandler()
+    : sigc::trackable(),
+      waitset(),
       thread(nullptr),
-      xjmkb(xjmkb_),
       exit(false) {
     sigemptyset(&waitset);
 
@@ -1234,17 +1239,17 @@ void PosixSignalHandler::signal_helper_thread() {
             continue;
         }
         switch (sig) {
-        case SIGINT:
-        case SIGTERM:
-        case SIGQUIT:
-            xjmkb->signal_handle (sig, xjmkb);
+            case SIGINT:
+            case SIGTERM:
+            case SIGQUIT:
+                trigger_quit_by_posix(sig);
             break;
-        case SIGHUP:
-        case SIGKILL:
-            xjmkb->exit_handle (sig, xjmkb);
+            case SIGHUP:
+            case SIGKILL:
+                trigger_kill_by_posix(sig);
             break;
-        default:
-            assert(false);
+            default:
+            break;
         }
     }
 }
@@ -1263,14 +1268,16 @@ int main (int argc, char *argv[]) {
     auto t1 = std::chrono::high_resolution_clock::now();
     if(0 == XInitThreads()) 
         fprintf(stderr, "Warning: XInitThreads() failed\n");
+
+    midikeyboard::PosixSignalHandler xsig;
+
     Xputty app;
 
     mamba::MidiMessenger mmessage;
     nsmhandler::NsmSignalHandler nsmsig;
     midikeyboard::AnimatedKeyBoard  animidi;
     xjack::XJack xjack(&mmessage);
-    midikeyboard::XKeyBoard xjmkb(&xjack, &mmessage, nsmsig, &animidi);
-    midikeyboard::PosixSignalHandler xsig(&xjmkb);
+    midikeyboard::XKeyBoard xjmkb(&xjack, &mmessage, nsmsig, xsig, &animidi);
     nsmhandler::NsmHandler nsmh(&nsmsig);
 
     nsmsig.nsm_session_control = nsmh.check_nsm(xjmkb.client_name.c_str(), argv);

@@ -74,6 +74,32 @@ typedef enum {
 
 
 /****************************************************************
+ ** class PosixSignalHandler
+ **
+ ** Watch for incomming system signals in a extra thread
+ ** 
+ */
+
+class PosixSignalHandler : public sigc::trackable {
+private:
+    sigset_t waitset;
+    std::thread *thread;
+    volatile bool exit;
+    void signal_helper_thread();
+    void create_thread();
+    
+public:
+    PosixSignalHandler();
+    ~PosixSignalHandler();
+
+    sigc::signal<void, int> trigger_quit_by_posix;
+    sigc::signal<void, int>& signal_trigger_quit_by_posix() { return trigger_quit_by_posix; }
+
+    sigc::signal<void, int> trigger_kill_by_posix;
+    sigc::signal<void, int>& signal_trigger_kill_by_posix() { return trigger_kill_by_posix; }
+};
+
+/****************************************************************
  ** class AnimatedKeyBoard
  **
  ** animate midi input from jack on the keyboard in a extra thread
@@ -98,7 +124,7 @@ public:
  ** class XKeyBoard
  **
  ** Create Keyboard layout and connect via MidiMessenger to jack_midi out
- ** pass all incoming midi events to jack_midi out.
+ **
  */
 
 class XKeyBoard {
@@ -109,21 +135,23 @@ private:
     mamba::MidiMessenger *mmessage;
     AnimatedKeyBoard * animidi;
     nsmhandler::NsmSignalHandler& nsmsig;
+    PosixSignalHandler& xsig;
 
     Widget_t *w[CPORTS];
     Widget_t *channel;
     Widget_t *bank;
     Widget_t *program;
-    Widget_t *keymap;
+    Widget_t *octavemap;
     Widget_t *record;
     Widget_t *play;
     Widget_t *menubar;
     Widget_t *info;
     Widget_t *mapping;
-    Widget_t *m;
+    Widget_t *keymap;
     Widget_t *bpm;
     Widget_t *songbpm;
     Pixmap *icon;
+
     int main_x;
     int main_y;
     int main_w;
@@ -174,20 +202,26 @@ private:
     static void draw_board(void *w_, void* user_data);
     static void mk_draw_knob(void *w_, void* user_data);
     static void win_mem_free(void *w_, void* user_data);
+
     Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
     void nsm_show_ui();
     void nsm_hide_ui();
+    void signal_handle (int sig);
+    void exit_handle (int sig);
     void quit_by_jack();
     void get_midi_in(int n, bool on);
 public:
     XKeyBoard(xjack::XJack *xjack, mamba::MidiMessenger *mmessage,
-        nsmhandler::NsmSignalHandler& nsmsig, AnimatedKeyBoard * animidi);
+        nsmhandler::NsmSignalHandler& nsmsig, PosixSignalHandler& xsig, 
+        AnimatedKeyBoard * animidi);
     ~XKeyBoard();
+
     std::string client_name;
     std::string config_file;
     std::string path;
     std::string filepath;
+
     bool has_config;
     Widget_t *win;
     Widget_t *wid;
@@ -200,30 +234,6 @@ public:
     void set_config(const char *name, const char *client_id, bool op_gui);
 
     static void dialog_load_response(void *w_, void* user_data);
-    static void signal_handle (int sig, XKeyBoard *xjmkb);
-    static void exit_handle (int sig, XKeyBoard *xjmkb);
-};
-
-
-/****************************************************************
- ** class PosixSignalHandler
- **
- ** Watch for incomming system signals in a extra thread
- ** 
- */
-
-class PosixSignalHandler {
-private:
-    sigset_t waitset;
-    std::thread *thread;
-    XKeyBoard *xjmkb;
-    volatile bool exit;
-    void signal_helper_thread();
-    void create_thread();
-    
-public:
-    PosixSignalHandler(XKeyBoard *xjmkb);
-    ~PosixSignalHandler();
 };
 
 } // namespace midikeyboard
