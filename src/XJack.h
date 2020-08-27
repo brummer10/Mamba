@@ -74,8 +74,6 @@ private:
     mamba::MidiMessenger *mmessage;
     MidiClockToBpm mp;
     timespec ts1;
-    jack_port_t *in_port;
-    jack_port_t *out_port;
     jack_nframes_t event_count;
     jack_nframes_t start;
     jack_nframes_t stop;
@@ -102,6 +100,8 @@ public:
     std::atomic<bool> bpm_changed;
     std::atomic<int> bpm_set;
     jack_client_t *client;
+    jack_port_t *in_port;
+    jack_port_t *out_port;
     std::string client_name;
     void init_jack();
     mamba::MidiRecord rec;
