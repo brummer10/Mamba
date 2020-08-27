@@ -734,23 +734,26 @@ void XKeyBoard::make_connection_menu(void *w_, void* button, void* user_data) {
     XResizeWindow (menu->app->dpy, menu->widget, 10, 25);
 
     bool new_port = true;
-    const char **port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
-    for (int i = 0; port_list[i] != NULL; i++) {
-        jack_port_t *port = jack_port_by_name(xjmkb->xjack->client,port_list[i]);
-        if (!port || jack_port_is_mine(xjmkb->xjack->client, port)) {
-            new_port = false;
-        }
-        if (new_port) {
-            Widget_t *entry = menu_add_check_entry(xjmkb->connection,port_list[i]);
-            if (jack_port_connected_to(xjmkb->xjack->out_port, port_list[i])) {
-                adj_set_value(entry->adj,1.0);
-            } else {
-                adj_set_value(entry->adj,0.0);
+    const char **port_list = NULL;
+    port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
+    if (port_list) {
+        for (int i = 0; port_list[i] != NULL; i++) {
+            jack_port_t *port = jack_port_by_name(xjmkb->xjack->client,port_list[i]);
+            if (!port || jack_port_is_mine(xjmkb->xjack->client, port)) {
+                new_port = false;
             }
+            if (new_port) {
+                Widget_t *entry = menu_add_check_entry(xjmkb->connection,port_list[i]);
+                if (jack_port_connected_to(xjmkb->xjack->out_port, port_list[i])) {
+                    adj_set_value(entry->adj,1.0);
+                } else {
+                    adj_set_value(entry->adj,0.0);
+                }
+            }
+            new_port = true;
         }
-        new_port = true;
+        jack_free(port_list);
     }
-    jack_free(port_list);
 }
 
 // static
