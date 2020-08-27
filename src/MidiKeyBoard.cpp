@@ -485,8 +485,11 @@ void XKeyBoard::init_ui(Xputty *app) {
     octavemap->func.value_changed_callback = octave_callback;
 
     connection = add_menu(win,"C_onnect",130,0,60,20);
+    inputs = menu_add_submenu(connection,"Input");
+    outputs = menu_add_submenu(connection,"Output");
     connection->func.button_press_callback = make_connection_menu;
-    connection->func.value_changed_callback = connection_callback;
+    inputs->func.value_changed_callback = connection_in_callback;
+    outputs->func.value_changed_callback = connection_out_callback;
 
     info = add_menu(win,"_Info",190,0,60,20);
     menu_add_entry(info,"_About");
@@ -726,7 +729,8 @@ void XKeyBoard::make_connection_menu(void *w_, void* button, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    Widget_t *menu = w->childlist->childs[0];
+    // output
+    Widget_t *menu = xjmkb->outputs->childlist->childs[0];
     Widget_t *view_port = menu->childlist->childs[0];
     destroy_widget(view_port,win->app);
     create_viewport(menu, 10, 5*25);
@@ -743,7 +747,7 @@ void XKeyBoard::make_connection_menu(void *w_, void* button, void* user_data) {
                 new_port = false;
             }
             if (new_port) {
-                Widget_t *entry = menu_add_check_entry(xjmkb->connection,port_list[i]);
+                Widget_t *entry = menu_add_check_entry(xjmkb->outputs,port_list[i]);
                 if (jack_port_connected_to(xjmkb->xjack->out_port, port_list[i])) {
                     adj_set_value(entry->adj,1.0);
                 } else {
@@ -753,11 +757,58 @@ void XKeyBoard::make_connection_menu(void *w_, void* button, void* user_data) {
             new_port = true;
         }
         jack_free(port_list);
+        port_list = NULL;
+    }
+    // input
+    menu = xjmkb->inputs->childlist->childs[0];
+    view_port = menu->childlist->childs[0];
+    destroy_widget(view_port,win->app);
+    create_viewport(menu, 10, 5*25);
+    set_adjustment(w->adj,0.0, 0.0, 0.0, -1.0,1.0, CL_NONE);
+    XResizeWindow (menu->app->dpy, menu->widget, 10, 25);
+
+    new_port = true;
+    port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput);
+    if (port_list) {
+        for (int i = 0; port_list[i] != NULL; i++) {
+            jack_port_t *port = jack_port_by_name(xjmkb->xjack->client,port_list[i]);
+            if (!port || jack_port_is_mine(xjmkb->xjack->client, port)) {
+                new_port = false;
+            }
+            if (new_port) {
+                Widget_t *entry = menu_add_check_entry(xjmkb->inputs,port_list[i]);
+                if (jack_port_connected_to(xjmkb->xjack->in_port, port_list[i])) {
+                    adj_set_value(entry->adj,1.0);
+                } else {
+                    adj_set_value(entry->adj,0.0);
+                }
+            }
+            new_port = true;
+        }
+        jack_free(port_list);
+        port_list = NULL;
     }
 }
 
 // static
-void XKeyBoard::connection_callback(void *w_, void* user_data) {
+void XKeyBoard::connection_in_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    Widget_t *menu = w->childlist->childs[0];
+    Widget_t *view_port =  menu->childlist->childs[0];
+    int i = (int)adj_get_value(w->adj);
+    Widget_t *entry = view_port->childlist->childs[i];
+    const char *my_port = jack_port_name(xjmkb->xjack->in_port);
+    if (adj_get_value(entry->adj)) {
+        jack_connect(xjmkb->xjack->client, entry->label, my_port);
+    } else {
+        jack_disconnect(xjmkb->xjack->client, entry->label, my_port);
+    }
+}
+
+// static
+void XKeyBoard::connection_out_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -779,6 +830,7 @@ void XKeyBoard::map_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->visible = 1;
+    make_connection_menu(xjmkb->connection, NULL, NULL);
 }
 
 // static

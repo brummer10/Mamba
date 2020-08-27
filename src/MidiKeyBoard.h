@@ -149,6 +149,8 @@ private:
     Widget_t *mapping;
     Widget_t *keymap;
     Widget_t *connection;
+    Widget_t *inputs;
+    Widget_t *outputs;
     Widget_t *bpm;
     Widget_t *songbpm;
     Pixmap *icon;
@@ -196,7 +198,8 @@ private:
     static void dialog_save_response(void *w_, void* user_data);
 
     static void make_connection_menu(void *w_, void* button, void* user_data);
-    static void connection_callback(void *w_, void* user_data);
+    static void connection_in_callback(void *w_, void* user_data);
+    static void connection_out_callback(void *w_, void* user_data);
     static void key_press(void *w_, void *key_, void *user_data);
     static void key_release(void *w_, void *key_, void *user_data);
     static void win_configure_callback(void *w_, void* user_data);
