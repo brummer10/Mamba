@@ -724,70 +724,45 @@ void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
     xjmkb->main_h = attrs.height;
 }
 
+void XKeyBoard::get_port_entrys(Widget_t *parent, jack_port_t *my_port, JackPortFlags type) {
+    Widget_t *menu = parent->childlist->childs[0];
+    Widget_t *view_port = menu->childlist->childs[0];
+    destroy_widget(view_port,win->app);
+    create_viewport(menu, 10, 5*25);
+    set_adjustment(parent->adj,0.0, 0.0, 0.0, -1.0,1.0, CL_NONE);
+    XResizeWindow (menu->app->dpy, menu->widget, 10, 25);
+
+    bool new_port = true;
+    const char **port_list = NULL;
+    port_list = jack_get_ports(xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, type);
+    if (port_list) {
+        for (int i = 0; port_list[i] != NULL; i++) {
+            jack_port_t *port = jack_port_by_name(xjack->client,port_list[i]);
+            if (!port || jack_port_is_mine(xjack->client, port)) {
+                new_port = false;
+            }
+            if (new_port) {
+                Widget_t *entry = menu_add_check_entry(parent,port_list[i]);
+                if (jack_port_connected_to(my_port, port_list[i])) {
+                    adj_set_value(entry->adj,1.0);
+                } else {
+                    adj_set_value(entry->adj,0.0);
+                }
+            }
+            new_port = true;
+        }
+        jack_free(port_list);
+        port_list = NULL;
+    }
+} 
+
 // static
 void XKeyBoard::make_connection_menu(void *w_, void* button, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    // output
-    Widget_t *menu = xjmkb->outputs->childlist->childs[0];
-    Widget_t *view_port = menu->childlist->childs[0];
-    destroy_widget(view_port,win->app);
-    create_viewport(menu, 10, 5*25);
-    set_adjustment(w->adj,0.0, 0.0, 0.0, -1.0,1.0, CL_NONE);
-    XResizeWindow (menu->app->dpy, menu->widget, 10, 25);
-
-    bool new_port = true;
-    const char **port_list = NULL;
-    port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
-    if (port_list) {
-        for (int i = 0; port_list[i] != NULL; i++) {
-            jack_port_t *port = jack_port_by_name(xjmkb->xjack->client,port_list[i]);
-            if (!port || jack_port_is_mine(xjmkb->xjack->client, port)) {
-                new_port = false;
-            }
-            if (new_port) {
-                Widget_t *entry = menu_add_check_entry(xjmkb->outputs,port_list[i]);
-                if (jack_port_connected_to(xjmkb->xjack->out_port, port_list[i])) {
-                    adj_set_value(entry->adj,1.0);
-                } else {
-                    adj_set_value(entry->adj,0.0);
-                }
-            }
-            new_port = true;
-        }
-        jack_free(port_list);
-        port_list = NULL;
-    }
-    // input
-    menu = xjmkb->inputs->childlist->childs[0];
-    view_port = menu->childlist->childs[0];
-    destroy_widget(view_port,win->app);
-    create_viewport(menu, 10, 5*25);
-    set_adjustment(w->adj,0.0, 0.0, 0.0, -1.0,1.0, CL_NONE);
-    XResizeWindow (menu->app->dpy, menu->widget, 10, 25);
-
-    new_port = true;
-    port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput);
-    if (port_list) {
-        for (int i = 0; port_list[i] != NULL; i++) {
-            jack_port_t *port = jack_port_by_name(xjmkb->xjack->client,port_list[i]);
-            if (!port || jack_port_is_mine(xjmkb->xjack->client, port)) {
-                new_port = false;
-            }
-            if (new_port) {
-                Widget_t *entry = menu_add_check_entry(xjmkb->inputs,port_list[i]);
-                if (jack_port_connected_to(xjmkb->xjack->in_port, port_list[i])) {
-                    adj_set_value(entry->adj,1.0);
-                } else {
-                    adj_set_value(entry->adj,0.0);
-                }
-            }
-            new_port = true;
-        }
-        jack_free(port_list);
-        port_list = NULL;
-    }
+    xjmkb->get_port_entrys(xjmkb->outputs, xjmkb->xjack->out_port, JackPortIsInput);
+    xjmkb->get_port_entrys(xjmkb->inputs, xjmkb->xjack->in_port, JackPortIsOutput);
 }
 
 // static
