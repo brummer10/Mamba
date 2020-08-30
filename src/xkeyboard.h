@@ -57,6 +57,7 @@ typedef struct {
     int in_motion;
     unsigned long key_matrix[4];
     unsigned long in_key_matrix[4];
+    long custom_keys[128];
 
     midikeyfunc mk_send_note;
     midiwheelfunc mk_send_all_sound_off;
@@ -68,6 +69,10 @@ void keysym_qwertz_to_midi_key(long inkey, float *midi_key);
 
 void keysym_qwerty_to_midi_key(unsigned int inkey, float *midi_key);
 
+void custom_to_midi_key(long custom_keys[128], long inkey, float *midi_key);
+
+void read_keymap(const char* keymapfile, long keys[128]);
+
 void set_key_in_matrix(unsigned long *key_matrix, int key, bool set);
 
 bool is_key_in_matrix(unsigned long *key_matrix, int key);
@@ -76,9 +81,9 @@ bool have_key_in_matrix(unsigned long *key_matrix);
 
 void clear_key_matrix(unsigned long *key_matrix);
 
-void add_keyboard(Widget_t *wid);
+void add_keyboard(Widget_t *wid, const char * label);
 
-Widget_t *open_midi_keyboard(Widget_t *w);
+Widget_t *open_midi_keyboard(Widget_t *w, const char * label);
 
 void add_midi_keyboard(Widget_t *parent, const char * label,
                             int x, int y, int width, int height);

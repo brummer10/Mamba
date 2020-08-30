@@ -19,6 +19,7 @@
  */
 
 #include "xkeyboard.h"
+#include <unistd.h>
 
 
 void keysym_azerty_to_midi_key(long inkey, float *midi_key) {
@@ -158,6 +159,16 @@ void keysym_qwerty_to_midi_key(unsigned int inkey, float *midi_key) {
     keysym_qwertz_to_midi_key(inkey,midi_key);
     if ((*midi_key) == 12) (*midi_key) = 33;
     else if ((*midi_key) == 33) (*midi_key) = 12;
+}
+
+void custom_to_midi_key(long custom_keys[128], long inkey, float *midi_key) {
+    int i = 0;
+    for(;i<129;i++) {
+        if (inkey == custom_keys[i]) {
+            (*midi_key) = (float)i;
+            break;
+        }
+    }
 }
 
 void set_key_in_matrix(unsigned long *key_matrix, int key, bool set) {
@@ -498,6 +509,8 @@ static void get_outkey(MidiKeyboard *keys, KeySym sym, float *outkey) {
         break;
         case(2):keysym_azerty_to_midi_key(sym, outkey);
         break;
+        case(3):custom_to_midi_key(keys->custom_keys, sym, outkey);
+        break;
         default:keysym_qwertz_to_midi_key(sym, outkey);
         break;
     }
@@ -616,26 +629,43 @@ bool need_redraw(MidiKeyboard *keys) {
     have_key_in_matrix(keys->in_key_matrix);
 }
 
+void read_keymap(const char* keymapfile, long keys[128]) {
+    if( access(keymapfile, F_OK ) != -1 ) {
+        FILE *fp;
+        if((fp=fopen(keymapfile, "rb"))==NULL) {
+            fprintf(stderr,"Cannot open file.\n");
+        }
+
+        if(fread(keys, sizeof(long), 128, fp) != 128) {
+            if(feof(fp))
+            fprintf(stderr,"Premature end of file.");
+            else
+            fprintf(stderr,"File read error.");
+        }
+        fclose(fp);
+    }
+}
+
 
 void add_midi_keyboard(Widget_t *parent, const char * label,
                             int x, int y, int width, int height) {
     XSelectInput(parent->app->dpy, parent->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
-    add_keyboard(parent);
+    add_keyboard(parent, label);
 }
 
-Widget_t *open_midi_keyboard(Widget_t *w) {
+Widget_t *open_midi_keyboard(Widget_t *w, const char * label) {
     Widget_t *wid = create_window(w->app, DefaultRootWindow(w->app->dpy), 0, 0, 700, 200);
     XSelectInput(wid->app->dpy, wid->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
-    add_keyboard(wid);
+    add_keyboard(wid, label);
     wid->parent = w;
     return wid;
 }
 
-void add_keyboard(Widget_t *wid) {
+void add_keyboard(Widget_t *wid, const char * label) {
     MidiKeyboard *keys = (MidiKeyboard*)malloc(sizeof(MidiKeyboard));
     wid->parent_struct = keys;
     wid->flags |= HAS_MEM | NO_AUTOREPEAT;
@@ -648,6 +678,7 @@ void add_keyboard(Widget_t *wid) {
     keys->send_key = -1;
     keys->octave = 12*2;
     keys->layout = 0;
+    memset(keys->custom_keys, 0, 128*sizeof(long));
     int j = 0;
     for(;j<4;j++) {
         keys->key_matrix[j] = 0;
@@ -656,6 +687,7 @@ void add_keyboard(Widget_t *wid) {
     for(;j<4;j++) {
         keys->in_key_matrix[j] = 0;
     }
+    read_keymap(label, keys->custom_keys);
 
     wid->func.expose_callback = draw_keyboard;
     wid->func.motion_callback = keyboard_motion;

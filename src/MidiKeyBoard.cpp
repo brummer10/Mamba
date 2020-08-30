@@ -21,6 +21,7 @@
 
 #include "MidiKeyBoard.h"
 #include "xkeyboard.h"
+#include "xcustommap.h"
 
 
 namespace midikeyboard {
@@ -92,9 +93,11 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, mamba::MidiMessenger *mmessage_,
     if (getenv("XDG_CONFIG_HOME")) {
         path = getenv("XDG_CONFIG_HOME");
         config_file = path +"/Mamba.conf";
+        keymap_file =  path +"/Mamba.keymap";
     } else {
         path = getenv("HOME");
         config_file = path +"/.config/Mamba.conf";
+        keymap_file =  path +"/.config/Mamba.keymap";
     }
     has_config = false;
     main_x = 0;
@@ -473,6 +476,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_radio_entry(keymap,"qwertz");
     menu_add_radio_entry(keymap,"qwerty");
     menu_add_radio_entry(keymap,"azerty");
+    menu_add_radio_entry(keymap,"custom");
     keymap->func.value_changed_callback = layout_callback;
 
     octavemap = menu_add_submenu(mapping,"Octave");
@@ -483,6 +487,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_radio_entry(octavemap,"C 4");
     adj_set_value(octavemap->adj, 2.0);
     octavemap->func.value_changed_callback = octave_callback;
+
+    menu_add_entry(mapping,"_Keymap");
+    mapping->func.value_changed_callback = keymap_callback;
 
     connection = add_menu(win,"C_onnect",130,0,60,20);
     inputs = menu_add_submenu(connection,"Input");
@@ -536,7 +543,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     program->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(program,0,127);
     combobox_set_active_entry(program, 0);
-    set_adjustment(program->adj,0.0, 0.0, 0.0, 15.0, 1.0, CL_ENUM);
+    set_adjustment(program->adj,0.0, 0.0, 0.0, 127.0, 1.0, CL_ENUM);
     program->func.value_changed_callback = program_callback;
     program->func.key_press_callback = key_press;
     program->func.key_release_callback = key_release;
@@ -562,7 +569,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     w[0] = add_keyboard_knob(win, "PitchBend", 5, 65, 60, 75);
     w[0]->data = PITCHBEND;
     w[0]->func.value_changed_callback = pitchwheel_callback;
-    
+    w[0]->func.button_release_callback = pitchwheel_release_callback;
+
     w[9] = add_keyboard_knob(win, "Balance", 65, 65, 60, 75);
     w[9]->data = BALANCE;
     w[9]->func.value_changed_callback = balance_callback;
@@ -629,7 +637,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     wid->flags &= ~USE_TRANSPARENCY;
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     wid->scale.gravity = NORTHEAST;
-    add_midi_keyboard(wid, "MidiKeyBoard", 0, 0, 700, 120);
+    add_midi_keyboard(wid, keymap_file.c_str(), 0, 0, 700, 120);
 
     MidiKeyboard *keys = (MidiKeyboard*)wid->parent_struct;
 
@@ -1035,6 +1043,18 @@ void XKeyBoard::pitchwheel_callback(void *w_, void* user_data) {
     unsigned int high = (change >> 7) & 0x7f;  // High 7 bits
     xjmkb->mmessage->send_midi_cc(0xE0,  low, high, 3);
 }
+// static
+void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    adj_set_value(w->adj,64);
+    int value = (int)adj_get_value(w->adj);
+    unsigned int change = (unsigned int)(128 * value);
+    unsigned int low = change & 0x7f;  // Low 7 bits
+    unsigned int high = (change >> 7) & 0x7f;  // High 7 bits
+    xjmkb->mmessage->send_midi_cc(0xE0,  low, high, 3);
+}
 
 // static
 void XKeyBoard::balance_callback(void *w_, void* user_data) {
@@ -1119,6 +1139,12 @@ void XKeyBoard::layout_callback(void *w_, void* user_data) {
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     keys->layout = xjmkb->keylayout = (int)adj_get_value(w->adj);
+    
+    if ((int)adj_get_value(w->adj) == 3) {
+        if( access(xjmkb->keymap_file.c_str(), F_OK ) == -1 ) {
+            open_custom_keymap(xjmkb->wid, win, xjmkb->keymap_file.c_str());
+        }
+    }
 }
 
 // static
@@ -1130,6 +1156,15 @@ void XKeyBoard::octave_callback(void *w_, void* user_data) {
     keys->octave = (int)12*adj_get_value(w->adj);
     xjmkb->octave = (int)adj_get_value(w->adj);
     expose_widget(xjmkb->wid);
+}
+
+// static
+void XKeyBoard::keymap_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    if ((int)adj_get_value(w->adj) == 2) 
+        open_custom_keymap(xjmkb->wid, win, xjmkb->keymap_file.c_str());
 }
 
 // static
@@ -1232,6 +1267,11 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                 } else {
                     widget_hide(menu);
                 }
+            }
+            break;
+            case (XK_k):
+            {
+                open_custom_keymap(xjmkb->wid, win, xjmkb->keymap_file.c_str());
             }
             break;
             default:

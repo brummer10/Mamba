@@ -181,6 +181,7 @@ private:
     static void bpm_callback(void *w_, void* user_data);
     static void layout_callback(void *w_, void* user_data);
     static void octave_callback(void *w_, void* user_data);
+    static void keymap_callback(void *w_, void* user_data);
     static void modwheel_callback(void *w_, void* user_data);
     static void detune_callback(void *w_, void* user_data);
     static void attack_callback(void *w_, void* user_data);
@@ -190,6 +191,7 @@ private:
     static void velocity_callback(void *w_, void* user_data);
     static void pitchwheel_callback(void *w_, void* user_data);
     static void balance_callback(void *w_, void* user_data);
+    static void pitchwheel_release_callback(void *w_, void* button, void* user_data);
     static void sustain_callback(void *w_, void* user_data);
     static void sostenuto_callback(void *w_, void* user_data);
     static void record_callback(void *w_, void* user_data);
@@ -227,6 +229,7 @@ public:
 
     std::string client_name;
     std::string config_file;
+    std::string keymap_file;
     std::string path;
     std::string filepath;
 

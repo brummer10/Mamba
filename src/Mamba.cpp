@@ -104,11 +104,13 @@ bool MidiLoad::load_from_file(std::vector<MidiEvent> *play, int *song_bpm, const
     *(song_bpm) = 120;
     while ((smf_event = smf_get_next_event(smf)) !=NULL) {
         if (smf_event_is_metadata(smf_event)) {
+            // char *decoded = smf_event_decode(smf_event);
+            // if (decoded ) fprintf(stderr,"%s\n", decoded);
             // Fetch Song BPM
             if (smf_event->midi_buffer[1]==0x51) {
-                int mspqn = (smf_event->midi_buffer[3] << 16) + (smf_event->midi_buffer[4] << 8) + smf_event->midi_buffer[5];
-                *(song_bpm) = 60000000.0 / (double)mspqn;
-               //  fprintf(stderr,"SONG BPM: %i\n",*(song_bpm));
+                double mspqn = (smf_event->midi_buffer[3] << 16) + (smf_event->midi_buffer[4] << 8) + smf_event->midi_buffer[5];
+                *(song_bpm) = round(60000000.0 / mspqn);
+                 //fprintf(stderr,"SONG BPM: %i\n",*(song_bpm));
             } else {
                 continue;
             }
@@ -117,7 +119,12 @@ bool MidiLoad::load_from_file(std::vector<MidiEvent> *play, int *song_bpm, const
                                         smf_event->midi_buffer_length, smf_event->time_seconds - deltaTime};
         play->push_back(ev);
         deltaTime = smf_event->time_seconds;
+        //fprintf(stderr,"%d: %f seconds, %d pulses, %d delta pulses\n", smf_event->event_number,
+        //    smf_event->time_seconds, smf_event->time_pulses, smf_event->delta_time_pulses);
+
     }
+    // time_pulse to seconds = time_pulse*(song_bpm x smf->ppqn)*(1/60)
+
     if (smf) smf_delete(smf);
     smf = NULL;
     return true;

@@ -44,7 +44,7 @@
 	LDFLAGS += -Wl,-z,noexecstack -I./ -I../libxputty/libxputty/include/ \
 	`pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo smf` -lm -pthread
 	# invoke build files
-	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XJack.cpp NsmHandler.cpp xkeyboard.c
+	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XJack.cpp NsmHandler.cpp xkeyboard.c xcustommap.c
 	## output style (bash colours)
 	BLUE = "\033[1;34m"
 	RED =  "\033[1;31m"
