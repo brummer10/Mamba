@@ -23,6 +23,7 @@
 
 
 void keysym_azerty_to_midi_key(long inkey, float *midi_key) {
+    /* these keys are common to all types of azerty keyboards */
     switch(inkey) {
         case(XK_w) : (*midi_key) = 12.0; /* w = C0 */
         break;
@@ -46,60 +47,35 @@ void keysym_azerty_to_midi_key(long inkey, float *midi_key) {
         break;
         case(XK_j) : (*midi_key) = 22.0; /* j */
         break;
-//         case(XK_comma) : (*midi_key) = 23.0; /* , */
-//         break;
-//         case(XK_semicolon) : (*midi_key) = 24.0; /* ; = C1 */
-//         break;
-        case(XK_l) : (*midi_key) = 25.0; /* l */
-        break;
-//         case(XK_colon) : (*midi_key) = 26.0; /* : */
-//         break;
-        case(XK_m) : (*midi_key) = 27.0; /* m */
-        break;
-//         case(XK_exclam) : (*midi_key) = 28.0; /* ! */
-//         break;
-//         case(XK_ugrave) : (*midi_key) = 29.0; /* ù = F1 */
-//         break;
-//         case(XK_asterisk) : (*midi_key) = 30.0; /* * */
-//         break;
         case(XK_a) : (*midi_key) = 24.0; /* a = C1 */
         break;
-//         case(XK_eacute) : (*midi_key) = 25.0; /* é */
-//         break;
+        case(XK_l) : (*midi_key) = 25.0; /* l */
+        break;
         case(XK_z) : (*midi_key) = 26.0; /* z */
         break;
-//         case(XK_quotedbl) : (*midi_key) = 27.0; /* " */
-//         break;
+        case(XK_m) : (*midi_key) = 27.0; /* m */
+        break;
         case(XK_e) : (*midi_key) = 28.0; /* e */
         break;
         case(XK_r) : (*midi_key) = 29.0; /* r */
         break;
-//         case(XK_parenleft) : (*midi_key) = 30.0; /* ( */
-//         break;
         case(XK_t) : (*midi_key) = 31.0; /* t */
         break;
-//         case(XK_minus) : (*midi_key) = 32.0; /* - */
-//         break;
         case(XK_y) : (*midi_key) = 33.0; /* y */
         break;
-//         case(XK_egrave) : (*midi_key) = 34.0; /* è */
-//         break;
         case(XK_u) : (*midi_key) = 35.0; /* u */
         break;
         case(XK_i) : (*midi_key) = 36.0; /* i */
         break;
-//         case(XK_ccedilla) : (*midi_key) = 37.0; /* ç */
-//         break;
         case(XK_o) : (*midi_key) = 38.0; /* o */
         break;
-//         case(XK_agrave) : (*midi_key) = 39.0; /* à */
-//         break;
         case(XK_p) : (*midi_key) = 40.0; /* p */
         break;
     }
 }
 
 void keysym_azerty_fr_to_midi_key(long inkey, float *midi_key) {
+    /* common azerty keyboards sell in France */
     switch(inkey) {
         case(XK_less) : (*midi_key) = 11.0; /* "<" = B-1 */
         break;
@@ -107,17 +83,17 @@ void keysym_azerty_fr_to_midi_key(long inkey, float *midi_key) {
         break;
         case(XK_semicolon) : (*midi_key) = 24.0; /* ; = C1 */
         break;
+        case(XK_eacute) : (*midi_key) = 25.0; /* é */
+        break;
         case(XK_colon) : (*midi_key) = 26.0; /* : */
+        break;
+        case(XK_quotedbl) : (*midi_key) = 27.0; /* " */
         break;
         case(XK_exclam) : (*midi_key) = 28.0; /* ! */
         break;
         case(XK_ugrave) : (*midi_key) = 29.0; /* ù = F1 */
         break;
         case(XK_asterisk) : (*midi_key) = 30.0; /* * */
-        break;
-        case(XK_eacute) : (*midi_key) = 25.0; /* é */
-        break;
-        case(XK_quotedbl) : (*midi_key) = 27.0; /* " */
         break;
         case(XK_parenleft) : (*midi_key) = 30.0; /* ( */
         break;
@@ -129,10 +105,6 @@ void keysym_azerty_fr_to_midi_key(long inkey, float *midi_key) {
         break;
         case(XK_agrave) : (*midi_key) = 39.0; /* à */
         break;
-//         case(XK_dead_diaeresis) : (*midi_key) = 41.0; /* dead diaeresis */
-//         break;
-//         case(XK_dead_circumflex) : (*midi_key) = 41.0; /* dead circumflex */
-//         break;
         case (XK_parenright) : (*midi_key) = 41.0; /* ) = F2 */
         break;
         case (XK_equal) : (*midi_key) = 42.0; /* = */
@@ -144,6 +116,7 @@ void keysym_azerty_fr_to_midi_key(long inkey, float *midi_key) {
 }
 
 void keysym_azerty_be_to_midi_key(long inkey, float *midi_key) {
+    /* common azerty keyboards sell in Belgium (Wallonia) */
     switch(inkey) {
         case(XK_less) : (*midi_key) = 11.0; /* "<" = B-1 */
         break;
@@ -151,17 +124,17 @@ void keysym_azerty_be_to_midi_key(long inkey, float *midi_key) {
         break;
         case(XK_semicolon) : (*midi_key) = 24.0; /* ; = C1 */
         break;
+        case(XK_eacute) : (*midi_key) = 25.0; /* é */
+        break;
         case(XK_colon) : (*midi_key) = 26.0; /* : */
+        break;
+        case(XK_quotedbl) : (*midi_key) = 27.0; /* " */
         break;
         case(XK_equal) : (*midi_key) = 28.0; /* = */
         break;
         case(XK_ugrave) : (*midi_key) = 29.0; /* ù = F1 */
         break;
         case(XK_mu) : (*midi_key) = 30.0; /* µ */
-        break;
-        case(XK_eacute) : (*midi_key) = 25.0; /* é */
-        break;
-        case(XK_quotedbl) : (*midi_key) = 27.0; /* " */
         break;
         case(XK_parenleft) : (*midi_key) = 30.0; /* ( */
         break;
@@ -173,10 +146,6 @@ void keysym_azerty_be_to_midi_key(long inkey, float *midi_key) {
         break;
         case(XK_agrave) : (*midi_key) = 39.0; /* à */
         break;
-//         case(XK_dead_diaeresis) : (*midi_key) = 41.0; /* dead diaeresis */
-//         break;
-//         case(XK_dead_circumflex) : (*midi_key) = 41.0; /* dead circumflex */
-//         break;
         case (XK_parenright) : (*midi_key) = 41.0; /* ) = F2 */
         break;
         case (XK_minus) : (*midi_key) = 42.0; /* - */
@@ -188,6 +157,7 @@ void keysym_azerty_be_to_midi_key(long inkey, float *midi_key) {
 }
 
 void keysym_azerty_afnor_to_midi_key(long inkey, float *midi_key) {
+    /* probably a future standard for azerty keyboards */
     switch(inkey) {
         case(XK_less) : (*midi_key) = 11.0; /* "<" = B-1 */
         break;
@@ -195,17 +165,17 @@ void keysym_azerty_afnor_to_midi_key(long inkey, float *midi_key) {
         break;
         case(XK_semicolon) : (*midi_key) = 24.0; /* ; = C1 */
         break;
+        case(XK_eacute) : (*midi_key) = 25.0; /* é */
+        break;
         case(XK_colon) : (*midi_key) = 26.0; /* : */
+        break;
+        case(XK_quotedbl) : (*midi_key) = 27.0; /* " */
         break;
         case(XK_exclam) : (*midi_key) = 28.0; /* ! */
         break;
         case(XK_ugrave) : (*midi_key) = 29.0; /* ù = F1 */
         break;
         case(XK_asterisk) : (*midi_key) = 30.0; /* * */
-        break;
-        case(XK_eacute) : (*midi_key) = 25.0; /* é */
-        break;
-        case(XK_quotedbl) : (*midi_key) = 27.0; /* " */
         break;
         case(XK_parenleft) : (*midi_key) = 30.0; /* ( */
         break;
@@ -217,10 +187,6 @@ void keysym_azerty_afnor_to_midi_key(long inkey, float *midi_key) {
         break;
         case(XK_agrave) : (*midi_key) = 39.0; /* à */
         break;
-//         case(XK_dead_diaeresis) : (*midi_key) = 41.0; /* dead diaeresis */
-//         break;
-//         case(XK_dead_circumflex) : (*midi_key) = 41.0; /* dead circumflex */
-//         break;
         case (XK_parenright) : (*midi_key) = 41.0; /* ) = F2 */
         break;
         case (XK_equal) : (*midi_key) = 42.0; /* = */
