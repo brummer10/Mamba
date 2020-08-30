@@ -65,6 +65,12 @@ typedef struct {
 
 void keysym_azerty_to_midi_key(long inkey, float *midi_key);
 
+void keysym_azerty_fr_to_midi_key(long inkey, float *midi_key);
+
+void keysym_azerty_be_to_midi_key(long inkey, float *midi_key);
+
+void keysym_azerty_afnor_to_midi_key(long inkey, float *midi_key);
+
 void keysym_qwertz_to_midi_key(long inkey, float *midi_key);
 
 void keysym_qwerty_to_midi_key(unsigned int inkey, float *midi_key);
