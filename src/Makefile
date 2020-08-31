@@ -32,11 +32,14 @@
 
 	LIB_DIR := ../libxputty/libxputty/
 	HEADER_DIR := $(LIB_DIR)include/
+	LOCALIZE_DIR := ../libxputty/xputty/dialogs/
 	PREFIX ?= /usr
 	BIN_DIR ?= $(PREFIX)/bin
 	SHARE_DIR ?= $(PREFIX)/share
 	DESKAPPS_DIR ?= $(SHARE_DIR)/applications
 	PIXMAPS_DIR ?= $(SHARE_DIR)/pixmaps
+	MAN_DIR ?= $(SHARE_DIR)/man/man1
+	LOCAL_DIR ?= $(SHARE_DIR)/locale
 
 	# set compile flags
 	CXXFLAGS += -O2 -D_FORTIFY_SOURCE=2 -Wall $(SSE_CFLAGS)
@@ -45,14 +48,15 @@
 	`pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo smf` -lm -pthread
 	# invoke build files
 	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XJack.cpp NsmHandler.cpp xkeyboard.c xcustommap.c
+	LOCALIZE = $(LOCALIZE_DIR)xfile-dialog.c $(LOCALIZE_DIR)xmessage-dialog.c $(LOCALIZE_DIR)xsavefile-dialoge.c
 	## output style (bash colours)
 	BLUE = "\033[1;34m"
 	RED =  "\033[1;31m"
 	NONE = "\033[0m"
 
-.PHONY : $(HEADER_DIR)*.h all debug clean install uninstall 
+.PHONY : $(HEADER_DIR)*.h all debug nls gettext updatepot po clean install uninstall 
 
-all : check $(NAME)
+all : check nls $(NAME)
 	@mkdir -p ./$(BUILD_DIR)
 	@mv ./$(EXEC_NAME) ./$(BUILD_DIR)
 	@if [ -f ./$(BUILD_DIR)/$(EXEC_NAME) ]; then echo $(BLUE)"build finish, now run make install"; \
@@ -61,6 +65,30 @@ all : check $(NAME)
 
 debug: CXXFLAGS = $(DEBUG_CXXFLAGS) 
 debug: all
+
+nls: LDFLAGS += -DENABLE_NLS -DGETTEXT_PACKAGE=\"$(EXEC_NAME)\" -DLOCAL_DIR=\"$(LOCAL_DIR)\"
+nls: gettext all 
+
+    #@localisation
+MSGLANGS=$(notdir $(wildcard po/*po))
+MSGOBJS=$(addprefix locale/,$(MSGLANGS:.po=/LC_MESSAGES/$(EXEC_NAME).mo))
+LANGS=$(addprefix locale/,$(MSGLANGS:.po=/LC_MESSAGES/))
+LANGW=$(words  $(MSGLANGS))
+
+gettext: $(MSGOBJS)
+
+locale/%/LC_MESSAGES/$(EXEC_NAME).mo: po/%.po
+	mkdir -p $(dir $@)
+	msgfmt -c -o $@ po/$*.po
+
+updatepot:
+	@mkdir -p ./po/
+	xgettext --keyword=_ --language=C++ --add-comments --sort-output --package-name=$(EXEC_NAME) --package-version=$(VER) -o po/$(EXEC_NAME).pot $(OBJECTS) $(LOCALIZE)
+	for POFILE in $(MSGLANGS) ; do msgmerge --update po/$$POFILE po/$(EXEC_NAME).pot ; done
+
+po:
+	msginit --input=po/$(EXEC_NAME).pot --locale=$(LANG) --output=po/$(basename $(LANG)).po
+	echo $(LANG)
 
 check :
 ifdef ARMCPU
@@ -81,8 +109,18 @@ ifneq ("$(wildcard ./$(BUILD_DIR))","")
 	cp $(NAME).desktop $(DESTDIR)$(DESKAPPS_DIR)
 	mkdir -p $(DESTDIR)$(PIXMAPS_DIR)
 	cp $(NAME).png $(DESTDIR)$(PIXMAPS_DIR)
-	@echo ". ." $(BLUE)", done"$(NONE)
+	@if [ ${LANGW} -gt 1 ]; then \
+		for lang in $(LANGS) ; \
+		do \
+			mkdir -p $(DESTDIR)$(SHARE_DIR)/$$lang; \
+			cp $$lang/$(EXEC_NAME).mo $(DESTDIR)$(SHARE_DIR)/$$lang; \
+		done \
+	elif [ ${LANGW} -gt 0 ]; then \
+			mkdir -p $(DESTDIR)$(SHARE_DIR)/$(LANGS); \
+			cp $(LANGS)/$(EXEC_NAME).mo $(DESTDIR)$(SHARE_DIR)/$(LANGS); \
+	fi
 	update-desktop-database || true
+	@echo ". ." $(BLUE)", done"$(NONE)
 else
 	@echo ". ." $(BLUE)", you must build first"$(NONE)
 endif
@@ -91,7 +129,7 @@ uninstall :
 	@rm -rf $(DESTDIR)$(BIN_DIR)/$(EXEC_NAME)
 	@rm -rf $(DESTDIR)$(DESKAPPS_DIR)/$(NAME).desktop
 	@rm -rf $(DESTDIR)$(PIXMAPS_DIR)/$(NAME).png
-
+	@rm -rf $(addprefix $(SHARE_DIR)/, $(MSGOBJS))
 	@echo ". ." $(BLUE)", done"$(NONE)
 
 $(NAME) :

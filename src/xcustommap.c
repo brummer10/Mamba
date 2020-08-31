@@ -47,13 +47,13 @@ void draw_viewslider(void *w_, void* user_data) {
     int width = attrs.width;
     int height = attrs.height;
     float sliderstate = adj_get_state(w->adj);
-    use_bg_color_scheme(w, NORMAL_);
-    cairo_rectangle(w->crb, width-5,0,5,height);
+    use_bg_color_scheme(w, get_color_state(w));
+    cairo_rectangle(w->crb, 0,0,width,height);
     cairo_fill_preserve(w->crb);
     use_shadow_color_scheme(w, NORMAL_);
     cairo_fill(w->crb);
     use_bg_color_scheme(w, NORMAL_);
-    cairo_rectangle(w->crb, width-5,(height-10)*sliderstate,5,10);
+    cairo_rectangle(w->crb, 0,(height-10)*sliderstate,width,10);
     cairo_fill_preserve(w->crb);
     use_fg_color_scheme(w, NORMAL_);
     cairo_set_line_width(w->crb,1);
@@ -109,10 +109,6 @@ void draw_custom_keymap(void *w_, void* user_data) {
             o++;
         }
     }
-    use_base_color_scheme(w, SELECTED_);
-    cairo_rectangle(w->crb,0,(i-5)*5,width,5);
-    cairo_fill(w->crb);
-    draw_viewslider(w, NULL);
 }
 
 void custom_motion(void *w_, void* xmotion_, void* user_data) {
@@ -171,8 +167,18 @@ void key_press(void *w_, void *key_, void *user_data) {
 
 void set_viewpoint(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
+    Widget_t *p = (Widget_t*)w->parent;
+    Widget_t *slider = p->childlist->childs[0];
+    adj_set_state(slider->adj, adj_get_state(w->adj));
     int v = (int)max(0,adj_get_value(w->adj));
     XMoveWindow(w->app->dpy,w->widget,0, -10*v);
+}
+
+void set_viewport(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *p = (Widget_t*)w->parent;
+    Widget_t *viewport = p->childlist->childs[1];
+    adj_set_state(viewport->adj, adj_get_state(w->adj));
 }
 
 static void customkeys_mem_free(void *w_, void* user_data) {
@@ -182,6 +188,12 @@ static void customkeys_mem_free(void *w_, void* user_data) {
 }
 
 Widget_t* add_viewport(Widget_t *parent, int width, int height) {
+    Widget_t *slider = add_vslider(parent, "", 230, 0, 10, 295);
+    slider->func.expose_callback = draw_viewslider;
+    slider->adj_y = add_adjustment(slider,0.0, 0.0, 0.0, 1.0,0.0085, CL_VIEWPORTSLIDER);
+    slider->adj = slider->adj_y;
+    slider->func.value_changed_callback = set_viewport;
+
     Widget_t *wid = create_widget(parent->app, parent, 0, 0, width, height);
     XSelectInput(wid->app->dpy, wid->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
@@ -203,6 +215,8 @@ Widget_t* add_viewport(Widget_t *parent, int width, int height) {
     wid->func.motion_callback = custom_motion;
     wid->func.key_press_callback = key_press;
     adj_set_value(wid->adj,max_value/9.8);
+
+
     return wid;
 }
 
@@ -273,7 +287,7 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
     XSetWMNormalHints(wid->app->dpy, wid->widget, win_size_hints);
     XFree(win_size_hints);
 
-    widget_set_title(wid, "Custom Keymap - Editor");
+    widget_set_title(wid, _("Custom Keymap - Editor"));
     wid->func.expose_callback = draw_custom_window;
     XSetTransientForHint(w->app->dpy, wid->widget, w->widget);
     CustomKeymap *customkeys = (CustomKeymap*)malloc(sizeof(CustomKeymap));
@@ -287,14 +301,15 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
     wid->flags |= HAS_MEM | NO_AUTOREPEAT | NO_PROPAGATE;
     wid->func.mem_free_callback = customkeys_mem_free;
 
-    Widget_t *view = create_widget(wid->app, wid, 30, 30, 240, 300);
-    add_viewport(view, 240, 5.5*700);
-    Widget_t * button = add_button(wid, "Chancel", 50, 350, 75, 30);
+    Widget_t *view = create_widget(wid->app, wid, 30, 30, 240, 295);
+    add_viewport(view, 230, 3840);
+
+    Widget_t * button = add_button(wid, _("Chancel"), 50, 350, 75, 30);
     button->scale.gravity = ASPECT;
     button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     button->func.value_changed_callback = chancel_callback;
 
-    button = add_button(wid, "Save", 175, 350, 75, 30);
+    button = add_button(wid, _("Save"), 175, 350, 75, 30);
     button->scale.gravity = ASPECT;
     button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     button->func.value_changed_callback = save_callback;

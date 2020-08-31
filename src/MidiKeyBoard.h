@@ -37,13 +37,21 @@
 #include <iostream>
 #include <sstream>
 
+
+#ifdef ENABLE_NLS
+#include <libintl.h>
+#include <clocale>
+#define _(S) gettext(S)
+#else
+#define _(S) S
+#endif
+
 #include "NsmHandler.h"
 #include "Mamba.h"
 #include "XJack.h"
 #include "xwidgets.h"
 #include "xfile-dialog.h"
 #include "xmessage-dialog.h"
-
 
 #pragma once
 

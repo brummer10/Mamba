@@ -437,7 +437,7 @@ void XKeyBoard::init_ui(Xputty *app) {
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
     widget_set_icon_from_png(win,icon,LDVAR(midikeyboard_png));
-    std::string tittle = client_name + " - Virtual Midi Keyboard";
+    std::string tittle = client_name + _(" - Virtual Midi Keyboard");
     widget_set_title(win, tittle.c_str());
     win->flags |= HAS_MEM | NO_AUTOREPEAT;
     win->scale.gravity = NORTHEAST;
@@ -465,48 +465,48 @@ void XKeyBoard::init_ui(Xputty *app) {
     XSetWMNormalHints(win->app->dpy, win->widget, win_size_hints);
     XFree(win_size_hints);
 
-    menubar = add_menu(win,"_File",0,0,60,20);
-    menu_add_entry(menubar,"_Load");
-    menu_add_entry(menubar,"_Save as");
-    menu_add_entry(menubar,"_Quit");
+    menubar = add_menu(win,_("_File"),0,0,60,20);
+    menu_add_entry(menubar,_("_Load"));
+    menu_add_entry(menubar,_("_Save as"));
+    menu_add_entry(menubar,_("_Quit"));
     menubar->func.value_changed_callback = file_callback;
 
-    mapping = add_menu(win,"_Mapping",60,0,60,20);
-    keymap = menu_add_submenu(mapping,"Keyboard");
-    menu_add_radio_entry(keymap,"qwertz");
-    menu_add_radio_entry(keymap,"qwerty");
-    menu_add_radio_entry(keymap,"azerty fr");
-    menu_add_radio_entry(keymap,"azerty be");
-    menu_add_radio_entry(keymap,"custom");
+    mapping = add_menu(win,_("_Mapping"),60,0,60,20);
+    keymap = menu_add_submenu(mapping,_("Keyboard"));
+    menu_add_radio_entry(keymap,_("qwertz"));
+    menu_add_radio_entry(keymap,_("qwerty"));
+    menu_add_radio_entry(keymap,_("azerty (fr)"));
+    menu_add_radio_entry(keymap,_("azerty (be)"));
+    menu_add_radio_entry(keymap,_("custom"));
     keymap->func.value_changed_callback = layout_callback;
 
-    octavemap = menu_add_submenu(mapping,"Octave");
-    menu_add_radio_entry(octavemap,"C 0");
-    menu_add_radio_entry(octavemap,"C 1");
-    menu_add_radio_entry(octavemap,"C 2");
-    menu_add_radio_entry(octavemap,"C 3");
-    menu_add_radio_entry(octavemap,"C 4");
+    octavemap = menu_add_submenu(mapping,_("Octave"));
+    menu_add_radio_entry(octavemap,_("C 0"));
+    menu_add_radio_entry(octavemap,_("C 1"));
+    menu_add_radio_entry(octavemap,_("C 2"));
+    menu_add_radio_entry(octavemap,_("C 3"));
+    menu_add_radio_entry(octavemap,_("C 4"));
     adj_set_value(octavemap->adj, 2.0);
     octavemap->func.value_changed_callback = octave_callback;
 
-    menu_add_entry(mapping,"_Keymap");
+    menu_add_entry(mapping,_("_Keymap"));
     mapping->func.value_changed_callback = keymap_callback;
 
-    connection = add_menu(win,"C_onnect",130,0,60,20);
-    inputs = menu_add_submenu(connection,"Input");
-    outputs = menu_add_submenu(connection,"Output");
+    connection = add_menu(win,_("C_onnect"),130,0,60,20);
+    inputs = menu_add_submenu(connection,_("Input"));
+    outputs = menu_add_submenu(connection,_("Output"));
     connection->func.button_press_callback = make_connection_menu;
     inputs->func.value_changed_callback = connection_in_callback;
     outputs->func.value_changed_callback = connection_out_callback;
 
-    info = add_menu(win,"_Info",190,0,60,20);
-    menu_add_entry(info,"_About");
+    info = add_menu(win,_("_Info"),190,0,60,20);
+    menu_add_entry(info,_("_About"));
     info->func.value_changed_callback = info_callback;
 
-    Widget_t * tmp = add_label(win,"Channel:",10,30,60,20);
+    Widget_t * tmp = add_label(win,_("Channel:"),10,30,60,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    channel =  add_combobox(win, "Channel", 70, 30, 60, 30);
+    channel =  add_combobox(win, _("Channel"), 70, 30, 60, 30);
     channel->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     channel->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(channel,1,16);
@@ -520,10 +520,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,"Bank:",140,30,60,20);
+    tmp = add_label(win,_("Bank:"),140,30,60,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    bank =  add_combobox(win, "Bank", 200, 30, 60, 30);
+    bank =  add_combobox(win, _("Bank"), 200, 30, 60, 30);
     bank->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bank->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(bank,0,127);
@@ -536,10 +536,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,"Program:",260,30,60,20);
+    tmp = add_label(win,_("Program:"),260,30,60,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    program =  add_combobox(win, "Program", 320, 30, 60, 30);
+    program =  add_combobox(win, _("Program"), 320, 30, 60, 30);
     program->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     program->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(program,0,127);
@@ -552,10 +552,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,"BPM:",380,30,60,20);
+    tmp = add_label(win,_("BPM:"),380,30,60,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    bpm = add_valuedisplay(win, "BPM", 440, 30, 60, 30);
+    bpm = add_valuedisplay(win, _("BPM"), 440, 30, 60, 30);
     bpm->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bpm->scale.gravity = ASPECT;
     set_adjustment(bpm->adj,120.0, mbpm, 24.0, 360.0, 1.0, CL_CONTINUOS);
@@ -563,49 +563,49 @@ void XKeyBoard::init_ui(Xputty *app) {
     bpm->func.key_press_callback = key_press;
     bpm->func.key_release_callback = key_release;
 
-    songbpm = add_label(win,"File BPM:",500,30,100,20);
-    snprintf(songbpm->input_label, 31,"File BPM: %d",  (int) song_bpm);
+    songbpm = add_label(win,_("File BPM:"),500,30,100,20);
+    snprintf(songbpm->input_label, 31,_("File BPM: %d"),  (int) song_bpm);
     songbpm->label = songbpm->input_label;
 
-    w[0] = add_keyboard_knob(win, "PitchBend", 5, 65, 60, 75);
+    w[0] = add_keyboard_knob(win, _("PitchBend"), 5, 65, 60, 75);
     w[0]->data = PITCHBEND;
     w[0]->func.value_changed_callback = pitchwheel_callback;
     w[0]->func.button_release_callback = pitchwheel_release_callback;
 
-    w[9] = add_keyboard_knob(win, "Balance", 65, 65, 60, 75);
+    w[9] = add_keyboard_knob(win, _("Balance"), 65, 65, 60, 75);
     w[9]->data = BALANCE;
     w[9]->func.value_changed_callback = balance_callback;
 
-    w[1] = add_keyboard_knob(win, "ModWheel", 125, 65, 60, 75);
+    w[1] = add_keyboard_knob(win, _("ModWheel"), 125, 65, 60, 75);
     w[1]->data = MODULATION;
     w[1]->func.value_changed_callback = modwheel_callback;
 
-    w[2] = add_keyboard_knob(win, "Detune", 185, 65, 60, 75);
+    w[2] = add_keyboard_knob(win, _("Detune"), 185, 65, 60, 75);
     w[2]->data = CELESTE;
     w[2]->func.value_changed_callback = detune_callback;
 
-    w[10] = add_keyboard_knob(win, "Expression", 245, 65, 60, 75);
+    w[10] = add_keyboard_knob(win, _("Expression"), 245, 65, 60, 75);
     w[10]->data = EXPRESSION;
     w[10]->func.value_changed_callback = expression_callback;
 
-    w[3] = add_keyboard_knob(win, "Attack", 305, 65, 60, 75);
+    w[3] = add_keyboard_knob(win, _("Attack"), 305, 65, 60, 75);
     w[3]->data = ATTACK_TIME;
     w[3]->func.value_changed_callback = attack_callback;
 
-    w[4] = add_keyboard_knob(win, "Release", 365, 65, 60, 75);
+    w[4] = add_keyboard_knob(win, _("Release"), 365, 65, 60, 75);
     w[4]->data = RELEASE_TIME;
     w[4]->func.value_changed_callback = release_callback;
 
-    w[5] = add_keyboard_knob(win, "Volume", 425, 65, 60, 75);
+    w[5] = add_keyboard_knob(win, _("Volume"), 425, 65, 60, 75);
     w[5]->data = VOLUME;
     w[5]->func.value_changed_callback = volume_callback;
 
-    w[6] = add_keyboard_knob(win, "Velocity", 485, 65, 60, 75);
+    w[6] = add_keyboard_knob(win, _("Velocity"), 485, 65, 60, 75);
     w[6]->data = VELOCITY;
     set_adjustment(w[6]->adj,127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[6]->func.value_changed_callback = velocity_callback;
 
-    w[7] = add_toggle_button(win, "Sustain", 550, 70, 75, 30);
+    w[7] = add_toggle_button(win, _("Sustain"), 550, 70, 75, 30);
     w[7]->data = SUSTAIN;
     w[7]->scale.gravity = ASPECT;
     w[7]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -613,7 +613,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     w[7]->func.key_press_callback = key_press;
     w[7]->func.key_release_callback = key_release;
 
-    w[8] = add_toggle_button(win, "Sostenuto", 550, 105, 75, 30);
+    w[8] = add_toggle_button(win, _("Sostenuto"), 550, 105, 75, 30);
     w[8]->data = SOSTENUTO;
     w[8]->scale.gravity = ASPECT;
     w[8]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -621,13 +621,13 @@ void XKeyBoard::init_ui(Xputty *app) {
     w[8]->func.key_press_callback = key_press;
     w[8]->func.key_release_callback = key_release;
 
-    record = add_toggle_button(win, "_Record", 635, 70, 55, 30);
+    record = add_toggle_button(win, _("_Record"), 635, 70, 55, 30);
     record->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     record->func.value_changed_callback = record_callback;
     record->func.key_press_callback = key_press;
     record->func.key_release_callback = key_release;
 
-    play = add_toggle_button(win, "_Play", 635, 105, 55, 30);
+    play = add_toggle_button(win, _("_Play"), 635, 105, 55, 30);
     play->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     play->func.value_changed_callback = play_callback;
     play->func.key_press_callback = key_press;
@@ -852,7 +852,7 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
 #ifdef __XDG_MIME_H__
         if(!strstr(xdg_mime_get_mime_type_from_file_name(*(const char**)user_data), "midi")) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
-            "Couldn't load file, is that a MIDI file?",NULL);
+            _("Couldn't load file, is that a MIDI file?"),NULL);
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
             return;
         }
@@ -861,15 +861,15 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
         adj_set_value(xjmkb->record->adj,0.0);
         if (!xjmkb->load.load_from_file(&xjmkb->xjack->rec.play, &xjmkb->song_bpm, *(const char**)user_data)) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
-            "Couldn't load file, is that a MIDI file?",NULL);
+            _("Couldn't load file, is that a MIDI file?"),NULL);
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
         } else {
             std::string file(basename(*(char**)user_data));
             xjmkb->filepath = dirname(*(char**)user_data);
-            std::string tittle = xjmkb->client_name + " - Virtual Midi Keyboard" + " - " + file;
+            std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard") + " - " + file;
             widget_set_title(xjmkb->win, tittle.c_str());
             adj_set_value(xjmkb->bpm->adj, xjmkb->song_bpm);
-            snprintf(xjmkb->songbpm->input_label, 31,"File BPM: %d",  (int) xjmkb->song_bpm);
+            snprintf(xjmkb->songbpm->input_label, 31,_("File BPM: %d"),  (int) xjmkb->song_bpm);
             xjmkb->songbpm->label = xjmkb->songbpm->input_label;
             expose_widget(xjmkb->songbpm);
         }
@@ -921,11 +921,11 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    Widget_t *dia = open_message_dialog(xjmkb->win, INFO_BOX, "Mamba", 
-        "Mamba v1.3 is written by Hermann Meyer|released under the BSD Zero Clause License"
+    Widget_t *dia = open_message_dialog(xjmkb->win, INFO_BOX, _("Mamba"), 
+        _("Mamba v1.3 is written by Hermann Meyer|released under the BSD Zero Clause License"
         "|https://github.com/brummer10/Mamba"
-        "|For midi file handling it use libsmf|a BSD-licensed C library|written by Edward Tomasz Napierała"
-        "|https://github.com/stump/libsmf",NULL);
+        "|For midi file handling it use libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala"
+        "|https://github.com/stump/libsmf"),NULL);
     XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
 }
 
@@ -1092,10 +1092,10 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
     int value = (int)adj_get_value(w->adj);
     xjmkb->xjack->record = value;
     if (value > 0) {
-        std::string tittle = xjmkb->client_name + " - Virtual Midi Keyboard";
+        std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard");
         widget_set_title(xjmkb->win, tittle.c_str());
         xjmkb->song_bpm = adj_get_value(xjmkb->bpm->adj);
-        snprintf(xjmkb->songbpm->input_label, 31,"File BPM: %d",  (int) xjmkb->song_bpm);
+        snprintf(xjmkb->songbpm->input_label, 31,_("File BPM: %d"),  (int) xjmkb->song_bpm);
         xjmkb->songbpm->label = xjmkb->songbpm->input_label;
         expose_widget(xjmkb->songbpm);
         adj_set_value(xjmkb->play->adj,0.0);
@@ -1403,6 +1403,17 @@ void PosixSignalHandler::signal_helper_thread() {
 
 int main (int argc, char *argv[]) {
     auto t1 = std::chrono::high_resolution_clock::now();
+
+#ifdef ENABLE_NLS
+    // set Message type to locale to fetch localisation support
+    std::setlocale (LC_MESSAGES, "");
+    // set Ctype to C to avoid symbol clashes from different locales
+    std::setlocale (LC_CTYPE, "C");
+    bindtextdomain(GETTEXT_PACKAGE, LOCAL_DIR);
+    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
+    textdomain(GETTEXT_PACKAGE);
+#endif
+
     if(0 == XInitThreads()) 
         fprintf(stderr, "Warning: XInitThreads() failed\n");
 
