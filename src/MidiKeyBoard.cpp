@@ -475,7 +475,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     keymap = menu_add_submenu(mapping,"Keyboard");
     menu_add_radio_entry(keymap,"qwertz");
     menu_add_radio_entry(keymap,"qwerty");
-    menu_add_radio_entry(keymap,"azerty");
+    menu_add_radio_entry(keymap,"azerty fr");
+    menu_add_radio_entry(keymap,"azerty be");
     menu_add_radio_entry(keymap,"custom");
     keymap->func.value_changed_callback = layout_callback;
 
