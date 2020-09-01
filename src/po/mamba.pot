@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mamba 1.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-08-31 14:05+0200\n"
+"POT-Creation-Date: 2020-09-01 07:13+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -69,7 +69,7 @@ msgstr ""
 msgid "C_onnect"
 msgstr ""
 
-#: xcustommap.c:307
+#: xcustommap.c:358
 msgid "Chancel"
 msgstr ""
 
@@ -85,7 +85,11 @@ msgstr ""
 msgid "Couldn't load file, is that a MIDI file?"
 msgstr ""
 
-#: xcustommap.c:290
+#: xcustommap.c:273 xcustommap.c:299
+msgid "Couldn't load file, sorry"
+msgstr ""
+
+#: xcustommap.c:341
 msgid "Custom Keymap - Editor"
 msgstr ""
 
@@ -143,6 +147,14 @@ msgstr ""
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:322
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:499
 msgid "File filter type"
+msgstr ""
+
+#: xcustommap.c:285
+msgid "File read error"
+msgstr ""
+
+#: xcustommap.c:306
+msgid "File write error"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xmessage-dialog.c:352
@@ -220,6 +232,10 @@ msgstr ""
 msgid "Please enter a file name"
 msgstr ""
 
+#: xcustommap.c:281
+msgid "Premature end of file"
+msgstr ""
+
 #: MidiKeyBoard.cpp:542
 msgid "Program"
 msgstr ""
@@ -245,7 +261,7 @@ msgstr ""
 msgid "SELECTION"
 msgstr ""
 
-#: xcustommap.c:312 ../libxputty/xputty/dialogs/xsavefile-dialoge.c:476
+#: xcustommap.c:363 ../libxputty/xputty/dialogs/xsavefile-dialoge.c:476
 msgid "Save"
 msgstr ""
 
