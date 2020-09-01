@@ -8,32 +8,36 @@ Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Ki
 
 - Virtual Midi Keyboard for [Jack Audio Connection Kit](https://jackaudio.org/)
 - Including [NSM](https://linuxaudio.github.io/new-session-manager/) support
+- Including [gettext](https://www.gnu.org/software/gettext/) localization support
 - Channel selector
 - Bank and Program selector
-- Keyboard mapping for qwertz, qwerty and azerty selectable from menu
+- Keyboard mapping for qwertz, qwerty, azerty(fr) and azerty(be) selectable from menu
+- Keymap Editor to setup a custom Keymap
 - PC Keyboard mapping selector from C0 to C4
 - Pitchbend, Balance, Modwheel, Detune, Expression, Attack, Release, Volume and Velocity controllers
 - Sustain and Sostenuto switches
-- BPM controller
+- Connection management Menu
+- Support Midi-file load, save, record and play in loop
+- BPM controller for playback speed
+- Support Midi Beat Clock for playback speed
 - Midi Through: forward midi input to output
 - Midi input highlighting
 - Resizable to a full range 127 key view
-- Save and load Midi-files
 - Load Midi-files on command-line
-- Record and play Midi-Loops
 - Support jack_transport to start/stop Midi-Loops
-- Support Midi Beat Clock
 - Keyboard Shortcuts
 - `ctrl + r` toggle Record Button
 - `ctrl + p` toggle Play Button
 - `ctrl + l` open load file dialog
 - `ctrl + s` open save file dialog
 - `ctrl + a` show info box
+- `ctrl + k` show Keymap Editor
 - `ctrl + q` quit
 - `ctrl + c` quit
 
 ## Dependencies
 
+- libc6-dev
 - libsmf-dev
 - libcairo2-dev
 - libx11-dev
@@ -47,3 +51,11 @@ Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Ki
 - git submodule update
 - make
 - sudo make install # will install into /usr/bin
+
+## Build with localization support
+
+- git submodule init
+- git submodule update
+- make nls
+- sudo make install # will install into /usr/bin
+
