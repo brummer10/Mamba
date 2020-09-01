@@ -20,6 +20,8 @@
 
 #include "xcustommap.h"
 #include "xkeyboard.h"
+#include "xmessage-dialog.h"
+
 #include <unistd.h>
 
 static const char *notes[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
@@ -35,6 +37,35 @@ void draw_custom_window(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
     cairo_paint (w->crb);
+
+    cairo_pattern_t* pat;
+
+    pat = cairo_pattern_create_linear (20.0, 20, 280, 340);
+    cairo_pattern_add_color_stop_rgba (pat, 0,  0.25, 0.25, 0.25, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 0.25,  0.2, 0.2, 0.2, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.15, 0.15, 0.15, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 0.75,  0.1, 0.1, 0.1, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 1,  0.05, 0.05, 0.05, 1.0);
+
+    cairo_set_source (w->crb, pat);
+    cairo_rectangle(w->crb, 20.0, 20.0,260,315);
+    cairo_set_line_width(w->crb,2);
+    cairo_stroke(w->crb);
+    cairo_pattern_destroy (pat);
+    pat = NULL;
+    pat = cairo_pattern_create_linear (20, 20, 400, 460);
+    cairo_pattern_add_color_stop_rgba (pat, 1,  0.25, 0.25, 0.25, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 0.75,  0.2, 0.2, 0.2, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.15, 0.15, 0.15, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 0.25,  0.1, 0.1, 0.1, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 0,  0.05, 0.05, 0.05, 1.0);
+
+    cairo_set_source (w->crb, pat);
+    cairo_rectangle(w->crb, 26.0, 26.0,248,303);
+    cairo_stroke(w->crb);
+    cairo_pattern_destroy (pat);
+    pat = NULL;
+
 }
 
 void draw_viewslider(void *w_, void* user_data) {
@@ -54,10 +85,7 @@ void draw_viewslider(void *w_, void* user_data) {
     cairo_fill(w->crb);
     use_bg_color_scheme(w, NORMAL_);
     cairo_rectangle(w->crb, 0,(height-10)*sliderstate,width,10);
-    cairo_fill_preserve(w->crb);
-    use_fg_color_scheme(w, NORMAL_);
-    cairo_set_line_width(w->crb,1);
-    cairo_stroke(w->crb);
+    cairo_fill(w->crb);
 }
 
 void draw_custom_keymap(void *w_, void* user_data) {
@@ -155,8 +183,16 @@ void key_press(void *w_, void *key_, void *user_data) {
             expose_widget(w);
             return;
         } else if (keysym == XK_Up) {
+            if (customkeys->active) customkeys->active +=1;
+            return;
+        } else if (keysym == XK_Return) {
+            if (customkeys->active) customkeys->active +=1;
+            float value = min(w->adj->max_value,max(w->adj->min_value, 
+                                w->adj->value + w->adj->step));
+            check_value_changed(w->adj, &value);
             return;
         } else if (keysym == XK_Down) {
+            if (customkeys->active) customkeys->active -=1;
             return;
         } else if (customkeys->active) {
             customkeys->keys[customkeys->active] = keysym;
@@ -193,6 +229,8 @@ Widget_t* add_viewport(Widget_t *parent, int width, int height) {
     slider->adj_y = add_adjustment(slider,0.0, 0.0, 0.0, 1.0,0.0085, CL_VIEWPORTSLIDER);
     slider->adj = slider->adj_y;
     slider->func.value_changed_callback = set_viewport;
+    slider->flags &= ~USE_TRANSPARENCY;
+    slider->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
 
     Widget_t *wid = create_widget(parent->app, parent, 0, 0, width, height);
     XSelectInput(wid->app->dpy, wid->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
@@ -216,7 +254,6 @@ Widget_t* add_viewport(Widget_t *parent, int width, int height) {
     wid->func.key_press_callback = key_press;
     adj_set_value(wid->adj,max_value/9.8);
 
-
     return wid;
 }
 
@@ -228,18 +265,26 @@ void chancel_callback(void *w_, void* user_data) {
     }
 }
 
-void open_keymap(const char* keymapfile, long keys[128]) {
+void open_keymap(Widget_t *w, const char* keymapfile, long keys[128]) {
     if( access(keymapfile, F_OK ) != -1 ) {
         FILE *fp;
         if((fp=fopen(keymapfile, "rb"))==NULL) {
-            fprintf(stderr,"Cannot open file %s\n", keymapfile);
+            Widget_t *dia = open_message_dialog(w, ERROR_BOX, keymapfile, 
+            _("Couldn't load file, sorry"),NULL);
+            XSetTransientForHint(w->app->dpy, dia->widget, w->widget);
+            return;
         }
 
         if(fread(keys, sizeof(long), 128, fp) != 128) {
-            if(feof(fp))
-            fprintf(stderr,"Premature end of file %s\n", keymapfile);
-            else
-            fprintf(stderr,"File read error %s\n", keymapfile);
+            if(feof(fp)) {
+                Widget_t *dia = open_message_dialog(w, ERROR_BOX, keymapfile, 
+                _("Premature end of file"),NULL);
+                XSetTransientForHint(w->app->dpy, dia->widget, w->widget);
+            } else {
+                Widget_t *dia = open_message_dialog(w, ERROR_BOX, keymapfile, 
+                _("File read error"),NULL);
+                XSetTransientForHint(w->app->dpy, dia->widget, w->widget);
+            }
         }
         fclose(fp);
     }
@@ -250,11 +295,17 @@ void save_custom_keymap(Widget_t *w) {
     MidiKeyboard *keys = (MidiKeyboard*)customkeys->keyboard->parent_struct;
     FILE *fp;
     if((fp=fopen(w->label, "wb"))==NULL) {
-        fprintf(stderr,"Cannot open file %s\n", w->label);
+        Widget_t *dia = open_message_dialog(w, ERROR_BOX, w->label, 
+        _("Couldn't load file, sorry"),NULL);
+        XSetTransientForHint(w->app->dpy, dia->widget, w->widget);
+        return;
     }
 
-    if(fwrite(customkeys->keys, sizeof(long), 128, fp) != 128)
-        fprintf(stderr,"File write error %s\n", w->label);
+    if(fwrite(customkeys->keys, sizeof(long), 128, fp) != 128) {
+        Widget_t *dia = open_message_dialog(w, ERROR_BOX, w->label, 
+        _("File write error"),NULL);
+        XSetTransientForHint(w->app->dpy, dia->widget, w->widget);
+    }
     fclose(fp);
     read_keymap(w->label,keys->custom_keys);
 }
@@ -296,7 +347,7 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
     memset(customkeys->keys, 0, 128*sizeof(long));
     customkeys->keyboard = keyboard;
     wid->label = keymapfile;
-    open_keymap(wid->label,customkeys->keys);
+    open_keymap(wid, wid->label,customkeys->keys);
     wid->flags &= ~USE_TRANSPARENCY;
     wid->flags |= HAS_MEM | NO_AUTOREPEAT | NO_PROPAGATE;
     wid->func.mem_free_callback = customkeys_mem_free;
