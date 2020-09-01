@@ -25,10 +25,11 @@
 #include <unistd.h>
 
 static const char *notes[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
-static const char *octaves[] = {"0","1","2","3","4","5","6","7","8","9"};
+static const char *octaves[] = {"0","1","2","3","4","5","6","7","8","9", "10"};
 
 typedef struct {
     int active;
+    int pre_active;
     long keys[128];
     Widget_t *keyboard;
 } CustomKeymap;
@@ -48,7 +49,7 @@ void draw_custom_window(void *w_, void* user_data) {
     cairo_pattern_add_color_stop_rgba (pat, 1,  0.05, 0.05, 0.05, 1.0);
 
     cairo_set_source (w->crb, pat);
-    cairo_rectangle(w->crb, 20.0, 20.0,260,315);
+    cairo_rectangle(w->crb, 20.0, 20.0,260,315-w->scale.scale_y);
     cairo_set_line_width(w->crb,2);
     cairo_stroke(w->crb);
     cairo_pattern_destroy (pat);
@@ -61,7 +62,7 @@ void draw_custom_window(void *w_, void* user_data) {
     cairo_pattern_add_color_stop_rgba (pat, 0,  0.05, 0.05, 0.05, 1.0);
 
     cairo_set_source (w->crb, pat);
-    cairo_rectangle(w->crb, 26.0, 26.0,248,303);
+    cairo_rectangle(w->crb, 26.0, 26.0,248,303-w->scale.scale_y);
     cairo_stroke(w->crb);
     cairo_pattern_destroy (pat);
     pat = NULL;
@@ -162,10 +163,24 @@ void custom_motion(void *w_, void* xmotion_, void* user_data) {
             a++;
         }
     }
-    if (customkeys->active > -2) {
-        customkeys->active = -2;
-        expose_widget(w);
-    }
+}
+
+void leave_keymap(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    if (!w) return;
+    CustomKeymap *customkeys = (CustomKeymap*)w->parent_struct;
+    customkeys->pre_active = customkeys->active;
+    customkeys->active = -2;
+    expose_widget(w);
+}
+
+void enter_keymap(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    if (!w) return;
+    CustomKeymap *customkeys = (CustomKeymap*)w->parent_struct;
+    customkeys->active = customkeys->pre_active;
+    customkeys->pre_active = -2;
+    expose_widget(w);
 }
 
 void key_press(void *w_, void *key_, void *user_data) {
@@ -183,7 +198,7 @@ void key_press(void *w_, void *key_, void *user_data) {
             expose_widget(w);
             return;
         } else if (keysym == XK_Up) {
-            if (customkeys->active) customkeys->active +=1;
+            if (customkeys->active) customkeys->active -=1;
             return;
         } else if (keysym == XK_Return) {
             if (customkeys->active) customkeys->active +=1;
@@ -192,7 +207,7 @@ void key_press(void *w_, void *key_, void *user_data) {
             check_value_changed(w->adj, &value);
             return;
         } else if (keysym == XK_Down) {
-            if (customkeys->active) customkeys->active -=1;
+            if (customkeys->active) customkeys->active +=1;
             return;
         } else if (customkeys->active) {
             customkeys->keys[customkeys->active] = keysym;
@@ -217,6 +232,21 @@ void set_viewport(void *w_, void* user_data) {
     adj_set_state(viewport->adj, adj_get_state(w->adj));
 }
 
+void adjust_viewport(void *w_, void* user_data) {
+    Widget_t *parent = (Widget_t*)w_;
+    Widget_t *w = parent->childlist->childs[1];
+    XWindowAttributes attrs;
+    XGetWindowAttributes(parent->app->dpy, (Window)parent->widget, &attrs);
+    int height_t = attrs.height;
+    XGetWindowAttributes(parent->app->dpy, (Window)w->widget, &attrs);
+    int height = attrs.height;
+    float d = (float)height/(float)height_t;
+    float max_value = (float)((float)height/((float)(height_t/(float)(height-height_t))*(d*10.0)));
+    float value = adj_get_value(w->adj);
+    w->adj_y->max_value = max_value;
+    adj_set_value(w->adj,value);
+}
+
 static void customkeys_mem_free(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     CustomKeymap *customkeys = (CustomKeymap*)w->parent_struct;
@@ -229,6 +259,7 @@ Widget_t* add_viewport(Widget_t *parent, int width, int height) {
     slider->adj_y = add_adjustment(slider,0.0, 0.0, 0.0, 1.0,0.0085, CL_VIEWPORTSLIDER);
     slider->adj = slider->adj_y;
     slider->func.value_changed_callback = set_viewport;
+    slider->scale.gravity = NORTHWEST;
     slider->flags &= ~USE_TRANSPARENCY;
     slider->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
 
@@ -251,8 +282,12 @@ Widget_t* add_viewport(Widget_t *parent, int width, int height) {
     wid->func.adj_callback = set_viewpoint;
     wid->func.expose_callback = draw_custom_keymap;
     wid->func.motion_callback = custom_motion;
+    wid->func.leave_callback = leave_keymap;
+    wid->func.enter_callback = enter_keymap;
     wid->func.key_press_callback = key_press;
     adj_set_value(wid->adj,max_value/9.8);
+
+    parent->func.configure_notify_callback = adjust_viewport;
 
     return wid;
 }
@@ -327,13 +362,15 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
 
     XSizeHints* win_size_hints;
     win_size_hints = XAllocSizeHints();
-    win_size_hints->flags =  PMinSize|PBaseSize|PMaxSize|PWinGravity;
+    win_size_hints->flags =  PMinSize|PBaseSize|PMaxSize|PWinGravity|PResizeInc;
     win_size_hints->min_width = 300;
     win_size_hints->min_height = 400;
     win_size_hints->base_width = 300;
     win_size_hints->base_height = 400;
     win_size_hints->max_width = 300;
-    win_size_hints->max_height = 400;
+    win_size_hints->max_height = 793;
+    win_size_hints->width_inc = 0;
+    win_size_hints->height_inc = 30;
     win_size_hints->win_gravity = CenterGravity;
     XSetWMNormalHints(wid->app->dpy, wid->widget, win_size_hints);
     XFree(win_size_hints);
@@ -343,7 +380,8 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
     XSetTransientForHint(w->app->dpy, wid->widget, w->widget);
     CustomKeymap *customkeys = (CustomKeymap*)malloc(sizeof(CustomKeymap));
     wid->parent_struct = customkeys;
-    customkeys->active = -2;
+    customkeys->active = 12;
+    customkeys->pre_active = 12;
     memset(customkeys->keys, 0, 128*sizeof(long));
     customkeys->keyboard = keyboard;
     wid->label = keymapfile;
@@ -353,15 +391,16 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
     wid->func.mem_free_callback = customkeys_mem_free;
 
     Widget_t *view = create_widget(wid->app, wid, 30, 30, 240, 295);
+    view->scale.gravity = NORTHWEST;
     add_viewport(view, 230, 3840);
 
     Widget_t * button = add_button(wid, _("Chancel"), 50, 350, 75, 30);
-    button->scale.gravity = ASPECT;
+    button->scale.gravity = SOUTHWEST;
     button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     button->func.value_changed_callback = chancel_callback;
 
     button = add_button(wid, _("Save"), 175, 350, 75, 30);
-    button->scale.gravity = ASPECT;
+    button->scale.gravity = SOUTHWEST;
     button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     button->func.value_changed_callback = save_callback;
 
