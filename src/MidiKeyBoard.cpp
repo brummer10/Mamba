@@ -100,7 +100,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xsynth::XSynth *xsynth_,
         config_file = path +"/.config/Mamba.conf";
         keymap_file =  path +"/.config/Mamba.keymap";
     }
-    soundfontpath = "/usr/share/sounds/sf2/";
+    soundfontpath = getenv("HOME");
     has_config = false;
     main_x = 0;
     main_y = 0;
@@ -945,14 +945,12 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     if(user_data !=NULL) {
          
-#ifdef __XDG_MIME_H__
-        if(!strstr(xdg_mime_get_mime_type_from_file_name(*(const char**)user_data), "application/octet-stream")) {
+        if( access(*(const char**)user_data, F_OK ) == -1 ) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
-            _("Couldn't load file, is that a soundfont file?"),NULL);
+            _("Couldn't access file, sorry"),NULL);
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
             return;
         }
-#endif
         xjmkb->xsynth->unload_synth();
         xjmkb->xsynth->setup(xjmkb->xjack->SampleRate);
         xjmkb->xsynth->init_synth();
@@ -963,6 +961,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             return;
         }
         xjmkb->soundfont =  *(const char**)user_data;
+        xjmkb->soundfontpath = dirname(*(char**)user_data);
         const char **port_list = NULL;
         port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
         if (port_list) {
@@ -989,7 +988,7 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
     switch (value) {
         case(0):
         {
-            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->soundfontpath.c_str(), "application/octet-stream");
+            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->soundfontpath.c_str(), ".sf");
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
             xjmkb->win->func.dialog_callback = synth_load_response;
         }
