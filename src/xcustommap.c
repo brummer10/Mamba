@@ -30,6 +30,7 @@ static const char *octaves[] = {"0","1","2","3","4","5","6","7","8","9", "10"};
 typedef struct {
     int active;
     int pre_active;
+    int changed;
     long keys[128];
     Widget_t *keyboard;
 } CustomKeymap;
@@ -211,6 +212,7 @@ void key_press(void *w_, void *key_, void *user_data) {
             return;
         } else if (customkeys->active) {
             customkeys->keys[customkeys->active] = keysym;
+            customkeys->changed = 1;
             expose_widget(w);
         }
     }
@@ -244,7 +246,7 @@ void adjust_viewport(void *w_, void* user_data) {
     float max_value = (float)((float)height/((float)(height_t/(float)(height-height_t))*(d*10.0)));
     float value = adj_get_value(w->adj);
     w->adj_y->max_value = max_value;
-    adj_set_value(w->adj,value);
+    if (max_value < value) adj_set_value(w->adj,value);
 }
 
 static void customkeys_mem_free(void *w_, void* user_data) {
@@ -348,9 +350,38 @@ void save_custom_keymap(Widget_t *w) {
 void save_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *parent = (Widget_t*)w->parent;
+    CustomKeymap *customkeys = (CustomKeymap*)parent->parent_struct;
     if (w->flags & HAS_POINTER && !*(int*)user_data){
+        customkeys->changed = 0;
         save_custom_keymap(parent);
-        destroy_widget(parent,parent->app);
+    }
+}
+
+void exit_response(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *parent = (Widget_t*)w->parent;
+   if(user_data !=NULL) {
+        int response = *(int*)user_data;
+        if(response == 0) {
+            destroy_widget(parent,parent->app);
+        }
+    }
+}
+
+void exit_callback(void *w_, void* button, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    adj_set_value(w->adj,0.0);
+    Widget_t *parent = (Widget_t*)w->parent;
+    CustomKeymap *customkeys = (CustomKeymap*)parent->parent_struct;
+    if (customkeys->changed) {
+        Widget_t *dia = open_message_dialog(w, QUESTION_BOX, "Exit", 
+                _("Settings have been changed and not saved, exit anyway?"),NULL);
+        XSetTransientForHint(w->app->dpy, dia->widget, w->widget);
+        w->func.dialog_callback = exit_response;
+    } else {
+        if (w->flags & HAS_POINTER ){
+            destroy_widget(parent,parent->app);
+        }
     }
 }
 
@@ -382,6 +413,7 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
     wid->parent_struct = customkeys;
     customkeys->active = 12;
     customkeys->pre_active = 12;
+    customkeys->changed = 0;
     memset(customkeys->keys, 0, 128*sizeof(long));
     customkeys->keyboard = keyboard;
     wid->label = keymapfile;
@@ -394,15 +426,20 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
     view->scale.gravity = NORTHWEST;
     add_viewport(view, 230, 3840);
 
-    Widget_t * button = add_button(wid, _("Chancel"), 50, 350, 75, 30);
+    Widget_t * button = add_button(wid, _("Chancel"), 30, 350, 75, 30);
     button->scale.gravity = SOUTHWEST;
     button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     button->func.value_changed_callback = chancel_callback;
 
-    button = add_button(wid, _("Save"), 175, 350, 75, 30);
+    button = add_button(wid, _("Save"), 112, 350, 75, 30);
     button->scale.gravity = SOUTHWEST;
     button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     button->func.value_changed_callback = save_callback;
+
+    button = add_button(wid, _("Exit"), 195, 350, 75, 30);
+    button->scale.gravity = SOUTHWEST;
+    button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    button->func.button_release_callback = exit_callback;
 
     widget_show_all(wid);
     return wid;

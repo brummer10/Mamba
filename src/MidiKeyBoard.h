@@ -37,7 +37,6 @@
 #include <iostream>
 #include <sstream>
 
-
 #ifdef ENABLE_NLS
 #include <libintl.h>
 #include <clocale>
@@ -52,6 +51,7 @@
 #include "xwidgets.h"
 #include "xfile-dialog.h"
 #include "xmessage-dialog.h"
+#include "XSynth.h"
 
 #pragma once
 
@@ -138,6 +138,7 @@ public:
 class XKeyBoard {
 private:
     xjack::XJack *xjack;
+    xsynth::XSynth *xsynth;
     mamba::MidiSave save;
     mamba::MidiLoad load;
     mamba::MidiMessenger *mmessage;
@@ -161,6 +162,7 @@ private:
     Widget_t *outputs;
     Widget_t *bpm;
     Widget_t *songbpm;
+    Widget_t *synth;
     Pixmap *icon;
 
     int main_x;
@@ -190,6 +192,8 @@ private:
     static void layout_callback(void *w_, void* user_data);
     static void octave_callback(void *w_, void* user_data);
     static void keymap_callback(void *w_, void* user_data);
+    static void grab_callback(void *w_, void* user_data);
+    static void synth_callback(void *w_, void* user_data);
     static void modwheel_callback(void *w_, void* user_data);
     static void detune_callback(void *w_, void* user_data);
     static void attack_callback(void *w_, void* user_data);
@@ -230,7 +234,7 @@ private:
     void quit_by_jack();
     void get_midi_in(int n, bool on);
 public:
-    XKeyBoard(xjack::XJack *xjack, mamba::MidiMessenger *mmessage,
+    XKeyBoard(xjack::XJack *xjack, xsynth::XSynth *xsynth, mamba::MidiMessenger *mmessage,
         nsmhandler::NsmSignalHandler& nsmsig, PosixSignalHandler& xsig, 
         AnimatedKeyBoard * animidi);
     ~XKeyBoard();
@@ -240,11 +244,14 @@ public:
     std::string keymap_file;
     std::string path;
     std::string filepath;
+    std::string soundfontpath;
+    std::string soundfont;
 
     bool has_config;
     Widget_t *win;
     Widget_t *wid;
     int visible;
+    int volume;
 
     void init_ui(Xputty *app);
     void show_ui(int present);
@@ -253,6 +260,7 @@ public:
     void set_config(const char *name, const char *client_id, bool op_gui);
 
     static void dialog_load_response(void *w_, void* user_data);
+    static void synth_load_response(void *w_, void* user_data);
 };
 
 } // namespace midikeyboard

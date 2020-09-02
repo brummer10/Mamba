@@ -9,6 +9,8 @@ Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Ki
 - Virtual Midi Keyboard for [Jack Audio Connection Kit](https://jackaudio.org/)
 - Including [NSM](https://linuxaudio.github.io/new-session-manager/) support
 - Including [gettext](https://www.gnu.org/software/gettext/) localization support
+- Including [fluidsynth](https://github.com/FluidSynth/fluidsynth) support
+- Soundfont loader for fluidsynth
 - Channel selector
 - Bank and Program selector
 - Keyboard mapping for qwertz, qwerty, azerty(fr) and azerty(be) selectable from menu
@@ -37,6 +39,7 @@ Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Ki
 
 ## Dependencies
 
+- libfluidsynth-dev
 - libc6-dev
 - libsmf-dev
 - libcairo2-dev

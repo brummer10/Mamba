@@ -733,7 +733,6 @@ static void keyboard_mem_free(void *w_, void* user_data) {
 }
 
 bool need_redraw(MidiKeyboard *keys) {
-    
     return (keys->active_key > 0 ? 1 : 0) |
     (keys->prelight_key  > 0 ? 1 : 0)  |
     have_key_in_matrix(keys->key_matrix) |

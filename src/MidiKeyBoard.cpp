@@ -78,10 +78,11 @@ bool AnimatedKeyBoard::is_running() const noexcept {
  ** 
  */
 
-XKeyBoard::XKeyBoard(xjack::XJack *xjack_, mamba::MidiMessenger *mmessage_,
-        nsmhandler::NsmSignalHandler& nsmsig_, PosixSignalHandler& xsig_,
-        AnimatedKeyBoard * animidi_)
+XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xsynth::XSynth *xsynth_,
+        mamba::MidiMessenger *mmessage_, nsmhandler::NsmSignalHandler& nsmsig_,
+        PosixSignalHandler& xsig_, AnimatedKeyBoard * animidi_)
     : xjack(xjack_),
+    xsynth(xsynth_),
     save(),
     load(),
     mmessage(mmessage_),
@@ -99,6 +100,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, mamba::MidiMessenger *mmessage_,
         config_file = path +"/.config/Mamba.conf";
         keymap_file =  path +"/.config/Mamba.keymap";
     }
+    soundfontpath = "/usr/share/sounds/sf2/";
     has_config = false;
     main_x = 0;
     main_y = 0;
@@ -106,6 +108,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, mamba::MidiMessenger *mmessage_,
     main_h = 240;
     visible = 1;
     velocity = 127;
+    volume = 63;
     mbank = 0;
     mprogram = 0;
     mbpm = 120;
@@ -187,6 +190,12 @@ void XKeyBoard::read_config() {
         if (!line.empty()) filepath = line;
         std::getline( infile, line );
         if (!line.empty()) octave = std::stoi(line);
+        std::getline( infile, line );
+        if (!line.empty()) volume = std::stoi(line);
+        std::getline( infile, line );
+        if (!line.empty()) soundfontpath = line;
+        std::getline( infile, line );
+        if (!line.empty()) soundfont = line;
         infile.close();
         has_config = true;
     }
@@ -230,6 +239,9 @@ void XKeyBoard::save_config() {
          outfile << velocity << std::endl;
          outfile << filepath << std::endl;
          outfile << octave << std::endl;
+         outfile << volume << std::endl;
+         outfile << soundfontpath << std::endl;
+         outfile << soundfont << std::endl;
          outfile.close();
     }
     if (need_save && xjack->rec.play.size()) {
@@ -337,7 +349,7 @@ void XKeyBoard::mk_draw_knob(void *w_, void* user_data) {
     cairo_arc(w->crb,knobx1+arc_offset/2, knoby1-arc_offset, knob_x/2.2, 0, 2 * M_PI );
     cairo_set_source (w->crb, pat);
     cairo_fill_preserve (w->crb);
-     cairo_set_source_rgb (w->crb, 0.1, 0.1, 0.1); 
+    cairo_set_source_rgb (w->crb, 0.1, 0.1, 0.1); 
     cairo_set_line_width(w->crb,1);
     cairo_stroke(w->crb);
     cairo_scale (w->crb, 1.05, 0.95);
@@ -355,7 +367,7 @@ void XKeyBoard::mk_draw_knob(void *w_, void* user_data) {
     cairo_arc(w->crb,knobx1, knoby1, knob_x/2.6, 0, 2 * M_PI );
     cairo_set_source (w->crb, pat);
     cairo_fill_preserve (w->crb);
-     cairo_set_source_rgb (w->crb, 0.1, 0.1, 0.1); 
+    cairo_set_source_rgb (w->crb, 0.1, 0.1, 0.1); 
     cairo_set_line_width(w->crb,1);
     cairo_stroke(w->crb);
     cairo_new_path (w->crb);
@@ -489,8 +501,11 @@ void XKeyBoard::init_ui(Xputty *app) {
     adj_set_value(octavemap->adj, 2.0);
     octavemap->func.value_changed_callback = octave_callback;
 
-    menu_add_entry(mapping,_("_Keymap"));
+    menu_add_entry(mapping,_("_Keymap Editor"));
     mapping->func.value_changed_callback = keymap_callback;
+
+    Widget_t *entry = menu_add_check_entry(mapping,_("Grab Keyboard"));
+    entry->func.value_changed_callback = grab_callback;
 
     connection = add_menu(win,_("C_onnect"),130,0,60,20);
     inputs = menu_add_submenu(connection,_("Input"));
@@ -499,11 +514,16 @@ void XKeyBoard::init_ui(Xputty *app) {
     inputs->func.value_changed_callback = connection_in_callback;
     outputs->func.value_changed_callback = connection_out_callback;
 
-    info = add_menu(win,_("_Info"),190,0,60,20);
+    synth = add_menu(win,_("Fluidsynth"),200,0,60,20);
+    menu_add_entry(synth,_("Load SoundFont"));
+    menu_add_entry(synth,_("Exit Fluidsynth"));
+    synth->func.value_changed_callback = synth_callback;
+
+    info = add_menu(win,_("_Info"),260,0,60,20);
     menu_add_entry(info,_("_About"));
     info->func.value_changed_callback = info_callback;
 
-    Widget_t * tmp = add_label(win,_("Channel:"),10,30,60,20);
+    Widget_t *tmp = add_label(win,_("Channel:"),10,30,60,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
     channel =  add_combobox(win, _("Channel"), 70, 30, 60, 30);
@@ -578,6 +598,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     w[1] = add_keyboard_knob(win, _("ModWheel"), 125, 65, 60, 75);
     w[1]->data = MODULATION;
+    set_adjustment(w[1]->adj, 0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[1]->func.value_changed_callback = modwheel_callback;
 
     w[2] = add_keyboard_knob(win, _("Detune"), 185, 65, 60, 75);
@@ -586,6 +607,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     w[10] = add_keyboard_knob(win, _("Expression"), 245, 65, 60, 75);
     w[10]->data = EXPRESSION;
+    set_adjustment(w[10]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[10]->func.value_changed_callback = expression_callback;
 
     w[3] = add_keyboard_knob(win, _("Attack"), 305, 65, 60, 75);
@@ -602,7 +624,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     w[6] = add_keyboard_knob(win, _("Velocity"), 485, 65, 60, 75);
     w[6]->data = VELOCITY;
-    set_adjustment(w[6]->adj,127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
+    set_adjustment(w[6]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[6]->func.value_changed_callback = velocity_callback;
 
     w[7] = add_toggle_button(win, _("Sustain"), 550, 70, 75, 30);
@@ -658,6 +680,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     adj_set_value(keymap->adj,keylayout);
     adj_set_value(octavemap->adj,octave);
     adj_set_value(w[6]->adj, velocity);
+    adj_set_value(w[5]->adj, volume);
 
     // set window to saved size
     XResizeWindow (win->app->dpy, win->widget, main_w, main_h);
@@ -917,6 +940,72 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
 }
 
 // static
+void XKeyBoard::synth_load_response(void *w_, void* user_data) {
+    Widget_t *win = (Widget_t*)w_;
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    if(user_data !=NULL) {
+         
+#ifdef __XDG_MIME_H__
+        if(!strstr(xdg_mime_get_mime_type_from_file_name(*(const char**)user_data), "application/octet-stream")) {
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            _("Couldn't load file, is that a soundfont file?"),NULL);
+            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+            return;
+        }
+#endif
+        xjmkb->xsynth->unload_synth();
+        xjmkb->xsynth->setup(xjmkb->xjack->SampleRate);
+        xjmkb->xsynth->init_synth();
+        if (xjmkb->xsynth->load_soundfont( *(const char**)user_data)) {
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            _("Couldn't load file, is that a soundfont file?"),NULL);
+            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+            return;
+        }
+        xjmkb->soundfont =  *(const char**)user_data;
+        const char **port_list = NULL;
+        port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
+        if (port_list) {
+            for (int i = 0; port_list[i] != NULL; i++) {
+                if (strstr(port_list[i], "mamba")) {
+                    const char *my_port = jack_port_name(xjmkb->xjack->out_port);
+                    jack_connect(xjmkb->xjack->client, my_port,port_list[i]);
+                    break;
+                }
+            }
+            jack_free(port_list);
+            port_list = NULL;
+        }
+        xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3);
+    }
+}
+
+//static
+void XKeyBoard::synth_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int value = (int)adj_get_value(w->adj);
+    switch (value) {
+        case(0):
+        {
+            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->soundfontpath.c_str(), "application/octet-stream");
+            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+            xjmkb->win->func.dialog_callback = synth_load_response;
+        }
+        break;
+        case(1):
+        {
+            xjmkb->xsynth->unload_synth();
+            xjmkb->soundfont = "";
+        }
+        break;
+        default:
+        break;
+    }
+}
+
+// static
 void XKeyBoard::info_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
@@ -1020,8 +1109,8 @@ void XKeyBoard::volume_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 39, value, 3);
+    xjmkb->volume = (int)adj_get_value(w->adj);
+    xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3);
 }
 
 // static 
@@ -1164,8 +1253,21 @@ void XKeyBoard::keymap_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    if ((int)adj_get_value(w->adj) == 2) 
+    if ((int)adj_get_value(w->adj) == 2)
         open_custom_keymap(xjmkb->wid, win, xjmkb->keymap_file.c_str());
+}
+
+void XKeyBoard::grab_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    if (adj_get_value(w->adj)) {
+        XGrabKeyboard(xjmkb->win->app->dpy, xjmkb->wid->widget, true, 
+                    GrabModeAsync, GrabModeAsync, CurrentTime); 
+    } else {
+        XUngrabKeyboard(xjmkb->win->app->dpy, CurrentTime); 
+    }
+
 }
 
 // static
@@ -1425,7 +1527,8 @@ int main (int argc, char *argv[]) {
     nsmhandler::NsmSignalHandler nsmsig;
     midikeyboard::AnimatedKeyBoard  animidi;
     xjack::XJack xjack(&mmessage);
-    midikeyboard::XKeyBoard xjmkb(&xjack, &mmessage, nsmsig, xsig, &animidi);
+    xsynth::XSynth xsynth;
+    midikeyboard::XKeyBoard xjmkb(&xjack, &xsynth, &mmessage, nsmsig, xsig, &animidi);
     nsmhandler::NsmHandler nsmh(&nsmsig);
 
     nsmsig.nsm_session_control = nsmh.check_nsm(xjmkb.client_name.c_str(), argv);
@@ -1436,6 +1539,25 @@ int main (int argc, char *argv[]) {
     
     xjmkb.init_ui(&app);
     xjack.init_jack();
+    if (!xjmkb.soundfont.empty()) {
+        xsynth.setup(xjack.SampleRate);
+        xsynth.init_synth();
+        xsynth.load_soundfont(xjmkb.soundfont.c_str());
+        const char **port_list = NULL;
+        port_list = jack_get_ports(xjack.client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
+        if (port_list) {
+            for (int i = 0; port_list[i] != NULL; i++) {
+                if (strstr(port_list[i], "mamba")) {
+                    const char *my_port = jack_port_name(xjack.out_port);
+                    jack_connect(xjack.client, my_port,port_list[i]);
+                    break;
+                }
+            }
+            jack_free(port_list);
+            port_list = NULL;
+        }
+        mmessage.send_midi_cc(0xB0, 7, xjmkb.volume, 3);
+    }
     
     if (argc > 1) {
 
@@ -1459,7 +1581,7 @@ int main (int argc, char *argv[]) {
     main_quit(&app);
 
     if(!nsmsig.nsm_session_control) xjmkb.save_config();
-
+    xsynth.unload_synth();
     if (xjack.client) jack_client_close (xjack.client);
 
     exit (0);

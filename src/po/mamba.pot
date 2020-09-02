@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mamba 1.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-09-01 07:13+0200\n"
+"POT-Creation-Date: 2020-09-02 14:56+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,83 +17,87 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: MidiKeyBoard.cpp:440 MidiKeyBoard.cpp:869 MidiKeyBoard.cpp:1095
+#: MidiKeyBoard.cpp:452 MidiKeyBoard.cpp:892 MidiKeyBoard.cpp:1184
 msgid " - Virtual Midi Keyboard"
 msgstr ""
 
-#: MidiKeyBoard.cpp:591
+#: MidiKeyBoard.cpp:613
 msgid "Attack"
 msgstr ""
 
-#: MidiKeyBoard.cpp:558
+#: MidiKeyBoard.cpp:578
 msgid "BPM"
 msgstr ""
 
-#: MidiKeyBoard.cpp:555
+#: MidiKeyBoard.cpp:575
 msgid "BPM:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:575
+#: MidiKeyBoard.cpp:595
 msgid "Balance"
 msgstr ""
 
-#: MidiKeyBoard.cpp:526
+#: MidiKeyBoard.cpp:546
 msgid "Bank"
 msgstr ""
 
-#: MidiKeyBoard.cpp:523
+#: MidiKeyBoard.cpp:543
 msgid "Bank:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:484
+#: MidiKeyBoard.cpp:496
 msgid "C 0"
 msgstr ""
 
-#: MidiKeyBoard.cpp:485
+#: MidiKeyBoard.cpp:497
 msgid "C 1"
 msgstr ""
 
-#: MidiKeyBoard.cpp:486
+#: MidiKeyBoard.cpp:498
 msgid "C 2"
 msgstr ""
 
-#: MidiKeyBoard.cpp:487
+#: MidiKeyBoard.cpp:499
 msgid "C 3"
 msgstr ""
 
-#: MidiKeyBoard.cpp:488
+#: MidiKeyBoard.cpp:500
 msgid "C 4"
 msgstr ""
 
-#: MidiKeyBoard.cpp:495
+#: MidiKeyBoard.cpp:510
 msgid "C_onnect"
 msgstr ""
 
-#: xcustommap.c:358
+#: xcustommap.c:429
 msgid "Chancel"
 msgstr ""
 
-#: MidiKeyBoard.cpp:509
+#: MidiKeyBoard.cpp:529
 msgid "Channel"
 msgstr ""
 
-#: MidiKeyBoard.cpp:506
+#: MidiKeyBoard.cpp:526
 msgid "Channel:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:855 MidiKeyBoard.cpp:864
+#: MidiKeyBoard.cpp:878 MidiKeyBoard.cpp:887
 msgid "Couldn't load file, is that a MIDI file?"
 msgstr ""
 
-#: xcustommap.c:273 xcustommap.c:299
+#: MidiKeyBoard.cpp:951 MidiKeyBoard.cpp:961
+msgid "Couldn't load file, is that a soundfont file?"
+msgstr ""
+
+#: xcustommap.c:310 xcustommap.c:336
 msgid "Couldn't load file, sorry"
 msgstr ""
 
-#: xcustommap.c:341
+#: xcustommap.c:409
 msgid "Custom Keymap - Editor"
 msgstr ""
 
-#: MidiKeyBoard.cpp:583
+#: MidiKeyBoard.cpp:604
 msgid "Detune"
 msgstr ""
 
@@ -106,15 +110,23 @@ msgstr ""
 msgid "ERROR"
 msgstr ""
 
+#: xcustommap.c:439
+msgid "Exit"
+msgstr ""
+
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:472
 msgid "Exit File Saver"
+msgstr ""
+
+#: MidiKeyBoard.cpp:519
+msgid "Exit Fluidsynth"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:297
 msgid "Exit file selector"
 msgstr ""
 
-#: MidiKeyBoard.cpp:587
+#: MidiKeyBoard.cpp:608
 msgid "Expression"
 msgstr ""
 
@@ -122,11 +134,11 @@ msgstr ""
 msgid "File"
 msgstr ""
 
-#: MidiKeyBoard.cpp:566
+#: MidiKeyBoard.cpp:586
 msgid "File BPM:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:567 MidiKeyBoard.cpp:872 MidiKeyBoard.cpp:1098
+#: MidiKeyBoard.cpp:587 MidiKeyBoard.cpp:895 MidiKeyBoard.cpp:1187
 #, c-format
 msgid "File BPM: %d"
 msgstr ""
@@ -149,12 +161,20 @@ msgstr ""
 msgid "File filter type"
 msgstr ""
 
-#: xcustommap.c:285
+#: xcustommap.c:322
 msgid "File read error"
 msgstr ""
 
-#: xcustommap.c:306
+#: xcustommap.c:343
 msgid "File write error"
+msgstr ""
+
+#: MidiKeyBoard.cpp:517
+msgid "Fluidsynth"
+msgstr ""
+
+#: MidiKeyBoard.cpp:507
+msgid "Grab Keyboard"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xmessage-dialog.c:352
@@ -162,16 +182,20 @@ msgstr ""
 msgid "INFO"
 msgstr ""
 
-#: MidiKeyBoard.cpp:496
+#: MidiKeyBoard.cpp:511
 msgid "Input"
 msgstr ""
 
-#: MidiKeyBoard.cpp:475
+#: MidiKeyBoard.cpp:487
 msgid "Keyboard"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:300
 msgid "Load"
+msgstr ""
+
+#: MidiKeyBoard.cpp:518
+msgid "Load SoundFont"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:303
@@ -182,11 +206,11 @@ msgstr ""
 msgid "Load: "
 msgstr ""
 
-#: MidiKeyBoard.cpp:924
+#: MidiKeyBoard.cpp:1013
 msgid "Mamba"
 msgstr ""
 
-#: MidiKeyBoard.cpp:925
+#: MidiKeyBoard.cpp:1014
 msgid ""
 "Mamba v1.3 is written by Hermann Meyer|released under the BSD Zero Clause "
 "License|https://github.com/brummer10/Mamba|For midi file handling it use "
@@ -194,7 +218,7 @@ msgid ""
 "github.com/stump/libsmf"
 msgstr ""
 
-#: MidiKeyBoard.cpp:579
+#: MidiKeyBoard.cpp:599
 msgid "ModWheel"
 msgstr ""
 
@@ -206,7 +230,7 @@ msgstr ""
 msgid "OK"
 msgstr ""
 
-#: MidiKeyBoard.cpp:483
+#: MidiKeyBoard.cpp:495
 msgid "Octave"
 msgstr ""
 
@@ -220,11 +244,11 @@ msgstr ""
 msgid "Open sub-directory's"
 msgstr ""
 
-#: MidiKeyBoard.cpp:497
+#: MidiKeyBoard.cpp:512
 msgid "Output"
 msgstr ""
 
-#: MidiKeyBoard.cpp:570
+#: MidiKeyBoard.cpp:590
 msgid "PitchBend"
 msgstr ""
 
@@ -232,15 +256,15 @@ msgstr ""
 msgid "Please enter a file name"
 msgstr ""
 
-#: xcustommap.c:281
+#: xcustommap.c:318
 msgid "Premature end of file"
 msgstr ""
 
-#: MidiKeyBoard.cpp:542
+#: MidiKeyBoard.cpp:562
 msgid "Program"
 msgstr ""
 
-#: MidiKeyBoard.cpp:539
+#: MidiKeyBoard.cpp:559
 msgid "Program:"
 msgstr ""
 
@@ -253,7 +277,7 @@ msgstr ""
 msgid "Quit"
 msgstr ""
 
-#: MidiKeyBoard.cpp:595
+#: MidiKeyBoard.cpp:617
 msgid "Release"
 msgstr ""
 
@@ -261,7 +285,7 @@ msgstr ""
 msgid "SELECTION"
 msgstr ""
 
-#: xcustommap.c:363 ../libxputty/xputty/dialogs/xsavefile-dialoge.c:476
+#: xcustommap.c:434 ../libxputty/xputty/dialogs/xsavefile-dialoge.c:476
 msgid "Save"
 msgstr ""
 
@@ -271,6 +295,10 @@ msgstr ""
 
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:61
 msgid "Save as: "
+msgstr ""
+
+#: xcustommap.c:378
+msgid "Settings have been changed and not saved, exit anyway?"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:62
@@ -283,11 +311,11 @@ msgstr ""
 msgid "Show hidden files and folders"
 msgstr ""
 
-#: MidiKeyBoard.cpp:616
+#: MidiKeyBoard.cpp:638
 msgid "Sostenuto"
 msgstr ""
 
-#: MidiKeyBoard.cpp:608
+#: MidiKeyBoard.cpp:630
 msgid "Sustain"
 msgstr ""
 
@@ -295,11 +323,11 @@ msgstr ""
 msgid "TEXT ENTRY"
 msgstr ""
 
-#: MidiKeyBoard.cpp:603
+#: MidiKeyBoard.cpp:625
 msgid "Velocity"
 msgstr ""
 
-#: MidiKeyBoard.cpp:599
+#: MidiKeyBoard.cpp:621
 msgid "Volume"
 msgstr ""
 
@@ -311,43 +339,43 @@ msgstr ""
 msgid "YES"
 msgstr ""
 
-#: MidiKeyBoard.cpp:503
+#: MidiKeyBoard.cpp:523
 msgid "_About"
 msgstr ""
 
-#: MidiKeyBoard.cpp:468
+#: MidiKeyBoard.cpp:480
 msgid "_File"
 msgstr ""
 
-#: MidiKeyBoard.cpp:502
+#: MidiKeyBoard.cpp:522
 msgid "_Info"
 msgstr ""
 
-#: MidiKeyBoard.cpp:492
-msgid "_Keymap"
+#: MidiKeyBoard.cpp:504
+msgid "_Keymap Editor"
 msgstr ""
 
-#: MidiKeyBoard.cpp:469
+#: MidiKeyBoard.cpp:481
 msgid "_Load"
 msgstr ""
 
-#: MidiKeyBoard.cpp:474
+#: MidiKeyBoard.cpp:486
 msgid "_Mapping"
 msgstr ""
 
-#: MidiKeyBoard.cpp:630
+#: MidiKeyBoard.cpp:652
 msgid "_Play"
 msgstr ""
 
-#: MidiKeyBoard.cpp:471
+#: MidiKeyBoard.cpp:483
 msgid "_Quit"
 msgstr ""
 
-#: MidiKeyBoard.cpp:624
+#: MidiKeyBoard.cpp:646
 msgid "_Record"
 msgstr ""
 
-#: MidiKeyBoard.cpp:470
+#: MidiKeyBoard.cpp:482
 msgid "_Save as"
 msgstr ""
 
@@ -366,15 +394,15 @@ msgstr ""
 msgid "audio"
 msgstr ""
 
-#: MidiKeyBoard.cpp:479
+#: MidiKeyBoard.cpp:491
 msgid "azerty (be)"
 msgstr ""
 
-#: MidiKeyBoard.cpp:478
+#: MidiKeyBoard.cpp:490
 msgid "azerty (fr)"
 msgstr ""
 
-#: MidiKeyBoard.cpp:480
+#: MidiKeyBoard.cpp:492
 msgid "custom"
 msgstr ""
 
@@ -388,11 +416,11 @@ msgstr ""
 msgid "image"
 msgstr ""
 
-#: MidiKeyBoard.cpp:477
+#: MidiKeyBoard.cpp:489
 msgid "qwerty"
 msgstr ""
 
-#: MidiKeyBoard.cpp:476
+#: MidiKeyBoard.cpp:488
 msgid "qwertz"
 msgstr ""
 
