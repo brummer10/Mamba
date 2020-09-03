@@ -516,6 +516,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     synth = add_menu(win,_("Fluidsynth"),200,0,60,20);
     menu_add_entry(synth,_("Load SoundFont"));
+    menu_add_entry(synth,_("Fluidsynth Panic"));
     menu_add_entry(synth,_("Exit Fluidsynth"));
     synth->func.value_changed_callback = synth_callback;
 
@@ -994,6 +995,11 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
         }
         break;
         case(1):
+        {
+            xjmkb->xsynth->panic();
+        }
+        break;
+        case(2):
         {
             xjmkb->xsynth->unload_synth();
             xjmkb->soundfont = "";

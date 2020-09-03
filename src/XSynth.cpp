@@ -72,6 +72,10 @@ int XSynth::load_soundfont(const char *path) {
     return 0;
 }
 
+void XSynth::panic() {
+    fluid_synth_all_sounds_off (synth, -1);
+}
+
 void XSynth::unload_synth() {
     if (sf_id) {
         fluid_synth_sfunload(synth, sf_id, 0);

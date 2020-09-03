@@ -50,6 +50,7 @@ public:
     void setup(unsigned int SampleRate);
     void init_synth();
     int load_soundfont(const char *path);
+    void panic();
     void unload_synth();
 };
 
