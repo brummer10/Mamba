@@ -294,7 +294,7 @@ Widget_t* add_viewport(Widget_t *parent, int width, int height) {
     return wid;
 }
 
-void chancel_callback(void *w_, void* user_data) {
+void cancel_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *parent = (Widget_t*)w->parent;
     if (w->flags & HAS_POINTER && !*(int*)user_data){
@@ -426,10 +426,10 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
     view->scale.gravity = NORTHWEST;
     add_viewport(view, 230, 3840);
 
-    Widget_t * button = add_button(wid, _("Chancel"), 30, 350, 75, 30);
+    Widget_t * button = add_button(wid, _("Cancel"), 30, 350, 75, 30);
     button->scale.gravity = SOUTHWEST;
     button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    button->func.value_changed_callback = chancel_callback;
+    button->func.value_changed_callback = cancel_callback;
 
     button = add_button(wid, _("Save"), 112, 350, 75, 30);
     button->scale.gravity = SOUTHWEST;
