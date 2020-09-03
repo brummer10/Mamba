@@ -70,7 +70,7 @@ msgid "C_onnect"
 msgstr ""
 
 #: xcustommap.c:429
-msgid "Chancel"
+msgid "Cancel"
 msgstr ""
 
 #: MidiKeyBoard.cpp:530
@@ -157,7 +157,7 @@ msgstr ""
 
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:266
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:280
-msgid "File already exsist, would you overwrite it?"
+msgid "File already exists, would you overwrite it?"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:380
