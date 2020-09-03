@@ -112,12 +112,16 @@ ifneq ("$(wildcard ./$(BUILD_DIR))","")
 	@if [ ${LANGW} -gt 1 ]; then \
 		for lang in $(LANGS) ; \
 		do \
-			mkdir -p $(DESTDIR)$(SHARE_DIR)/$$lang; \
-			cp $$lang/$(EXEC_NAME).mo $(DESTDIR)$(SHARE_DIR)/$$lang; \
+			if [ -f $$lang/$(EXEC_NAME).mo ]; then \
+				mkdir -p $(DESTDIR)$(SHARE_DIR)/$$lang; \
+				cp $$lang/$(EXEC_NAME).mo $(DESTDIR)$(SHARE_DIR)/$$lang; \
+			fi \
 		done \
 	elif [ ${LANGW} -gt 0 ]; then \
-			mkdir -p $(DESTDIR)$(SHARE_DIR)/$(LANGS); \
-			cp $(LANGS)/$(EXEC_NAME).mo $(DESTDIR)$(SHARE_DIR)/$(LANGS); \
+			if [ -f $(LANGS)/$(EXEC_NAME).mo ]; then \
+				mkdir -p $(DESTDIR)$(SHARE_DIR)/$(LANGS); \
+				cp $(LANGS)/$(EXEC_NAME).mo $(DESTDIR)$(SHARE_DIR)/$(LANGS); \
+			fi \
 	fi
 	update-desktop-database || true
 	@echo ". ." $(BLUE)", done"$(NONE)
