@@ -153,7 +153,7 @@ private:
     Widget_t *octavemap;
     Widget_t *record;
     Widget_t *play;
-    Widget_t *menubar;
+    Widget_t *filemenu;
     Widget_t *info;
     Widget_t *mapping;
     Widget_t *keymap;
@@ -163,6 +163,7 @@ private:
     Widget_t *bpm;
     Widget_t *songbpm;
     Widget_t *synth;
+    Widget_t *menubar;
     Pixmap *icon;
 
     int main_x;
@@ -221,6 +222,7 @@ private:
     static void map_callback(void *w_, void* user_data);
     static void draw_board(void *w_, void* user_data);
     static void mk_draw_knob(void *w_, void* user_data);
+    static void set_play_label(void *w_, void* user_data);
     static void win_mem_free(void *w_, void* user_data);
 
     Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,

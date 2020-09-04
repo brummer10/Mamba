@@ -477,13 +477,15 @@ void XKeyBoard::init_ui(Xputty *app) {
     XSetWMNormalHints(win->app->dpy, win->widget, win_size_hints);
     XFree(win_size_hints);
 
-    menubar = add_menu(win,_("_File"),0,0,60,20);
-    menu_add_entry(menubar,_("_Load"));
-    menu_add_entry(menubar,_("_Save as"));
-    menu_add_entry(menubar,_("_Quit"));
-    menubar->func.value_changed_callback = file_callback;
+    menubar = add_menubar(win,"",0, 0, 700, 20);
 
-    mapping = add_menu(win,_("_Mapping"),60,0,60,20);
+    filemenu = menubar_add_menu(menubar,_("_File"));
+    menu_add_entry(filemenu,_("_Load MIDI"));
+    menu_add_entry(filemenu,_("_Save MIDI as"));
+    menu_add_entry(filemenu,_("_Quit"));
+    filemenu->func.value_changed_callback = file_callback;
+
+    mapping = menubar_add_menu(menubar,_("_Mapping"));
     keymap = menu_add_submenu(mapping,_("Keyboard"));
     menu_add_radio_entry(keymap,_("qwertz"));
     menu_add_radio_entry(keymap,_("qwerty"));
@@ -507,27 +509,27 @@ void XKeyBoard::init_ui(Xputty *app) {
     Widget_t *entry = menu_add_check_entry(mapping,_("Grab Keyboard"));
     entry->func.value_changed_callback = grab_callback;
 
-    connection = add_menu(win,_("C_onnect"),130,0,60,20);
+    connection = menubar_add_menu(menubar,_("C_onnect"));
     inputs = menu_add_submenu(connection,_("Input"));
     outputs = menu_add_submenu(connection,_("Output"));
     connection->func.button_press_callback = make_connection_menu;
     inputs->func.value_changed_callback = connection_in_callback;
     outputs->func.value_changed_callback = connection_out_callback;
 
-    synth = add_menu(win,_("Fluidsynth"),200,0,60,20);
+    synth = menubar_add_menu(menubar,_("Fluidsynth"));
     menu_add_entry(synth,_("Load SoundFont"));
     menu_add_entry(synth,_("Fluidsynth Panic"));
     menu_add_entry(synth,_("Exit Fluidsynth"));
     synth->func.value_changed_callback = synth_callback;
 
-    info = add_menu(win,_("_Info"),260,0,60,20);
+    info = menubar_add_menu(menubar,_("_Info"));
     menu_add_entry(info,_("_About"));
     info->func.value_changed_callback = info_callback;
 
-    Widget_t *tmp = add_label(win,_("Channel:"),10,30,60,20);
+    Widget_t *tmp = add_label(win,_("Channel:"),10,30,80,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    channel =  add_combobox(win, _("Channel"), 70, 30, 60, 30);
+    channel =  add_combobox(win, _("Channel"), 90, 30, 60, 30);
     channel->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     channel->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(channel,1,16);
@@ -541,10 +543,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,_("Bank:"),140,30,60,20);
+    tmp = add_label(win,_("Bank:"),150,30,80,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    bank =  add_combobox(win, _("Bank"), 200, 30, 60, 30);
+    bank =  add_combobox(win, _("Bank"), 230, 30, 60, 30);
     bank->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bank->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(bank,0,127);
@@ -557,10 +559,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,_("Program:"),260,30,60,20);
+    tmp = add_label(win,_("Program:"),290,30,80,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    program =  add_combobox(win, _("Program"), 320, 30, 60, 30);
+    program =  add_combobox(win, _("Program"), 370, 30, 60, 30);
     program->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     program->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(program,0,127);
@@ -573,10 +575,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,_("BPM:"),380,30,60,20);
+    tmp = add_label(win,_("BPM:"),430,30,80,20);
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    bpm = add_valuedisplay(win, _("BPM"), 440, 30, 60, 30);
+    bpm = add_valuedisplay(win, _("BPM"), 510, 30, 60, 30);
     bpm->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bpm->scale.gravity = ASPECT;
     set_adjustment(bpm->adj,120.0, mbpm, 24.0, 360.0, 1.0, CL_CONTINUOS);
@@ -584,7 +586,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     bpm->func.key_press_callback = key_press;
     bpm->func.key_release_callback = key_release;
 
-    songbpm = add_label(win,_("File BPM:"),500,30,100,20);
+    songbpm = add_label(win,_("File BPM:"),570,30,100,20);
     snprintf(songbpm->input_label, 31,_("File BPM: %d"),  (int) song_bpm);
     songbpm->label = songbpm->input_label;
 
@@ -652,6 +654,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     play = add_toggle_button(win, _("_Play"), 635, 105, 55, 30);
     play->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    play->func.adj_callback = set_play_label;
     play->func.value_changed_callback = play_callback;
     play->func.key_press_callback = key_press;
     play->func.key_release_callback = key_release;
@@ -1018,7 +1021,7 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
     Widget_t *dia = open_message_dialog(xjmkb->win, INFO_BOX, _("Mamba"), 
         _("Mamba v1.3 is written by Hermann Meyer|released under the BSD Zero Clause License"
         "|https://github.com/brummer10/Mamba"
-        "|For midi file handling it use libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala"
+        "|For MIDI file handling it uses libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala"
         "|https://github.com/stump/libsmf"),NULL);
     XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
 }
@@ -1228,6 +1231,18 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
 }
 
 // static
+void XKeyBoard::set_play_label(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    int value = (int)adj_get_value(w->adj);
+    if (value) {
+        w->label = _("Sto_p");
+    } else {
+        w->label = _("_Play");
+    }
+    expose_widget(w);
+}
+
+// static
 void XKeyBoard::layout_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
@@ -1330,11 +1345,11 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_f):
             {
-                Widget_t *menu = xjmkb->menubar->childlist->childs[0];
+                Widget_t *menu = xjmkb->filemenu->childlist->childs[0];
                 XWindowAttributes attrs;
                 XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
                 if (attrs.map_state != IsViewable) {
-                    pop_menu_show(xjmkb->menubar, menu, 6, true);
+                    pop_menu_show(xjmkb->filemenu, menu, 6, true);
                 } else {
                     widget_hide(menu);
                 }
