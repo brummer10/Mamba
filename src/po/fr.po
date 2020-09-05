@@ -361,7 +361,7 @@ msgstr "OUI"
 
 #: MidiKeyBoard.cpp:526
 msgid "_About"
-msgstr "À _propos"
+msgstr "À propos (_a)"
 
 #: MidiKeyBoard.cpp:482
 msgid "_File"
@@ -373,19 +373,19 @@ msgstr ""
 
 #: MidiKeyBoard.cpp:506
 msgid "_Keymap Editor"
-msgstr "É_diteur de carte-clavier"
+msgstr "Éditeur de carte-clavier (_k)"
 
 #: MidiKeyBoard.cpp:483
 msgid "_Load MIDI"
-msgstr "_Charger MIDI"
+msgstr "Charger MIDI (_l)"
 
 #: MidiKeyBoard.cpp:488
 msgid "_Mapping"
-msgstr "_Carte clavier"
+msgstr "Carte clavier (_m)"
 
 #: MidiKeyBoard.cpp:655 MidiKeyBoard.cpp:1240
 msgid "_Play"
-msgstr "_Lecture"
+msgstr "Lecture (_p)"
 
 #: MidiKeyBoard.cpp:485
 msgid "_Quit"
