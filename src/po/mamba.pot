@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mamba 1.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-09-03 10:24+0200\n"
+"POT-Creation-Date: 2020-09-05 15:11+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,79 +17,80 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: MidiKeyBoard.cpp:452 MidiKeyBoard.cpp:893 MidiKeyBoard.cpp:1189
+#: MidiKeyBoard.cpp:452 MidiKeyBoard.cpp:896 MidiKeyBoard.cpp:1192
 msgid " - Virtual Midi Keyboard"
 msgstr ""
 
-#: MidiKeyBoard.cpp:614
+#: MidiKeyBoard.cpp:616
 msgid "Attack"
 msgstr ""
 
-#: MidiKeyBoard.cpp:579
+#: MidiKeyBoard.cpp:581
 msgid "BPM"
 msgstr ""
 
-#: MidiKeyBoard.cpp:576
+#: MidiKeyBoard.cpp:578
 msgid "BPM:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:596
+#: MidiKeyBoard.cpp:598
 msgid "Balance"
 msgstr ""
 
-#: MidiKeyBoard.cpp:547
+#: MidiKeyBoard.cpp:549
 msgid "Bank"
 msgstr ""
 
-#: MidiKeyBoard.cpp:544
+#: MidiKeyBoard.cpp:546
 msgid "Bank:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:496
+#: MidiKeyBoard.cpp:498
 msgid "C 0"
 msgstr ""
 
-#: MidiKeyBoard.cpp:497
+#: MidiKeyBoard.cpp:499
 msgid "C 1"
 msgstr ""
 
-#: MidiKeyBoard.cpp:498
+#: MidiKeyBoard.cpp:500
 msgid "C 2"
 msgstr ""
 
-#: MidiKeyBoard.cpp:499
+#: MidiKeyBoard.cpp:501
 msgid "C 3"
 msgstr ""
 
-#: MidiKeyBoard.cpp:500
+#: MidiKeyBoard.cpp:502
 msgid "C 4"
 msgstr ""
 
-#: MidiKeyBoard.cpp:510
+#: MidiKeyBoard.cpp:512
 msgid "C_onnect"
 msgstr ""
 
-#: xcustommap.c:429
+#: xcustommap.c:429 ../libxputty/xputty/dialogs/xfile-dialog.c:354
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:524
 msgid "Cancel"
 msgstr ""
 
-#: MidiKeyBoard.cpp:530
+#: MidiKeyBoard.cpp:532
 msgid "Channel"
 msgstr ""
 
-#: MidiKeyBoard.cpp:527
+#: MidiKeyBoard.cpp:529
 msgid "Channel:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:951
+#: MidiKeyBoard.cpp:954
 msgid "Couldn't access file, sorry"
 msgstr ""
 
-#: MidiKeyBoard.cpp:879 MidiKeyBoard.cpp:888
+#: MidiKeyBoard.cpp:882 MidiKeyBoard.cpp:891
 msgid "Couldn't load file, is that a MIDI file?"
 msgstr ""
 
-#: MidiKeyBoard.cpp:960
+#: MidiKeyBoard.cpp:963
 msgid "Couldn't load file, is that a soundfont file?"
 msgstr ""
 
@@ -101,7 +102,7 @@ msgstr ""
 msgid "Custom Keymap - Editor"
 msgstr ""
 
-#: MidiKeyBoard.cpp:605
+#: MidiKeyBoard.cpp:607
 msgid "Detune"
 msgstr ""
 
@@ -118,50 +119,51 @@ msgstr ""
 msgid "Exit"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:525
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:527
 msgid "Exit File Saver"
 msgstr ""
 
-#: MidiKeyBoard.cpp:520
+#: MidiKeyBoard.cpp:522
 msgid "Exit Fluidsynth"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:355
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:357
 msgid "Exit file selector"
 msgstr ""
 
-#: MidiKeyBoard.cpp:609
+#: MidiKeyBoard.cpp:611
 msgid "Expression"
 msgstr ""
 
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:62
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:63
 msgid "File"
 msgstr ""
 
-#: MidiKeyBoard.cpp:587
+#: MidiKeyBoard.cpp:589
 msgid "File BPM:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:588 MidiKeyBoard.cpp:896 MidiKeyBoard.cpp:1192
+#: MidiKeyBoard.cpp:590 MidiKeyBoard.cpp:899 MidiKeyBoard.cpp:1195
 #, c-format
 msgid "File BPM: %d"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:485
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:487
 msgid "File Save"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:327
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:329
 msgid "File Selector"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:266
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:280
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:268
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:282
 msgid "File already exists, would you overwrite it?"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:380
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:552
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:382
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:554
 msgid "File filter type"
 msgstr ""
 
@@ -173,41 +175,41 @@ msgstr ""
 msgid "File write error"
 msgstr ""
 
-#: MidiKeyBoard.cpp:517
+#: MidiKeyBoard.cpp:519
 msgid "Fluidsynth"
 msgstr ""
 
-#: MidiKeyBoard.cpp:519
+#: MidiKeyBoard.cpp:521
 msgid "Fluidsynth Panic"
 msgstr ""
 
-#: MidiKeyBoard.cpp:507
+#: MidiKeyBoard.cpp:509
 msgid "Grab Keyboard"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:229
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:231
 #: ../libxputty/xputty/dialogs/xmessage-dialog.c:352
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:244
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:246
 msgid "INFO"
 msgstr ""
 
-#: MidiKeyBoard.cpp:511
+#: MidiKeyBoard.cpp:513
 msgid "Input"
 msgstr ""
 
-#: MidiKeyBoard.cpp:487
+#: MidiKeyBoard.cpp:489
 msgid "Keyboard"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:358
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:360
 msgid "Load"
 msgstr ""
 
-#: MidiKeyBoard.cpp:518
+#: MidiKeyBoard.cpp:520
 msgid "Load SoundFont"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:361
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:363
 msgid "Load selected file"
 msgstr ""
 
@@ -215,19 +217,19 @@ msgstr ""
 msgid "Load: "
 msgstr ""
 
-#: MidiKeyBoard.cpp:1018
+#: MidiKeyBoard.cpp:1021
 msgid "Mamba"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1019
+#: MidiKeyBoard.cpp:1022
 msgid ""
 "Mamba v1.3 is written by Hermann Meyer|released under the BSD Zero Clause "
-"License|https://github.com/brummer10/Mamba|For midi file handling it use "
+"License|https://github.com/brummer10/Mamba|For MIDI file handling it uses "
 "libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala|https://"
 "github.com/stump/libsmf"
 msgstr ""
 
-#: MidiKeyBoard.cpp:600
+#: MidiKeyBoard.cpp:602
 msgid "ModWheel"
 msgstr ""
 
@@ -239,33 +241,33 @@ msgstr ""
 msgid "OK"
 msgstr ""
 
-#: MidiKeyBoard.cpp:495
+#: MidiKeyBoard.cpp:497
 msgid "Octave"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:336
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:496
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:338
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:498
 msgid "Open"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:339
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:499
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:341
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:501
 msgid "Open sub-directory's"
 msgstr ""
 
-#: MidiKeyBoard.cpp:512
+#: MidiKeyBoard.cpp:514
 msgid "Output"
 msgstr ""
 
-#: MidiKeyBoard.cpp:591
+#: MidiKeyBoard.cpp:593
 msgid "PitchBend"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:245
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:247
 msgid "Please enter a file name"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:230
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:232
 msgid "Please select a file"
 msgstr ""
 
@@ -273,11 +275,11 @@ msgstr ""
 msgid "Premature end of file"
 msgstr ""
 
-#: MidiKeyBoard.cpp:563
+#: MidiKeyBoard.cpp:565
 msgid "Program"
 msgstr ""
 
-#: MidiKeyBoard.cpp:560
+#: MidiKeyBoard.cpp:562
 msgid "Program:"
 msgstr ""
 
@@ -285,12 +287,7 @@ msgstr ""
 msgid "QUESTION"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:352
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:522
-msgid "Quit"
-msgstr ""
-
-#: MidiKeyBoard.cpp:618
+#: MidiKeyBoard.cpp:620
 msgid "Release"
 msgstr ""
 
@@ -298,11 +295,11 @@ msgstr ""
 msgid "SELECTION"
 msgstr ""
 
-#: xcustommap.c:434 ../libxputty/xputty/dialogs/xsavefile-dialoge.c:529
+#: xcustommap.c:434 ../libxputty/xputty/dialogs/xsavefile-dialoge.c:531
 msgid "Save"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:532
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:534
 msgid "Save as selected file"
 msgstr ""
 
@@ -319,16 +316,20 @@ msgstr ""
 msgid "Show hidden files"
 msgstr ""
 
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:385
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:557
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:387
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:559
 msgid "Show hidden files and folders"
 msgstr ""
 
-#: MidiKeyBoard.cpp:639
+#: MidiKeyBoard.cpp:641
 msgid "Sostenuto"
 msgstr ""
 
-#: MidiKeyBoard.cpp:631
+#: MidiKeyBoard.cpp:1238
+msgid "Sto_p"
+msgstr ""
+
+#: MidiKeyBoard.cpp:633
 msgid "Sustain"
 msgstr ""
 
@@ -336,11 +337,11 @@ msgstr ""
 msgid "TEXT ENTRY"
 msgstr ""
 
-#: MidiKeyBoard.cpp:626
+#: MidiKeyBoard.cpp:628
 msgid "Velocity"
 msgstr ""
 
-#: MidiKeyBoard.cpp:622
+#: MidiKeyBoard.cpp:624
 msgid "Volume"
 msgstr ""
 
@@ -352,102 +353,102 @@ msgstr ""
 msgid "YES"
 msgstr ""
 
-#: MidiKeyBoard.cpp:524
+#: MidiKeyBoard.cpp:526
 msgid "_About"
 msgstr ""
 
-#: MidiKeyBoard.cpp:480
+#: MidiKeyBoard.cpp:482
 msgid "_File"
 msgstr ""
 
-#: MidiKeyBoard.cpp:523
+#: MidiKeyBoard.cpp:525
 msgid "_Info"
 msgstr ""
 
-#: MidiKeyBoard.cpp:504
+#: MidiKeyBoard.cpp:506
 msgid "_Keymap Editor"
 msgstr ""
 
-#: MidiKeyBoard.cpp:481
-msgid "_Load"
+#: MidiKeyBoard.cpp:483
+msgid "_Load MIDI"
 msgstr ""
 
-#: MidiKeyBoard.cpp:486
+#: MidiKeyBoard.cpp:488
 msgid "_Mapping"
 msgstr ""
 
-#: MidiKeyBoard.cpp:653
+#: MidiKeyBoard.cpp:655 MidiKeyBoard.cpp:1240
 msgid "_Play"
 msgstr ""
 
-#: MidiKeyBoard.cpp:483
+#: MidiKeyBoard.cpp:485
 msgid "_Quit"
 msgstr ""
 
-#: MidiKeyBoard.cpp:647
+#: MidiKeyBoard.cpp:649
 msgid "_Record"
 msgstr ""
 
-#: MidiKeyBoard.cpp:482
-msgid "_Save as"
-msgstr ""
-
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:366
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:538
-msgid "all"
-msgstr ""
-
-#: ../libxputty/xputty/dialogs/xfile-dialog.c:367
-#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:539
-msgid "application"
+#: MidiKeyBoard.cpp:484
+msgid "_Save MIDI as"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:368
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:540
-msgid "audio"
-msgstr ""
-
-#: MidiKeyBoard.cpp:491
-msgid "azerty (be)"
-msgstr ""
-
-#: MidiKeyBoard.cpp:490
-msgid "azerty (fr)"
-msgstr ""
-
-#: MidiKeyBoard.cpp:492
-msgid "custom"
+msgid "all"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:369
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:541
-msgid "font"
+msgid "application"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:370
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:542
-msgid "image"
+msgid "audio"
 msgstr ""
 
-#: MidiKeyBoard.cpp:489
-msgid "qwerty"
+#: MidiKeyBoard.cpp:493
+msgid "azerty (be)"
 msgstr ""
 
-#: MidiKeyBoard.cpp:488
-msgid "qwertz"
+#: MidiKeyBoard.cpp:492
+msgid "azerty (fr)"
+msgstr ""
+
+#: MidiKeyBoard.cpp:494
+msgid "custom"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:371
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:543
-msgid "text"
+msgid "font"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:372
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:544
-msgid "video"
+msgid "image"
+msgstr ""
+
+#: MidiKeyBoard.cpp:491
+msgid "qwerty"
+msgstr ""
+
+#: MidiKeyBoard.cpp:490
+msgid "qwertz"
 msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:373
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:545
+msgid "text"
+msgstr ""
+
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:374
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:546
+msgid "video"
+msgstr ""
+
+#: ../libxputty/xputty/dialogs/xfile-dialog.c:375
+#: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:547
 msgid "x-content"
 msgstr ""
