@@ -40,11 +40,7 @@ XSynth::XSynth() {
 };
 
 XSynth::~XSynth() {
-    if (sf_id != -1) fluid_synth_sfunload(synth, sf_id, 1);
-    if (mdriver) delete_fluid_midi_driver(mdriver);
-    if (adriver) delete_fluid_audio_driver(adriver);
-    if (synth) delete_fluid_synth(synth);
-    if (settings) delete_fluid_settings(settings);
+    unload_synth();
 };
 
 void XSynth::setup(unsigned int SampleRate) {
@@ -73,7 +69,7 @@ int XSynth::load_soundfont(const char *path) {
 }
 
 void XSynth::panic() {
-    fluid_synth_all_sounds_off (synth, -1);
+    fluid_synth_all_sounds_off(synth, -1);
 }
 
 void XSynth::unload_synth() {
@@ -97,7 +93,6 @@ void XSynth::unload_synth() {
         delete_fluid_settings(settings);
         settings = NULL;
     }
-    
 }
 
 } // namespace xsynth
