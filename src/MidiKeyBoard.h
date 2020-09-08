@@ -228,6 +228,14 @@ private:
     static void win_mem_free(void *w_, void* user_data);
 
     static void synth_ui_callback(void *w_, void* user_data);
+
+    static void chorus_type_callback(void *w_, void* user_data);
+    static void chorus_depth_callback(void *w_, void* user_data);
+    static void chorus_speed_callback(void *w_, void* user_data);
+    static void chorus_level_callback(void *w_, void* user_data);
+    static void chorus_voices_callback(void *w_, void* user_data);
+    static void chorus_on_callback(void *w_, void* user_data);
+
     static void reverb_level_callback(void *w_, void* user_data);
     static void reverb_width_callback(void *w_, void* user_data);
     static void reverb_damp_callback(void *w_, void* user_data);

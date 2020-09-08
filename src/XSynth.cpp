@@ -43,6 +43,13 @@ XSynth::XSynth() {
     reverb_width = 10.0;
     reverb_damp = 0.4;
     reverb_roomsize = 0.6;
+
+    chorus_on = 0;
+    chorus_type = 0;
+    chorus_depth = 3.0;
+    chorus_speed = 0.3;
+    chorus_level = 3.0;
+    chorus_voices = 3;
 };
 
 XSynth::~XSynth() {
@@ -74,6 +81,7 @@ int XSynth::load_soundfont(const char *path) {
     if (reverb_on) set_reverb_on(reverb_on);
     return 0;
 }
+
 void XSynth::set_reverb_on(int on) {
     if (synth) {
         fluid_synth_set_reverb_on(synth, on);
@@ -85,6 +93,20 @@ void XSynth::set_reverb_levels() {
     if (synth) {
         fluid_synth_set_reverb (synth, reverb_roomsize, reverb_damp,
                                         reverb_width, reverb_level);
+    }
+}
+
+void XSynth::set_chorus_on(int on) {
+    if (synth) {
+        fluid_synth_set_chorus_on(synth, on);
+        set_chorus_levels();
+    }
+}
+
+void XSynth::set_chorus_levels() {
+    if (synth) {
+        fluid_synth_set_chorus (synth, chorus_voices, chorus_level,
+                            chorus_speed, chorus_depth, chorus_type);
     }
 }
 

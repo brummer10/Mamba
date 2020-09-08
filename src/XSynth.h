@@ -52,6 +52,12 @@ public:
     double reverb_width;
     double reverb_damp;
     double reverb_roomsize;
+    int chorus_on;
+    int chorus_type;
+    double chorus_depth;
+    double chorus_speed;
+    double chorus_level;
+    int chorus_voices;
 
     void setup(unsigned int SampleRate);
     void init_synth();
@@ -60,6 +66,9 @@ public:
 
     void set_reverb_on(int on);
     void set_reverb_levels();
+
+    void set_chorus_on(int on);
+    void set_chorus_levels();
 
     void panic();
     void unload_synth();

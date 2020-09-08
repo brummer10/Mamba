@@ -193,6 +193,12 @@ void XKeyBoard::read_config() {
             else if (key.compare("[reverb_width]") == 0) xsynth->reverb_width = std::stof(value);
             else if (key.compare("[reverb_damp]") == 0) xsynth->reverb_damp = std::stof(value);
             else if (key.compare("[reverb_roomsize]") == 0) xsynth->reverb_roomsize = std::stof(value);
+            else if (key.compare("[chorus_on]") == 0) xsynth->chorus_on = std::stoi(value);
+            else if (key.compare("[chorus_type]") == 0) xsynth->chorus_type = std::stoi(value);
+            else if (key.compare("[chorus_depth]") == 0) xsynth->chorus_depth = std::stof(value);
+            else if (key.compare("[chorus_speed]") == 0) xsynth->chorus_speed = std::stof(value);
+            else if (key.compare("[chorus_level]") == 0) xsynth->chorus_level = std::stof(value);
+            else if (key.compare("[chorus_voices]") == 0) xsynth->chorus_voices = std::stoi(value);
             key.clear();
             value.clear();
         }
@@ -247,6 +253,12 @@ void XKeyBoard::save_config() {
          outfile << "[reverb_width] " << xsynth->reverb_width << std::endl;
          outfile << "[reverb_damp] " << xsynth->reverb_damp << std::endl;
          outfile << "[reverb_roomsize] " << xsynth->reverb_roomsize << std::endl;
+         outfile << "[chorus_on] " << xsynth->chorus_on << std::endl;
+         outfile << "[chorus_type] " << xsynth->chorus_type << std::endl;
+         outfile << "[chorus_depth] " << xsynth->chorus_depth << std::endl;
+         outfile << "[chorus_speed] " << xsynth->chorus_speed << std::endl;
+         outfile << "[chorus_level] " << xsynth->chorus_level << std::endl;
+         outfile << "[chorus_voices] " << xsynth->chorus_voices << std::endl;
          outfile.close();
     }
     if (need_save && xjack->rec.play.size()) {
@@ -538,7 +550,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     synth = menubar_add_menu(menubar,_("Fluidsynth"));
     menu_add_entry(synth,_("Load SoundFont"));
-    fs[0] = menu_add_entry(synth,_("Fluidsynth Reverb"));
+    fs[0] = menu_add_entry(synth,_("Fluidsynth Settings"));
     fs[0]->state = 4;
     fs[1] = menu_add_entry(synth,_("Fluidsynth Panic"));
     fs[1]->state = 4;
@@ -1514,6 +1526,60 @@ void XKeyBoard::reverb_on_callback(void *w_, void* user_data) {
     xjmkb->xsynth->set_reverb_on(xjmkb->xsynth->reverb_on);
 }
 
+//static 
+void XKeyBoard::chorus_type_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->chorus_type = (int)adj_get_value(w->adj);
+    xjmkb->xsynth->set_chorus_levels();
+}
+
+//static 
+void XKeyBoard::chorus_depth_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->chorus_depth = adj_get_value(w->adj);
+    xjmkb->xsynth->set_chorus_levels();
+}
+
+//static 
+void XKeyBoard::chorus_speed_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->chorus_speed = adj_get_value(w->adj);
+    xjmkb->xsynth->set_chorus_levels();
+}
+
+//static 
+void XKeyBoard::chorus_level_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->chorus_level = adj_get_value(w->adj);
+    xjmkb->xsynth->set_chorus_levels();
+}
+
+//static 
+void XKeyBoard::chorus_voices_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->chorus_voices = (int)adj_get_value(w->adj);
+    xjmkb->xsynth->set_chorus_levels();
+}
+
+//static 
+void XKeyBoard::chorus_on_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->chorus_on = (int)adj_get_value(w->adj);
+    xjmkb->xsynth->set_chorus_on(xjmkb->xsynth->chorus_on);
+}
+
 // static
 void XKeyBoard::set_on_off_label(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
@@ -1527,12 +1593,12 @@ void XKeyBoard::set_on_off_label(void *w_, void* user_data) {
 }
 
 void XKeyBoard::init_synth_ui(Widget_t *parent) {
-    synth_ui = create_window(parent->app, DefaultRootWindow(parent->app->dpy), 0, 0, 280, 200);
+    synth_ui = create_window(parent->app, DefaultRootWindow(parent->app->dpy), 0, 0, 600, 200);
     XSelectInput(parent->app->dpy, synth_ui->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
     XSetTransientForHint(parent->app->dpy, synth_ui->widget, parent->widget);
-    widget_set_title(synth_ui, _("Fluidsynth - Reverb"));
+    widget_set_title(synth_ui, _("Fluidsynth - Settings"));
     synth_ui->flags &= ~USE_TRANSPARENCY;
     synth_ui->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     synth_ui->func.expose_callback = draw_synth_ui;
@@ -1542,6 +1608,7 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     synth_ui->func.key_press_callback = key_press;
     synth_ui->func.key_release_callback = key_release;
 
+    // reverb
     Widget_t *tmp = add_toggle_button(synth_ui, _("On"), 20,  150, 60, 30);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.adj_callback = set_on_off_label;
@@ -1583,7 +1650,64 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_button(synth_ui, _("Close"), 200, 150, 60, 30);
+    // chorus
+    tmp = add_label(synth_ui,_("Chorus"),290,10,80,20);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_toggle_button(synth_ui, _("On"), 290,  150, 60, 30);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.adj_callback = set_on_off_label;
+    tmp->func.value_changed_callback = chorus_on_callback;
+    adj_set_value(tmp->adj, (float)xsynth->chorus_on);
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_keyboard_knob(synth_ui, _("voices"), 290, 40, 60, 75);
+    set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 99.0, 1.0, CL_CONTINUOS);
+    adj_set_value(tmp->adj, (float)xsynth->chorus_voices);
+    tmp->func.value_changed_callback = chorus_voices_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_keyboard_knob(synth_ui, _("Level"), 350, 40, 60, 75);
+    set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 10.0, 0.1, CL_CONTINUOS);
+    adj_set_value(tmp->adj, xsynth->chorus_level);
+    tmp->func.value_changed_callback = chorus_level_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_keyboard_knob(synth_ui, _("Speed"), 410, 40, 60, 75);
+    set_adjustment(tmp->adj, 0.1, 0.1, 0.1, 5.0, 0.05, CL_CONTINUOS);
+    adj_set_value(tmp->adj, xsynth->chorus_speed);
+    tmp->func.value_changed_callback = chorus_speed_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_keyboard_knob(synth_ui, _("Depth"), 470, 40, 60, 75);
+    set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 21.0, 0.1, CL_CONTINUOS);
+    adj_set_value(tmp->adj, xsynth->chorus_depth);
+    tmp->func.value_changed_callback = chorus_depth_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_label(synth_ui,_("Type:"),350,150,50,20);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_combobox(synth_ui, _("MODE"), 400, 150, 100, 30);
+    combobox_add_entry(tmp, _("SINE"));
+    combobox_add_entry(tmp, _("TRIANGLE"));
+    combobox_set_active_entry(tmp, (float)xsynth->chorus_type);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = chorus_type_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    // general
+    tmp = add_button(synth_ui, _("Close"), 520, 150, 60, 30);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = synth_ui_callback;
     tmp->func.key_press_callback = key_press;
