@@ -37,6 +37,12 @@ XSynth::XSynth() {
     mdriver = NULL;
     synth = NULL;
     settings = NULL;
+
+    reverb_on = 0;
+    reverb_level = 0.7;
+    reverb_width = 10.0;
+    reverb_damp = 0.4;
+    reverb_roomsize = 0.6;
 };
 
 XSynth::~XSynth() {
@@ -62,14 +68,30 @@ void XSynth::init_synth() {
 int XSynth::load_soundfont(const char *path) {
     if (sf_id != -1) fluid_synth_sfunload(synth, sf_id, 1);
     sf_id = fluid_synth_sfload(synth, path, 1);
-    if(sf_id == -1) {
+    if (sf_id == -1) {
         return 1;
     }
+    if (reverb_on) set_reverb_on(reverb_on);
     return 0;
+}
+void XSynth::set_reverb_on(int on) {
+    if (synth) {
+        fluid_synth_set_reverb_on(synth, on);
+        set_reverb_levels();
+    }
+}
+
+void XSynth::set_reverb_levels() {
+    if (synth) {
+        fluid_synth_set_reverb (synth, reverb_roomsize, reverb_damp,
+                                        reverb_width, reverb_level);
+    }
 }
 
 void XSynth::panic() {
-    fluid_synth_all_sounds_off(synth, -1);
+    if (synth) {
+        fluid_synth_all_sounds_off(synth, -1);
+    }
 }
 
 void XSynth::unload_synth() {

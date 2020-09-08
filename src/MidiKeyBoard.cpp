@@ -165,41 +165,41 @@ void XKeyBoard::set_config(const char *name, const char *client_id, bool op_gui)
     }
 }
 
-
 void XKeyBoard::read_config() {
     std::ifstream infile(config_file);
     std::string line;
+    std::string key;
+    std::string value;
     if (infile.is_open()) {
-        std::getline( infile, line );
-        if (!line.empty()) main_x = std::stoi(line);
-        std::getline( infile, line );
-        if (!line.empty()) main_y = std::stoi(line);
-        std::getline( infile, line );
-        if (!line.empty()) main_w = std::stoi(line);
-        std::getline( infile, line );
-        if (!line.empty()) main_h = std::stoi(line);
-        std::getline( infile, line );
-        if (!line.empty()) visible = std::stoi(line);
-        std::getline( infile, line );
-        if (!line.empty()) keylayout = std::stoi(line);
-        std::getline( infile, line );
-        if (!line.empty()) mchannel = std::stoi(line);
-        std::getline( infile, line );
-        if (!line.empty()) velocity = std::stoi(line);
-        std::getline( infile, line );
-        if (!line.empty()) filepath = line;
-        std::getline( infile, line );
-        if (!line.empty()) octave = std::stoi(line);
-        std::getline( infile, line );
-        if (!line.empty()) volume = std::stoi(line);
-        std::getline( infile, line );
-        if (!line.empty()) soundfontpath = line;
-        std::getline( infile, line );
-        if (!line.empty()) soundfont = line;
+        while (std::getline(infile, line)) {
+            std::istringstream buf(line);
+            buf >> key;
+            buf >> value;
+            if (key.compare("[main_x]") == 0) main_x = std::stoi(value);
+            else if (key.compare("[main_y]") == 0) main_y = std::stoi(value);
+            else if (key.compare("[main_w]") == 0) main_w = std::stoi(value);
+            else if (key.compare("[main_h]") == 0) main_h = std::stoi(value);
+            else if (key.compare("[visible]") == 0) visible = std::stoi(value);
+            else if (key.compare("[keylayout]") == 0) keylayout = std::stoi(value);
+            else if (key.compare("[mchannel]") == 0) mchannel = std::stoi(value);
+            else if (key.compare("[velocity]") == 0) velocity = std::stoi(value);
+            else if (key.compare("[filepath]") == 0) filepath = value;
+            else if (key.compare("[octave]") == 0) octave = std::stoi(value);
+            else if (key.compare("[volume]") == 0) volume = std::stoi(value);
+            else if (key.compare("[soundfontpath]") == 0) soundfontpath = value;
+            else if (key.compare("[soundfont]") == 0) soundfont = value;
+            else if (key.compare("[reverb_on]") == 0) xsynth->reverb_on = std::stoi(value);
+            else if (key.compare("[reverb_level]") == 0) xsynth->reverb_level = std::stof(value);
+            else if (key.compare("[reverb_width]") == 0) xsynth->reverb_width = std::stof(value);
+            else if (key.compare("[reverb_damp]") == 0) xsynth->reverb_damp = std::stof(value);
+            else if (key.compare("[reverb_roomsize]") == 0) xsynth->reverb_roomsize = std::stof(value);
+            key.clear();
+            value.clear();
+        }
         infile.close();
         has_config = true;
     }
-    
+
     std::ifstream vinfile(config_file+"vec");
     if (vinfile.is_open()) {
         mamba::MidiEvent ev;
@@ -229,19 +229,24 @@ void XKeyBoard::save_config() {
         XLockDisplay(win->app->dpy);
     std::ofstream outfile(config_file);
     if (outfile.is_open()) {
-         outfile << main_x << std::endl;
-         outfile << main_y << std::endl;
-         outfile << main_w << std::endl;
-         outfile << main_h << std::endl;
-         outfile << visible << std::endl;
-         outfile << keylayout << std::endl;
-         outfile << mchannel << std::endl;
-         outfile << velocity << std::endl;
-         outfile << filepath << std::endl;
-         outfile << octave << std::endl;
-         outfile << volume << std::endl;
-         outfile << soundfontpath << std::endl;
-         outfile << soundfont << std::endl;
+         outfile << "[main_x] "<< main_x << std::endl;
+         outfile << "[main_y] " << main_y << std::endl;
+         outfile << "[main_w] " << main_w << std::endl;
+         outfile << "[main_h] " << main_h << std::endl;
+         outfile << "[visible] " << visible << std::endl;
+         outfile << "[keylayout] " << keylayout << std::endl;
+         outfile << "[mchannel] " << mchannel << std::endl;
+         outfile << "[velocity] " << velocity << std::endl;
+         outfile << "[filepath] " << filepath << std::endl;
+         outfile << "[octave] " << octave << std::endl;
+         outfile << "[volume] " << volume << std::endl;
+         outfile << "[soundfontpath] " << soundfontpath << std::endl;
+         outfile << "[soundfont] " << soundfont << std::endl;
+         outfile << "[reverb_on] " << xsynth->reverb_on << std::endl;
+         outfile << "[reverb_level] " << xsynth->reverb_level << std::endl;
+         outfile << "[reverb_width] " << xsynth->reverb_width << std::endl;
+         outfile << "[reverb_damp] " << xsynth->reverb_damp << std::endl;
+         outfile << "[reverb_roomsize] " << xsynth->reverb_roomsize << std::endl;
          outfile.close();
     }
     if (need_save && xjack->rec.play.size()) {
@@ -254,7 +259,6 @@ void XKeyBoard::save_config() {
             outfile.close();
         }
     }
-    
     if(nsmsig.nsm_session_control)
         XUnlockDisplay(win->app->dpy);
 }
@@ -286,6 +290,14 @@ void XKeyBoard::show_ui(int present) {
         widget_hide(win);
         if(nsmsig.nsm_session_control)
             nsmsig.trigger_nsm_gui_is_hidden();
+    }
+}
+
+void XKeyBoard::show_synth_ui(int present) {
+    if(present) {
+        widget_show_all(synth_ui);
+    }else {
+        widget_hide(synth_ui);
     }
 }
 
@@ -387,7 +399,15 @@ void XKeyBoard::mk_draw_knob(void *w_, void* user_data) {
     /** show value on the kob**/
     if (w->state) {
         char s[64];
-        snprintf(s, 63,"%d",  (int) w->adj_y->value);
+        const char* format[] = {"%.1f", "%.2f", "%.3f"};
+        float value = adj_get_value(w->adj);
+        if (fabs(w->adj->step)>0.99) {
+            snprintf(s, 63,"%d",  (int) value);
+        } else if (fabs(w->adj->step)>0.09) {
+            snprintf(s, 63, format[1-1], value);
+        } else {
+            snprintf(s, 63, format[2-1], value);
+        }
         cairo_set_source_rgb (w->crb, 0.6, 0.6, 0.6);
         cairo_set_font_size (w->crb, knobx1/3);
         cairo_text_extents(w->crb, s, &extents);
@@ -518,8 +538,12 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     synth = menubar_add_menu(menubar,_("Fluidsynth"));
     menu_add_entry(synth,_("Load SoundFont"));
-    menu_add_entry(synth,_("Fluidsynth Panic"));
-    menu_add_entry(synth,_("Exit Fluidsynth"));
+    fs[0] = menu_add_entry(synth,_("Fluidsynth Reverb"));
+    fs[0]->state = 4;
+    fs[1] = menu_add_entry(synth,_("Fluidsynth Panic"));
+    fs[1]->state = 4;
+    fs[2] = menu_add_entry(synth,_("Exit Fluidsynth"));
+    fs[2]->state = 4;
     synth->func.value_changed_callback = synth_callback;
 
     info = menubar_add_menu(menubar,_("_Info"));
@@ -691,6 +715,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     // start the timeout thread for keyboard animation
     animidi->start(30, std::bind(animate_midi_keyboard,(void*)wid));
+    init_synth_ui(win);
 }
 
 // temporary disable adj_callback from play button to redraw it from animate thread
@@ -980,6 +1005,9 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             port_list = NULL;
         }
         xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3);
+        xjmkb->fs[0]->state = 0;
+        xjmkb->fs[1]->state = 0;
+        xjmkb->fs[2]->state = 0;
     }
 }
 
@@ -999,13 +1027,22 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
         break;
         case(1):
         {
-            xjmkb->xsynth->panic();
+            xjmkb->show_synth_ui(1);
         }
         break;
         case(2):
         {
+            xjmkb->xsynth->panic();
+        }
+        break;
+        case(3):
+        {
+            xjmkb->show_synth_ui(0);
             xjmkb->xsynth->unload_synth();
             xjmkb->soundfont = "";
+            xjmkb->fs[0]->state = 4;
+            xjmkb->fs[1]->state = 4;
+            xjmkb->fs[2]->state = 4;
         }
         break;
         default:
@@ -1413,6 +1450,148 @@ void XKeyBoard::key_release(void *w_, void *key_, void *user_data) {
     xjmkb->wid->func.key_release_callback(xjmkb->wid, key_, user_data);
 }
 
+/*********** Fluidsynth reverb settings window ************/
+
+//static 
+void XKeyBoard::draw_synth_ui(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
+    cairo_paint (w->crb);
+}
+
+//static 
+void XKeyBoard::synth_ui_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    if (w->flags & HAS_POINTER && !*(int*)user_data){
+        Widget_t *win = get_toplevel_widget(w->app);
+        XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+        xjmkb->show_synth_ui(0);
+    }
+}
+
+//static 
+void XKeyBoard::reverb_level_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->reverb_level = adj_get_value(w->adj);
+    xjmkb->xsynth->set_reverb_levels();
+}
+
+//static 
+void XKeyBoard::reverb_width_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->reverb_width = adj_get_value(w->adj);
+    xjmkb->xsynth->set_reverb_levels();
+}
+
+//static 
+void XKeyBoard::reverb_damp_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->reverb_damp = adj_get_value(w->adj);
+    xjmkb->xsynth->set_reverb_levels();
+}
+
+//static 
+void XKeyBoard::reverb_roomsize_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->reverb_roomsize = adj_get_value(w->adj);
+    xjmkb->xsynth->set_reverb_levels();
+}
+
+//static 
+void XKeyBoard::reverb_on_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->reverb_on = (int)adj_get_value(w->adj);
+    xjmkb->xsynth->set_reverb_on(xjmkb->xsynth->reverb_on);
+}
+
+// static
+void XKeyBoard::set_on_off_label(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    int value = (int)adj_get_value(w->adj);
+    if (value) {
+        w->label = _("Off");
+    } else {
+        w->label = _("On");
+    }
+    expose_widget(w);
+}
+
+void XKeyBoard::init_synth_ui(Widget_t *parent) {
+    synth_ui = create_window(parent->app, DefaultRootWindow(parent->app->dpy), 0, 0, 280, 200);
+    XSelectInput(parent->app->dpy, synth_ui->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
+                    |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
+                    |ButtonPressMask|Button1MotionMask|PointerMotionMask);
+    XSetTransientForHint(parent->app->dpy, synth_ui->widget, parent->widget);
+    widget_set_title(synth_ui, _("Fluidsynth - Reverb"));
+    synth_ui->flags &= ~USE_TRANSPARENCY;
+    synth_ui->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    synth_ui->func.expose_callback = draw_synth_ui;
+    synth_ui->scale.gravity = CENTER;
+    synth_ui->parent = parent;
+    synth_ui->parent_struct = this;
+    synth_ui->func.key_press_callback = key_press;
+    synth_ui->func.key_release_callback = key_release;
+
+    Widget_t *tmp = add_toggle_button(synth_ui, _("On"), 20,  150, 60, 30);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.adj_callback = set_on_off_label;
+    tmp->func.value_changed_callback = reverb_on_callback;
+    adj_set_value(tmp->adj,(float)xsynth->reverb_on);
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_label(synth_ui,_("Reverb"),20,10,80,20);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_keyboard_knob(synth_ui, _("Roomsize"), 20, 40, 60, 75);
+    set_adjustment(tmp->adj, 0.2, 0.2, 0.0, 1.2, 0.01, CL_CONTINUOS);
+    adj_set_value(tmp->adj, xsynth->reverb_roomsize);
+    tmp->func.value_changed_callback = reverb_roomsize_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_keyboard_knob(synth_ui, _("Damp"), 80, 40, 60, 75);
+    set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 1.0, 0.01, CL_CONTINUOS);
+    adj_set_value(tmp->adj, xsynth->reverb_damp);
+    tmp->func.value_changed_callback = reverb_damp_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_keyboard_knob(synth_ui, _("Width"), 140, 40, 60, 75);
+    set_adjustment(tmp->adj, 0.5, 0.5, 0.0, 100.0, 0.5, CL_CONTINUOS);
+    adj_set_value(tmp->adj, xsynth->reverb_width);
+    tmp->func.value_changed_callback = reverb_width_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_keyboard_knob(synth_ui, _("Level"), 200, 40, 60, 75);
+    set_adjustment(tmp->adj, 0.5, 0.5, 0.0, 1.0, 0.01, CL_CONTINUOS);
+    adj_set_value(tmp->adj, xsynth->reverb_level);
+    tmp->func.value_changed_callback = reverb_level_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    tmp = add_button(synth_ui, _("Close"), 200, 150, 60, 30);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = synth_ui_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+}
+
+/******************* Exit handlers ********************/
+
 void XKeyBoard::signal_handle (int sig) {
     if(xjack->client) jack_client_close (xjack->client);
     xjack->client = NULL;
@@ -1577,6 +1756,9 @@ int main (int argc, char *argv[]) {
             port_list = NULL;
         }
         mmessage.send_midi_cc(0xB0, 7, xjmkb.volume, 3);
+        xjmkb.fs[0]->state = 0;
+        xjmkb.fs[1]->state = 0;
+        xjmkb.fs[2]->state = 0;
     }
     
     if (argc > 1) {

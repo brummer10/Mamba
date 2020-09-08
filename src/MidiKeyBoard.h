@@ -163,6 +163,7 @@ private:
     Widget_t *bpm;
     Widget_t *songbpm;
     Widget_t *synth;
+    Widget_t *synth_ui;
     Widget_t *menubar;
     Pixmap *icon;
 
@@ -221,9 +222,18 @@ private:
     static void unmap_callback(void *w_, void* user_data);
     static void map_callback(void *w_, void* user_data);
     static void draw_board(void *w_, void* user_data);
+    static void draw_synth_ui(void *w_, void* user_data);
     static void mk_draw_knob(void *w_, void* user_data);
     static void set_play_label(void *w_, void* user_data);
     static void win_mem_free(void *w_, void* user_data);
+
+    static void synth_ui_callback(void *w_, void* user_data);
+    static void reverb_level_callback(void *w_, void* user_data);
+    static void reverb_width_callback(void *w_, void* user_data);
+    static void reverb_damp_callback(void *w_, void* user_data);
+    static void reverb_roomsize_callback(void *w_, void* user_data);
+    static void reverb_on_callback(void *w_, void* user_data);
+    static void set_on_off_label(void *w_, void* user_data);
 
     Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
@@ -252,11 +262,14 @@ public:
     bool has_config;
     Widget_t *win;
     Widget_t *wid;
+    Widget_t *fs[3];
     int visible;
     int volume;
 
     void init_ui(Xputty *app);
+    void init_synth_ui(Widget_t *win);
     void show_ui(int present);
+    void show_synth_ui(int present);
     void read_config();
     void save_config();
     void set_config(const char *name, const char *client_id, bool op_gui);

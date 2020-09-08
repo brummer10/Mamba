@@ -47,9 +47,20 @@ public:
     XSynth();
     ~XSynth();
 
+    int reverb_on;
+    double reverb_level;
+    double reverb_width;
+    double reverb_damp;
+    double reverb_roomsize;
+
     void setup(unsigned int SampleRate);
     void init_synth();
+    int synth_is_active() {return synth ? 1 : 0;}
     int load_soundfont(const char *path);
+
+    void set_reverb_on(int on);
+    void set_reverb_levels();
+
     void panic();
     void unload_synth();
 };
