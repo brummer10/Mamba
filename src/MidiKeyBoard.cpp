@@ -100,6 +100,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xsynth::XSynth *xsynth_,
         config_file = path +"/.config/Mamba.conf";
         keymap_file =  path +"/.config/Mamba.keymap";
     }
+    fs_instruments = NULL;
     soundfontpath = getenv("HOME");
     has_config = false;
     main_x = 0;
@@ -302,14 +303,6 @@ void XKeyBoard::show_ui(int present) {
         widget_hide(win);
         if(nsmsig.nsm_session_control)
             nsmsig.trigger_nsm_gui_is_hidden();
-    }
-}
-
-void XKeyBoard::show_synth_ui(int present) {
-    if(present) {
-        widget_show_all(synth_ui);
-    }else {
-        widget_hide(synth_ui);
     }
 }
 
@@ -585,9 +578,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     bank =  add_combobox(win, _("Bank"), 230, 30, 60, 30);
     bank->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bank->scale.gravity = ASPECT;
-    combobox_add_numeric_entrys(bank,0,127);
+    combobox_add_numeric_entrys(bank,0,128);
     combobox_set_active_entry(bank, 0);
-    set_adjustment(bank->adj,0.0, 0.0, 0.0, 15.0, 1.0, CL_ENUM);
+    set_adjustment(bank->adj,0.0, 0.0, 0.0, 128.0, 1.0, CL_ENUM);
     bank->func.value_changed_callback = bank_callback;
     bank->func.key_press_callback = key_press;
     bank->func.key_release_callback = key_release;
@@ -1015,6 +1008,12 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             }
             jack_free(port_list);
             port_list = NULL;
+        }
+        XWindowAttributes attrs;
+        XGetWindowAttributes(win->app->dpy, (Window)xjmkb->synth_ui->widget, &attrs);
+        if (attrs.map_state == IsViewable) {
+            xjmkb->show_synth_ui(0);
+            xjmkb->show_synth_ui(1);
         }
         xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3);
         xjmkb->fs[0]->state = 0;
@@ -1462,7 +1461,7 @@ void XKeyBoard::key_release(void *w_, void *key_, void *user_data) {
     xjmkb->wid->func.key_release_callback(xjmkb->wid, key_, user_data);
 }
 
-/*********** Fluidsynth reverb settings window ************/
+/**************** Fluidsynth settings window *****************/
 
 //static 
 void XKeyBoard::draw_synth_ui(void *w_, void* user_data) {
@@ -1581,6 +1580,15 @@ void XKeyBoard::chorus_on_callback(void *w_, void* user_data) {
 }
 
 // static
+void XKeyBoard::channel_pressure_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xsynth->set_channel_pressure(xjmkb->mchannel, (int)adj_get_value(w->adj));
+    
+}
+
+// static
 void XKeyBoard::set_on_off_label(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     int value = (int)adj_get_value(w->adj);
@@ -1592,8 +1600,45 @@ void XKeyBoard::set_on_off_label(void *w_, void* user_data) {
     expose_widget(w);
 }
 
+//static
+void XKeyBoard::instrument_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(xjmkb->fs_instruments->adj);
+    std::istringstream buf(xjmkb->xsynth->instruments[i]);
+    buf >> xjmkb->mbank;
+    buf >> xjmkb->mprogram;
+    adj_set_value(xjmkb->bank->adj,xjmkb->mbank);
+    adj_set_value(xjmkb->program->adj,xjmkb->mprogram);
+    
+}
+
+void XKeyBoard::show_synth_ui(int present) {
+    if(present) {
+        int value = 0;
+        if(fs_instruments) {
+            value = (int)adj_get_value(fs_instruments->adj);
+            destroy_widget(fs_instruments, win->app);
+        }
+        fs_instruments = add_combobox(synth_ui, _("Instruments"), 20, 10, 260, 30);
+        fs_instruments->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+        for(std::vector<std::string>::const_iterator i = xsynth->instruments.begin(); i != xsynth->instruments.end(); ++i) {
+            combobox_add_entry(fs_instruments,(*i).c_str());
+        }
+        fs_instruments->func.value_changed_callback = instrument_callback;
+        combobox_set_active_entry(fs_instruments, value);
+        fs_instruments->func.key_press_callback = key_press;
+        fs_instruments->func.key_release_callback = key_release;
+
+        widget_show_all(synth_ui);
+    }else {
+        widget_hide(synth_ui);
+    }
+}
+
 void XKeyBoard::init_synth_ui(Widget_t *parent) {
-    synth_ui = create_window(parent->app, DefaultRootWindow(parent->app->dpy), 0, 0, 600, 200);
+    synth_ui = create_window(parent->app, DefaultRootWindow(parent->app->dpy), 0, 0, 550, 200);
     XSelectInput(parent->app->dpy, synth_ui->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
@@ -1617,33 +1662,33 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(synth_ui,_("Reverb"),20,10,80,20);
+    tmp = add_label(synth_ui,_("Reverb"),20,50,80,20);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Roomsize"), 20, 40, 60, 75);
+    tmp = add_keyboard_knob(synth_ui, _("Roomsize"), 20, 70, 60, 75);
     set_adjustment(tmp->adj, 0.2, 0.2, 0.0, 1.2, 0.01, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->reverb_roomsize);
     tmp->func.value_changed_callback = reverb_roomsize_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Damp"), 80, 40, 60, 75);
+    tmp = add_keyboard_knob(synth_ui, _("Damp"), 80, 70, 60, 75);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 1.0, 0.01, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->reverb_damp);
     tmp->func.value_changed_callback = reverb_damp_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Width"), 140, 40, 60, 75);
+    tmp = add_keyboard_knob(synth_ui, _("Width"), 140, 70, 60, 75);
     set_adjustment(tmp->adj, 0.5, 0.5, 0.0, 100.0, 0.5, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->reverb_width);
     tmp->func.value_changed_callback = reverb_width_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Level"), 200, 40, 60, 75);
+    tmp = add_keyboard_knob(synth_ui, _("Level"), 200, 70, 60, 75);
     set_adjustment(tmp->adj, 0.5, 0.5, 0.0, 1.0, 0.01, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->reverb_level);
     tmp->func.value_changed_callback = reverb_level_callback;
@@ -1651,7 +1696,7 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_release_callback = key_release;
 
     // chorus
-    tmp = add_label(synth_ui,_("Chorus"),290,10,80,20);
+    tmp = add_label(synth_ui,_("Chorus"),290,50,80,20);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
@@ -1664,40 +1709,35 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("voices"), 290, 40, 60, 75);
+    tmp = add_keyboard_knob(synth_ui, _("voices"), 290, 70, 60, 75);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 99.0, 1.0, CL_CONTINUOS);
     adj_set_value(tmp->adj, (float)xsynth->chorus_voices);
     tmp->func.value_changed_callback = chorus_voices_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Level"), 350, 40, 60, 75);
+    tmp = add_keyboard_knob(synth_ui, _("Level"), 350, 70, 60, 75);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 10.0, 0.1, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->chorus_level);
     tmp->func.value_changed_callback = chorus_level_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Speed"), 410, 40, 60, 75);
+    tmp = add_keyboard_knob(synth_ui, _("Speed"), 410, 70, 60, 75);
     set_adjustment(tmp->adj, 0.1, 0.1, 0.1, 5.0, 0.05, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->chorus_speed);
     tmp->func.value_changed_callback = chorus_speed_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Depth"), 470, 40, 60, 75);
+    tmp = add_keyboard_knob(synth_ui, _("Depth"), 470, 70, 60, 75);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 21.0, 0.1, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->chorus_depth);
     tmp->func.value_changed_callback = chorus_depth_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(synth_ui,_("Type:"),350,150,50,20);
-    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-
-    tmp = add_combobox(synth_ui, _("MODE"), 400, 150, 100, 30);
+    tmp = add_combobox(synth_ui, _("MODE"), 360, 150, 100, 30);
     combobox_add_entry(tmp, _("SINE"));
     combobox_add_entry(tmp, _("TRIANGLE"));
     combobox_set_active_entry(tmp, (float)xsynth->chorus_type);
@@ -1706,8 +1746,15 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
+    tmp = add_hslider(synth_ui, _("Channel Pressure"), 290, 10, 260, 30);
+    set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = channel_pressure_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
     // general
-    tmp = add_button(synth_ui, _("Close"), 520, 150, 60, 30);
+    tmp = add_button(synth_ui, _("Close"), 470, 150, 60, 30);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = synth_ui_callback;
     tmp->func.key_press_callback = key_press;

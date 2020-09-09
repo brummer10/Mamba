@@ -19,6 +19,8 @@
  */
 
 #include <fluidsynth.h>
+#include <vector>
+#include <string>
 
 #pragma once
 
@@ -47,6 +49,7 @@ public:
     XSynth();
     ~XSynth();
 
+    std::vector<std::string> instruments;
     int reverb_on;
     double reverb_level;
     double reverb_width;
@@ -63,12 +66,15 @@ public:
     void init_synth();
     int synth_is_active() {return synth ? 1 : 0;}
     int load_soundfont(const char *path);
+    void print_soundfont();
 
     void set_reverb_on(int on);
     void set_reverb_levels();
 
     void set_chorus_on(int on);
     void set_chorus_levels();
+
+    void set_channel_pressure(int channel, int value);
 
     void panic();
     void unload_synth();

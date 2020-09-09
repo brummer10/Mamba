@@ -79,8 +79,32 @@ int XSynth::load_soundfont(const char *path) {
         return 1;
     }
     if (reverb_on) set_reverb_on(reverb_on);
+    if (chorus_on) set_chorus_on(chorus_on);
+    print_soundfont();
     return 0;
 }
+
+void XSynth::print_soundfont() {
+    instruments.clear();
+    fluid_preset_t *preset;
+    fluid_sfont_t * sfont = fluid_synth_get_sfont_by_id(synth, sf_id);
+    int offset = fluid_synth_get_bank_offset(synth, sf_id);
+
+    if(sfont == NULL) {
+        fprintf(stderr, "inst: invalid font number\n");
+        return ;
+    }
+
+    fluid_sfont_iteration_start(sfont);
+
+    while((preset = fluid_sfont_iteration_next(sfont)) != NULL) {
+        char inst[100];
+        snprintf(inst, 100, "%03d %03d %s", fluid_preset_get_banknum(preset) + offset,
+                            fluid_preset_get_num(preset),fluid_preset_get_name(preset));
+        instruments.push_back(inst);
+    }
+}
+
 
 void XSynth::set_reverb_on(int on) {
     if (synth) {
@@ -107,6 +131,12 @@ void XSynth::set_chorus_levels() {
     if (synth) {
         fluid_synth_set_chorus (synth, chorus_voices, chorus_level,
                             chorus_speed, chorus_depth, chorus_type);
+    }
+}
+
+void XSynth::set_channel_pressure(int channel, int value) {
+    if (synth) {
+        fluid_synth_channel_pressure(synth, channel, value);
     }
 }
 

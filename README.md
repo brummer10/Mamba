@@ -11,6 +11,8 @@ Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Ki
 - Including [gettext](https://www.gnu.org/software/gettext/) localization support
 - Including [fluidsynth](https://github.com/FluidSynth/fluidsynth) support
 - Soundfont loader for fluidsynth
+- Controls for fluidsynth reverb, chorus and channel pressure
+- Instrument selector for fluidsynth
 - Channel selector
 - Bank and Program selector
 - Keyboard mapping for qwertz, qwerty, azerty(fr) and azerty(be) selectable from menu

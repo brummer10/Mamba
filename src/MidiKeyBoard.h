@@ -242,6 +242,8 @@ private:
     static void reverb_roomsize_callback(void *w_, void* user_data);
     static void reverb_on_callback(void *w_, void* user_data);
     static void set_on_off_label(void *w_, void* user_data);
+    static void channel_pressure_callback(void *w_, void* user_data);
+    static void instrument_callback(void *w_, void* user_data);
 
     Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
@@ -271,6 +273,7 @@ public:
     Widget_t *win;
     Widget_t *wid;
     Widget_t *fs[3];
+    Widget_t *fs_instruments;
     int visible;
     int volume;
 
