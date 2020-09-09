@@ -279,6 +279,7 @@ public:
 
     void init_ui(Xputty *app);
     void init_synth_ui(Widget_t *win);
+    void rebuild_instrument_list();
     void show_ui(int present);
     void show_synth_ui(int present);
     void read_config();

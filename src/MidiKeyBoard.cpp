@@ -503,6 +503,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     XFree(win_size_hints);
 
     menubar = add_menubar(win,"",0, 0, 700, 20);
+    menubar->func.key_press_callback = key_press;
+    menubar->func.key_release_callback = key_release;
 
     filemenu = menubar_add_menu(menubar,_("_File"));
     menu_add_entry(filemenu,_("_Load MIDI"));
@@ -1009,11 +1011,11 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             jack_free(port_list);
             port_list = NULL;
         }
+        xjmkb->rebuild_instrument_list();
         XWindowAttributes attrs;
         XGetWindowAttributes(win->app->dpy, (Window)xjmkb->synth_ui->widget, &attrs);
         if (attrs.map_state == IsViewable) {
-            xjmkb->show_synth_ui(0);
-            xjmkb->show_synth_ui(1);
+            widget_show_all(xjmkb->fs_instruments);
         }
         xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3);
         xjmkb->fs[0]->state = 0;
@@ -1614,23 +1616,26 @@ void XKeyBoard::instrument_callback(void *w_, void* user_data) {
     
 }
 
+void XKeyBoard::rebuild_instrument_list() {
+    int value = 0;
+    if(fs_instruments) {
+        value = (int)adj_get_value(fs_instruments->adj);
+        destroy_widget(fs_instruments, win->app);
+    }
+    fs_instruments = add_combobox(synth_ui, _("Instruments"), 20, 10, 260, 30);
+    fs_instruments->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    for(std::vector<std::string>::const_iterator i = xsynth->instruments.begin(); i != xsynth->instruments.end(); ++i) {
+        combobox_add_entry(fs_instruments,(*i).c_str());
+    }
+    fs_instruments->func.value_changed_callback = instrument_callback;
+    combobox_set_active_entry(fs_instruments, value);
+    fs_instruments->func.key_press_callback = key_press;
+    fs_instruments->func.key_release_callback = key_release;
+
+}
+
 void XKeyBoard::show_synth_ui(int present) {
     if(present) {
-        int value = 0;
-        if(fs_instruments) {
-            value = (int)adj_get_value(fs_instruments->adj);
-            destroy_widget(fs_instruments, win->app);
-        }
-        fs_instruments = add_combobox(synth_ui, _("Instruments"), 20, 10, 260, 30);
-        fs_instruments->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-        for(std::vector<std::string>::const_iterator i = xsynth->instruments.begin(); i != xsynth->instruments.end(); ++i) {
-            combobox_add_entry(fs_instruments,(*i).c_str());
-        }
-        fs_instruments->func.value_changed_callback = instrument_callback;
-        combobox_set_active_entry(fs_instruments, value);
-        fs_instruments->func.key_press_callback = key_press;
-        fs_instruments->func.key_release_callback = key_release;
-
         widget_show_all(synth_ui);
     }else {
         widget_hide(synth_ui);
@@ -1930,6 +1935,7 @@ int main (int argc, char *argv[]) {
         xjmkb.fs[0]->state = 0;
         xjmkb.fs[1]->state = 0;
         xjmkb.fs[2]->state = 0;
+        xjmkb.rebuild_instrument_list();
     }
     
     if (argc > 1) {
