@@ -182,6 +182,7 @@ private:
     int run_one_more;
     bool need_save;
     bool only_show_changes;
+    std::atomic<bool> instrument_changed;
 
     static void get_note(Widget_t *w, const int *key, const bool on_off);
     static void get_all_notes_off(Widget_t *w, const int *value);

@@ -121,6 +121,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xsynth::XSynth *xsynth_,
     run_one_more = 0;
     need_save = false;
     only_show_changes = false;
+    instrument_changed.store(false, std::memory_order_release);
     filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
@@ -804,24 +805,27 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         XUnlockDisplay(w->app->dpy);
     }
 
-    if(xjmkb->xsynth->synth_is_active() && xjmkb->fs_instruments) {
-        int i = xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel);
-        if ( i != (int)adj_get_value(xjmkb->fs_instruments->adj)) {
-            XLockDisplay(w->app->dpy);
-            xjmkb->fs_instruments->func.adj_callback = dummy_callback;
-            xjmkb->fs_instruments->func.value_changed_callback = dummy_callback;
-            combobox_set_active_entry(xjmkb->fs_instruments, i);
-            Widget_t * menu = xjmkb->fs_instruments->childlist->childs[1];
-            if (childlist_has_child(menu->childlist)) {
-                Widget_t* view_port =  menu->childlist->childs[0];
-                xjmkb->fs_instruments->label = view_port->childlist->childs[i]->label;
-                expose_widget(xjmkb->fs_instruments);
-                XFlush(w->app->dpy);
+    if (xjmkb->instrument_changed.load(std::memory_order_acquire)) {
+        if(xjmkb->xsynth->synth_is_active() && xjmkb->fs_instruments) {
+            int i = xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel);
+            if (i > -1 && i != (int)adj_get_value(xjmkb->fs_instruments->adj)) {
+                XLockDisplay(w->app->dpy);
+                xjmkb->fs_instruments->func.adj_callback = dummy_callback;
+                xjmkb->fs_instruments->func.value_changed_callback = dummy_callback;
+                combobox_set_active_entry(xjmkb->fs_instruments, i);
+                Widget_t * menu = xjmkb->fs_instruments->childlist->childs[1];
+                if (childlist_has_child(menu->childlist)) {
+                    Widget_t* view_port =  menu->childlist->childs[0];
+                    xjmkb->fs_instruments->label = view_port->childlist->childs[i]->label;
+                    expose_widget(xjmkb->fs_instruments);
+                    XFlush(w->app->dpy);
+                }
+                xjmkb->fs_instruments->func.value_changed_callback = instrument_callback;
+                xjmkb->fs_instruments->func.adj_callback = _set_entry;
+                XUnlockDisplay(w->app->dpy);
             }
-            xjmkb->fs_instruments->func.value_changed_callback = instrument_callback;
-            xjmkb->fs_instruments->func.adj_callback = _set_entry;
-            XUnlockDisplay(w->app->dpy);
         }
+        xjmkb->instrument_changed.store(false, std::memory_order_release);
     }
 
     bool repeat = need_redraw(keys);
@@ -1194,6 +1198,7 @@ void XKeyBoard::program_callback(void *w_, void* user_data) {
     if(!xjmkb->only_show_changes) {
         xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
         xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2);
+        xjmkb->instrument_changed.store(true, std::memory_order_release);
     } else {
         xjmkb->only_show_changes = false;
     }
