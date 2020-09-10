@@ -1135,9 +1135,11 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) {
         MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
         clear_key_matrix(keys->in_key_matrix);
     }
-    if(xjmkb->fs_instruments) {
+    if(xjmkb->xsynth->synth_is_active()) {
         xjmkb->only_show_changes = true;
-        combobox_set_active_entry(xjmkb->fs_instruments, xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel));
+        int i = xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel);
+        if ( i >-1)
+            combobox_set_active_entry(xjmkb->fs_instruments, i);
     }
 }
 
@@ -1683,7 +1685,9 @@ void XKeyBoard::rebuild_instrument_list() {
         combobox_add_entry(fs_instruments,(*i).c_str());
     }
     fs_instruments->func.value_changed_callback = instrument_callback;
-    combobox_set_active_entry(fs_instruments, xsynth->get_instrument_for_channel(mchannel));
+    int i = xsynth->get_instrument_for_channel(mchannel);
+    if ( i >-1)
+        combobox_set_active_entry(fs_instruments, i);
     fs_instruments->func.key_press_callback = key_press;
     fs_instruments->func.key_release_callback = key_release;
 
