@@ -22,6 +22,7 @@
 #include "MidiKeyBoard.h"
 #include "xkeyboard.h"
 #include "xcustommap.h"
+#include "xcombobox_private.h"
 
 
 namespace midikeyboard {
@@ -201,6 +202,13 @@ void XKeyBoard::read_config() {
             else if (key.compare("[chorus_speed]") == 0) xsynth->chorus_speed = std::stof(value);
             else if (key.compare("[chorus_level]") == 0) xsynth->chorus_level = std::stof(value);
             else if (key.compare("[chorus_voices]") == 0) xsynth->chorus_voices = std::stoi(value);
+            else if (key.compare("[channel_instruments]") == 0) {
+                for (int i = 0; i < 15; i++) {
+                    xsynth->channel_instrument[i] = std::stoi(value);
+                    buf >> value;
+                }
+                xsynth->channel_instrument[15] = std::stoi(value);
+            }
             key.clear();
             value.clear();
         }
@@ -261,6 +269,11 @@ void XKeyBoard::save_config() {
          outfile << "[chorus_speed] " << xsynth->chorus_speed << std::endl;
          outfile << "[chorus_level] " << xsynth->chorus_level << std::endl;
          outfile << "[chorus_voices] " << xsynth->chorus_voices << std::endl;
+         outfile << "[channel_instruments] ";
+         for (int i = 0; i < 16; i++) {
+             outfile << " " << xsynth->channel_instrument[i];
+         }
+         outfile << std::endl;
          outfile.close();
     }
     if (need_save && xjack->rec.play.size()) {
@@ -750,9 +763,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     // set window to saved size
     XResizeWindow (win->app->dpy, win->widget, main_w, main_h);
 
+    init_synth_ui(win);
     // start the timeout thread for keyboard animation
     animidi->start(30, std::bind(animate_midi_keyboard,(void*)wid));
-    init_synth_ui(win);
 }
 
 // temporary disable adj_callback from play button to redraw it from animate thread
@@ -789,6 +802,26 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         XFlush(w->app->dpy);
         xjmkb->bpm->func.adj_callback = transparent_draw;
         XUnlockDisplay(w->app->dpy);
+    }
+
+    if(xjmkb->xsynth->synth_is_active() && xjmkb->fs_instruments) {
+        int i = xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel);
+        if ( i != (int)adj_get_value(xjmkb->fs_instruments->adj)) {
+            XLockDisplay(w->app->dpy);
+            xjmkb->fs_instruments->func.adj_callback = dummy_callback;
+            xjmkb->fs_instruments->func.value_changed_callback = dummy_callback;
+            combobox_set_active_entry(xjmkb->fs_instruments, i);
+            Widget_t * menu = xjmkb->fs_instruments->childlist->childs[1];
+            if (childlist_has_child(menu->childlist)) {
+                Widget_t* view_port =  menu->childlist->childs[0];
+                xjmkb->fs_instruments->label = view_port->childlist->childs[i]->label;
+                expose_widget(xjmkb->fs_instruments);
+                XFlush(w->app->dpy);
+            }
+            xjmkb->fs_instruments->func.value_changed_callback = instrument_callback;
+            xjmkb->fs_instruments->func.adj_callback = _set_entry;
+            XUnlockDisplay(w->app->dpy);
+        }
     }
 
     bool repeat = need_redraw(keys);
@@ -1666,6 +1699,7 @@ void XKeyBoard::instrument_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int i = (int)adj_get_value(xjmkb->fs_instruments->adj);
+    xjmkb->xsynth->channel_instrument[xjmkb->mchannel] = i;
     std::istringstream buf(xjmkb->xsynth->instruments[i]);
     buf >> xjmkb->mbank;
     buf >> xjmkb->mprogram;

@@ -38,6 +38,10 @@ XSynth::XSynth() {
     synth = NULL;
     settings = NULL;
 
+    for(int i = 0; i < 16; i++) {
+        channel_instrument[i] = i;
+    }
+
     reverb_on = 0;
     reverb_level = 0.7;
     reverb_width = 10.0;
@@ -112,7 +116,7 @@ void XSynth::set_default_instruments() {
     for (unsigned int i = 0; i < 16; i++) {
         if (i >= instruments.size()) break;
         if (i == 9) continue;
-        std::istringstream buf(instruments[i]);
+        std::istringstream buf(instruments[channel_instrument[i]]);
         buf >> bank;
         buf >> program;
         fluid_synth_program_select (synth, i, sf_id, bank, program);
@@ -120,6 +124,7 @@ void XSynth::set_default_instruments() {
 }
 
 void XSynth::set_instrument_on_channel(int channel, int i) {
+    if (i >= (int)instruments.size()) return;
     if (channel >15) channel = 0;
     int bank = 0;
     int program = 0;
@@ -131,7 +136,7 @@ void XSynth::set_instrument_on_channel(int channel, int i) {
 
 int XSynth::get_instrument_for_channel(int channel) {
     if (channel >15) channel = 0;
-    fluid_preset_t *preset = fluid_synth_get_channel_preset (synth, channel);
+    fluid_preset_t *preset = fluid_synth_get_channel_preset(synth, channel);
     const char * name = fluid_preset_get_name(preset);
     int ret = 0;
     for(std::vector<std::string>::const_iterator i = instruments.begin(); i != instruments.end(); ++i) {

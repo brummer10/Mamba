@@ -50,6 +50,7 @@ public:
     ~XSynth();
 
     std::vector<std::string> instruments;
+    int channel_instrument[16];
     int reverb_on;
     double reverb_level;
     double reverb_width;
