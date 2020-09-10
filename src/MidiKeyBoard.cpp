@@ -119,6 +119,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xsynth::XSynth *xsynth_,
     mchannel = 0;
     run_one_more = 0;
     need_save = false;
+    only_show_changes = false;
     filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
@@ -503,6 +504,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     XFree(win_size_hints);
 
     menubar = add_menubar(win,"",0, 0, 700, 20);
+    menubar->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     menubar->func.key_press_callback = key_press;
     menubar->func.key_release_callback = key_release;
 
@@ -511,6 +513,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_entry(filemenu,_("_Save MIDI as"));
     menu_add_entry(filemenu,_("_Quit"));
     filemenu->func.value_changed_callback = file_callback;
+    filemenu->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    filemenu->func.key_press_callback = key_press;
+    filemenu->func.key_release_callback = key_release;
 
     mapping = menubar_add_menu(menubar,_("_Mapping"));
     keymap = menu_add_submenu(mapping,_("Keyboard"));
@@ -519,6 +524,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_radio_entry(keymap,_("azerty (fr)"));
     menu_add_radio_entry(keymap,_("azerty (be)"));
     menu_add_radio_entry(keymap,_("custom"));
+    mapping->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    mapping->func.key_press_callback = key_press;
+    mapping->func.key_release_callback = key_release;
     keymap->func.value_changed_callback = layout_callback;
 
     octavemap = menu_add_submenu(mapping,_("Octave"));
@@ -528,6 +536,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_radio_entry(octavemap,_("C 3"));
     menu_add_radio_entry(octavemap,_("C 4"));
     adj_set_value(octavemap->adj, 2.0);
+    octavemap->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    octavemap->func.key_press_callback = key_press;
+    octavemap->func.key_release_callback = key_release;
     octavemap->func.value_changed_callback = octave_callback;
 
     menu_add_entry(mapping,_("_Keymap Editor"));
@@ -539,6 +550,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     connection = menubar_add_menu(menubar,_("C_onnect"));
     inputs = menu_add_submenu(connection,_("Input"));
     outputs = menu_add_submenu(connection,_("Output"));
+    connection->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    connection->func.key_press_callback = key_press;
+    connection->func.key_release_callback = key_release;
     connection->func.button_press_callback = make_connection_menu;
     inputs->func.value_changed_callback = connection_in_callback;
     outputs->func.value_changed_callback = connection_out_callback;
@@ -551,17 +565,25 @@ void XKeyBoard::init_ui(Xputty *app) {
     fs[1]->state = 4;
     fs[2] = menu_add_entry(synth,_("Exit Fluidsynth"));
     fs[2]->state = 4;
+    synth->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    synth->func.key_press_callback = key_press;
+    synth->func.key_release_callback = key_release;
     synth->func.value_changed_callback = synth_callback;
 
     info = menubar_add_menu(menubar,_("_Info"));
     menu_add_entry(info,_("_About"));
+    info->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    info->func.key_press_callback = key_press;
+    info->func.key_release_callback = key_release;
     info->func.value_changed_callback = info_callback;
 
     Widget_t *tmp = add_label(win,_("Channel:"),10,30,80,20);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
     channel =  add_combobox(win, _("Channel"), 90, 30, 60, 30);
     channel->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    channel->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     channel->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(channel,1,16);
     combobox_add_entry(channel,"--");
@@ -575,10 +597,12 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_release_callback = key_release;
 
     tmp = add_label(win,_("Bank:"),150,30,80,20);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
     bank =  add_combobox(win, _("Bank"), 230, 30, 60, 30);
     bank->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    bank->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bank->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(bank,0,128);
     combobox_set_active_entry(bank, 0);
@@ -591,10 +615,12 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_release_callback = key_release;
 
     tmp = add_label(win,_("Program:"),290,30,80,20);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
     program =  add_combobox(win, _("Program"), 370, 30, 60, 30);
     program->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    program->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     program->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(program,0,127);
     combobox_set_active_entry(program, 0);
@@ -607,6 +633,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_release_callback = key_release;
 
     tmp = add_label(win,_("BPM:"),430,30,80,20);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
     bpm = add_valuedisplay(win, _("BPM"), 510, 30, 60, 30);
@@ -618,8 +645,11 @@ void XKeyBoard::init_ui(Xputty *app) {
     bpm->func.key_release_callback = key_release;
 
     songbpm = add_label(win,_("File BPM:"),570,30,100,20);
+    songbpm->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     snprintf(songbpm->input_label, 31,_("File BPM: %d"),  (int) song_bpm);
     songbpm->label = songbpm->input_label;
+    songbpm->func.key_press_callback = key_press;
+    songbpm->func.key_release_callback = key_release;
 
     w[0] = add_keyboard_knob(win, _("PitchBend"), 5, 65, 60, 75);
     w[0]->data = PITCHBEND;
@@ -1021,6 +1051,25 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         xjmkb->fs[0]->state = 0;
         xjmkb->fs[1]->state = 0;
         xjmkb->fs[2]->state = 0;
+        /*
+        // get all soundfonts from choosen directory
+        FilePicker *fp = (FilePicker*)malloc(sizeof(FilePicker));
+        fp_init(fp, xjmkb->soundfontpath.c_str());
+        std::string f = ".sf";
+        // filter will be free by FilePicker!!
+        char *filter = (char*)malloc(sizeof(char) * (f.length() + 1));
+        strcpy(filter, f.c_str());
+        fp->filter = filter;
+        fp->use_filter = 1;
+        char *path = &xjmkb->soundfontpath[0];
+        fp_get_files(fp,path, 0);
+        fprintf(stderr, " %s %i\n",path, fp->file_counter);
+        for(unsigned int i = 0; i<fp->file_counter; i++) {
+            fprintf(stderr, "%s\n", fp->file_names[i]);
+        }
+        fp_free(fp);
+        free(fp);
+        */ 
     }
 }
 
@@ -1086,6 +1135,10 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) {
         MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
         clear_key_matrix(keys->in_key_matrix);
     }
+    if(xjmkb->fs_instruments) {
+        xjmkb->only_show_changes = true;
+        combobox_set_active_entry(xjmkb->fs_instruments, xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel));
+    }
 }
 
 // static
@@ -1094,8 +1147,7 @@ void XKeyBoard::bank_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mbank = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
-    xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2);
+    program_callback(xjmkb->program,NULL);
 }
 
 // static
@@ -1104,8 +1156,12 @@ void XKeyBoard::program_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mprogram = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
-    xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2);
+    if(!xjmkb->only_show_changes) {
+        xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
+        xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2);
+    } else {
+        xjmkb->only_show_changes = false;
+    }
 }
 
 // static
@@ -1617,18 +1673,17 @@ void XKeyBoard::instrument_callback(void *w_, void* user_data) {
 }
 
 void XKeyBoard::rebuild_instrument_list() {
-    int value = 0;
     if(fs_instruments) {
-        value = (int)adj_get_value(fs_instruments->adj);
         destroy_widget(fs_instruments, win->app);
     }
     fs_instruments = add_combobox(synth_ui, _("Instruments"), 20, 10, 260, 30);
     fs_instruments->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    fs_instruments->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     for(std::vector<std::string>::const_iterator i = xsynth->instruments.begin(); i != xsynth->instruments.end(); ++i) {
         combobox_add_entry(fs_instruments,(*i).c_str());
     }
     fs_instruments->func.value_changed_callback = instrument_callback;
-    combobox_set_active_entry(fs_instruments, value);
+    combobox_set_active_entry(fs_instruments, xsynth->get_instrument_for_channel(mchannel));
     fs_instruments->func.key_press_callback = key_press;
     fs_instruments->func.key_release_callback = key_release;
 

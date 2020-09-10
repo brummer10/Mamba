@@ -20,7 +20,7 @@
 
 
 #include "XSynth.h"
-
+#include <sstream>
 
 namespace xsynth {
 
@@ -103,8 +103,45 @@ void XSynth::print_soundfont() {
                             fluid_preset_get_num(preset),fluid_preset_get_name(preset));
         instruments.push_back(inst);
     }
+    set_default_instruments();
 }
 
+void XSynth::set_default_instruments() {
+    int bank = 0;
+    int program = 0;
+    for (unsigned int i = 0; i < 16; i++) {
+        if (i >= instruments.size()) break;
+        if (i == 9) continue;
+        std::istringstream buf(instruments[i]);
+        buf >> bank;
+        buf >> program;
+        fluid_synth_program_select (synth, i, sf_id, bank, program);
+    }
+}
+
+void XSynth::set_instrument_on_channel(int channel, int i) {
+    if (channel >15) channel = 0;
+    int bank = 0;
+    int program = 0;
+    std::istringstream buf(instruments[i]);
+    buf >> bank;
+    buf >> program;
+    fluid_synth_program_select (synth, channel, sf_id, bank, program);
+}
+
+int XSynth::get_instrument_for_channel(int channel) {
+    if (channel >15) channel = 0;
+    fluid_preset_t *preset = fluid_synth_get_channel_preset (synth, channel);
+    const char * name = fluid_preset_get_name(preset);
+    int ret = 0;
+    for(std::vector<std::string>::const_iterator i = instruments.begin(); i != instruments.end(); ++i) {
+        if ((*i).find(name) != std::string::npos) {
+            return ret;
+        }
+        ret++;
+    }
+    return -1;
+}
 
 void XSynth::set_reverb_on(int on) {
     if (synth) {
