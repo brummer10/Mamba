@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: mamba 1.3\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-09-11 09:05+0200\n"
-"PO-Revision-Date: 2020-09-06 04:59+0200\n"
+"PO-Revision-Date: 2020-09-11 12:29+0200\n"
 "Last-Translator: Olivier Humbert <trebmuh@tuxfamily.org>\n"
 "Language-Team: French\n"
 "Language: fr\n"
@@ -21,7 +21,7 @@ msgstr ""
 
 #: MidiKeyBoard.cpp:492 MidiKeyBoard.cpp:995 MidiKeyBoard.cpp:1341
 msgid " - Virtual Midi Keyboard"
-msgstr " - Clavier MIDI virtuel"
+msgstr " - clavier MIDI virtuel"
 
 #: MidiKeyBoard.cpp:691
 msgid "Attack"
@@ -81,9 +81,8 @@ msgid "Channel"
 msgstr "Canal"
 
 #: MidiKeyBoard.cpp:1911
-#, fuzzy
 msgid "Channel Pressure"
-msgstr "Canal"
+msgstr "Pression du canal"
 
 #: MidiKeyBoard.cpp:594
 msgid "Channel:"
@@ -97,7 +96,7 @@ msgstr ""
 #. general
 #: MidiKeyBoard.cpp:1919
 msgid "Close"
-msgstr ""
+msgstr "Fermer"
 
 #: MidiKeyBoard.cpp:1053
 msgid "Couldn't access file, sorry"
@@ -113,7 +112,7 @@ msgstr "Impossible de charger le fichier, est-ce un fichier de banque de son ?"
 
 #: xcustommap.c:310 xcustommap.c:336
 msgid "Couldn't load file, sorry"
-msgstr "Couldn't load file, désolé"
+msgstr "Impossible de charger le fichier, désolé"
 
 #: xcustommap.c:409
 msgid "Custom Keymap - Editor"
@@ -125,7 +124,7 @@ msgstr ""
 
 #: MidiKeyBoard.cpp:1895
 msgid "Depth"
-msgstr ""
+msgstr "Profondeur"
 
 #: MidiKeyBoard.cpp:682
 msgid "Detune"
@@ -141,9 +140,8 @@ msgid "ERROR"
 msgstr "ERREUR"
 
 #: MidiKeyBoard.cpp:580
-#, fuzzy
 msgid "E_xit Fluidsynth"
-msgstr "Quitter fluidsynth"
+msgstr "Quitter fluidsynth (_x)"
 
 #: xcustommap.c:439
 msgid "Exit"
@@ -202,24 +200,20 @@ msgid "File write error"
 msgstr "Erreur d'écriture du fichier"
 
 #: MidiKeyBoard.cpp:574
-#, fuzzy
 msgid "Fl_uidsynth"
-msgstr "Quitter fluidsynth"
+msgstr "Fl_uidsynth"
 
 #: MidiKeyBoard.cpp:578
-#, fuzzy
 msgid "Fluids_ynth Panic"
-msgstr "Panique Fluidsynth"
+msgstr "Panique Fluids_ynth"
 
 #: MidiKeyBoard.cpp:576
-#, fuzzy
 msgid "Fluidsy_nth Settings"
-msgstr "Panique Fluidsynth"
+msgstr "Paramètres Fluidsy_nth"
 
 #: MidiKeyBoard.cpp:1808
-#, fuzzy
 msgid "Fluidsynth - Settings"
-msgstr "Panique Fluidsynth"
+msgstr "Fluidsynth - Paramètres"
 
 #: MidiKeyBoard.cpp:561
 msgid "Grab Keyboard"
@@ -245,16 +239,15 @@ msgstr "Clavier"
 
 #: MidiKeyBoard.cpp:1853 MidiKeyBoard.cpp:1881
 msgid "Level"
-msgstr ""
+msgstr "Niveau"
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:374
 msgid "Load"
 msgstr "Charger"
 
 #: MidiKeyBoard.cpp:575
-#, fuzzy
 msgid "Load Soun_dFont"
-msgstr "Charger une banque de son"
+msgstr "Charger une banque _de son"
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:377
 msgid "Load selected file"
@@ -282,7 +275,8 @@ msgstr ""
 "Mamba v1.4 est écrit par Hermann Meyer|mis à disposition sous la licence BSD "
 "Zero Clause |https://github.com/brummer10/Mamba|Pour la gestion des fichiers "
 "MIDI, il utilise libsmf|une bibliothèque C sous licence BSD|écrite par "
-"Edward Tomasz Napierala|https://github.com/stump/libsmf"
+"Edward Tomasz Napierala|https://github.com/stump/libsmf|La traduction en "
+"français a été réalisée par|Olivier Humbert <trebmuh@tuxfamily.org>"
 
 #: MidiKeyBoard.cpp:677
 msgid "ModWheel"
@@ -306,9 +300,8 @@ msgstr ""
 
 #. reverb
 #: MidiKeyBoard.cpp:1752 MidiKeyBoard.cpp:1819 MidiKeyBoard.cpp:1866
-#, fuzzy
 msgid "On"
-msgstr "Ouvrir"
+msgstr ""
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:352
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:511
@@ -358,11 +351,11 @@ msgstr "Relâche"
 
 #: MidiKeyBoard.cpp:1827
 msgid "Reverb"
-msgstr ""
+msgstr "Réverb"
 
 #: MidiKeyBoard.cpp:1832
 msgid "Roomsize"
-msgstr ""
+msgstr "Taille de la pièce"
 
 #: ../libxputty/xputty/dialogs/xmessage-dialog.c:380
 msgid "SELECTION"
@@ -370,7 +363,7 @@ msgstr "SÉLECTION"
 
 #: MidiKeyBoard.cpp:1903
 msgid "SINE"
-msgstr ""
+msgstr "SINUSOÏDE"
 
 #: xcustommap.c:434 ../libxputty/xputty/dialogs/xsavefile-dialoge.c:544
 msgid "Save"
@@ -405,7 +398,7 @@ msgstr ""
 
 #: MidiKeyBoard.cpp:1888
 msgid "Speed"
-msgstr ""
+msgstr "Vitesse"
 
 #: MidiKeyBoard.cpp:1387
 msgid "Sto_p"
@@ -437,7 +430,7 @@ msgstr "ATTENTION"
 
 #: MidiKeyBoard.cpp:1846
 msgid "Width"
-msgstr ""
+msgstr "Largeur"
 
 #: ../libxputty/xputty/dialogs/xmessage-dialog.c:375
 msgid "YES"
@@ -540,7 +533,7 @@ msgstr "vidéo"
 
 #: MidiKeyBoard.cpp:1874
 msgid "voices"
-msgstr ""
+msgstr "voix"
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:389
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:560
