@@ -571,13 +571,13 @@ void XKeyBoard::init_ui(Xputty *app) {
     inputs->func.value_changed_callback = connection_in_callback;
     outputs->func.value_changed_callback = connection_out_callback;
 
-    synth = menubar_add_menu(menubar,_("Fluidsynth"));
-    menu_add_entry(synth,_("Load SoundFont"));
-    fs[0] = menu_add_entry(synth,_("Fluidsynth Settings"));
+    synth = menubar_add_menu(menubar,_("Fl_uidsynth"));
+    menu_add_entry(synth,_("Load Soun_dFont"));
+    fs[0] = menu_add_entry(synth,_("Fluidsy_nth Settings"));
     fs[0]->state = 4;
-    fs[1] = menu_add_entry(synth,_("Fluidsynth Panic"));
+    fs[1] = menu_add_entry(synth,_("Fluids_ynth Panic"));
     fs[1]->state = 4;
-    fs[2] = menu_add_entry(synth,_("Exit Fluidsynth"));
+    fs[2] = menu_add_entry(synth,_("E_xit Fluidsynth"));
     fs[2]->state = 4;
     synth->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     synth->func.key_press_callback = key_press;
@@ -1136,6 +1136,9 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
         break;
         case(3):
         {
+            while (xjmkb->instrument_changed.load(std::memory_order_acquire)){
+                std::this_thread::sleep_for(std::chrono::milliseconds(30));
+            }
             xjmkb->show_synth_ui(0);
             xjmkb->xsynth->unload_synth();
             xjmkb->soundfont = "";
@@ -1447,18 +1450,9 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
         KeySym sym = XLookupKeysym (key, 0);
         if (!sym) return;
         switch (sym) {
-            case (XK_p):
+            case (XK_a):
             {
-                int value = (int)adj_get_value(xjmkb->play->adj);
-                if (value) adj_set_value(xjmkb->play->adj,0.0);
-                else adj_set_value(xjmkb->play->adj,1.0);
-            }
-            break;
-            case (XK_r):
-            { 
-                int value = (int)adj_get_value(xjmkb->record->adj);
-                if (value) adj_set_value(xjmkb->record->adj,0.0);
-                else adj_set_value(xjmkb->record->adj,1.0);
+                xjmkb->info_callback(xjmkb->info,NULL);
             }
             break;
             case (XK_c):
@@ -1466,27 +1460,11 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                 xjmkb->signal_handle (2);
             }
             break;
-            case (XK_q):
+            case (XK_d):
             {
-                fprintf(stderr, "ctrl +q received, quit now\n");
-                quit(xjmkb->win);
-            }
-            break;
-            case (XK_l):
-            {
-                open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
-                xjmkb->win->func.dialog_callback = dialog_load_response;
-            }
-            break;
-            case (XK_s):
-            {
-                save_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
-                xjmkb->win->func.dialog_callback = dialog_save_response;
-            }
-            break;
-            case (XK_a):
-            {
-                xjmkb->info_callback(xjmkb->info,NULL);
+                Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->soundfontpath.c_str(), ".sf");
+                XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+                xjmkb->win->func.dialog_callback = synth_load_response;
             }
             break;
             case (XK_f):
@@ -1496,31 +1474,6 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                 XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
                 if (attrs.map_state != IsViewable) {
                     pop_menu_show(xjmkb->filemenu, menu, 6, true);
-                } else {
-                    widget_hide(menu);
-                }
-            }
-            break;
-            case (XK_m):
-            {
-                Widget_t *menu = xjmkb->mapping->childlist->childs[0];
-                XWindowAttributes attrs;
-                XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
-                if (attrs.map_state != IsViewable) {
-                    pop_menu_show(xjmkb->mapping, menu, 6, true);
-                } else {
-                    widget_hide(menu);
-                }
-            }
-            break;
-            case (XK_o):
-            {
-                Widget_t *menu = xjmkb->connection->childlist->childs[0];
-                XWindowAttributes attrs;
-                XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
-                if (attrs.map_state != IsViewable) {
-                    make_connection_menu(xjmkb->connection, NULL, NULL);
-                    pop_menu_show(xjmkb->connection, menu, 6, true);
                 } else {
                     widget_hide(menu);
                 }
@@ -1541,6 +1494,109 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             case (XK_k):
             {
                 open_custom_keymap(xjmkb->wid, win, xjmkb->keymap_file.c_str());
+            }
+            break;
+            case (XK_l):
+            {
+                Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
+                XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+                xjmkb->win->func.dialog_callback = dialog_load_response;
+            }
+            break;
+            case (XK_m):
+            {
+                Widget_t *menu = xjmkb->mapping->childlist->childs[0];
+                XWindowAttributes attrs;
+                XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
+                if (attrs.map_state != IsViewable) {
+                    pop_menu_show(xjmkb->mapping, menu, 6, true);
+                } else {
+                    widget_hide(menu);
+                }
+            }
+            break;
+            case (XK_n):
+            {
+                if(!xjmkb->xsynth->synth_is_active() || !xjmkb->fs_instruments) break;
+                XWindowAttributes attrs;
+                XGetWindowAttributes(w->app->dpy, (Window)xjmkb->synth_ui->widget, &attrs);
+                if (attrs.map_state != IsViewable) {
+                    xjmkb->show_synth_ui(1);
+                } else {
+                    xjmkb->show_synth_ui(0);
+                }
+            }
+            break;
+            case (XK_o):
+            {
+                Widget_t *menu = xjmkb->connection->childlist->childs[0];
+                XWindowAttributes attrs;
+                XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
+                if (attrs.map_state != IsViewable) {
+                    make_connection_menu(xjmkb->connection, NULL, NULL);
+                    pop_menu_show(xjmkb->connection, menu, 6, true);
+                } else {
+                    widget_hide(menu);
+                }
+            }
+            break;
+            case (XK_p):
+            {
+                int value = (int)adj_get_value(xjmkb->play->adj);
+                if (value) adj_set_value(xjmkb->play->adj,0.0);
+                else adj_set_value(xjmkb->play->adj,1.0);
+            }
+            break;
+            case (XK_q):
+            {
+                fprintf(stderr, "ctrl +q received, quit now\n");
+                quit(xjmkb->win);
+            }
+            break;
+            case (XK_r):
+            { 
+                int value = (int)adj_get_value(xjmkb->record->adj);
+                if (value) adj_set_value(xjmkb->record->adj,0.0);
+                else adj_set_value(xjmkb->record->adj,1.0);
+            }
+            break;
+            case (XK_s):
+            {
+                Widget_t *dia = save_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
+                XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+                xjmkb->win->func.dialog_callback = dialog_save_response;
+            }
+            break;
+            case (XK_u):
+            {
+                Widget_t *menu = xjmkb->synth->childlist->childs[0];
+                XWindowAttributes attrs;
+                XGetWindowAttributes(w->app->dpy, (Window)menu->widget, &attrs);
+                if (attrs.map_state != IsViewable) {
+                    pop_menu_show(xjmkb->synth, menu, 6, true);
+                } else {
+                    widget_hide(menu);
+                }
+            }
+            break;
+            case (XK_x):
+            {
+                if(!xjmkb->xsynth->synth_is_active()) break;
+                while (xjmkb->instrument_changed.load(std::memory_order_acquire)){
+                    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+                }
+                xjmkb->show_synth_ui(0);
+                xjmkb->xsynth->unload_synth();
+                xjmkb->soundfont = "";
+                xjmkb->fs[0]->state = 4;
+                xjmkb->fs[1]->state = 4;
+                xjmkb->fs[2]->state = 4;
+            }
+            break;
+            case (XK_y):
+            {
+                if(!xjmkb->xsynth->synth_is_active()) break;
+                xjmkb->xsynth->panic();
             }
             break;
             default:
@@ -1735,6 +1791,9 @@ void XKeyBoard::rebuild_instrument_list() {
 void XKeyBoard::show_synth_ui(int present) {
     if(present) {
         widget_show_all(synth_ui);
+        int y = main_y-226;
+        if (main_y < 230) y = main_y + main_h+21;
+        XMoveWindow(win->app->dpy,synth_ui->widget, main_x, y);
     }else {
         widget_hide(synth_ui);
     }
