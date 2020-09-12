@@ -234,7 +234,9 @@ void XKeyBoard::read_config() {
             ev.num = word;
             buf >> time;
             ev.deltaTime = time;
-            xjack->rec.play.push_back(ev);
+            buf >> time;
+            ev.absoluteTime = time;
+            xjack->rec.play[0].push_back(ev);
         }
         vinfile.close();
     }
@@ -277,12 +279,12 @@ void XKeyBoard::save_config() {
          outfile << std::endl;
          outfile.close();
     }
-    if (need_save && xjack->rec.play.size()) {
+    if (need_save && xjack->rec.play[0].size()) {
         std::ofstream outfile(config_file+"vec");
         if (outfile.is_open()) {
-            for(std::vector<mamba::MidiEvent>::const_iterator i = xjack->rec.play.begin(); i != xjack->rec.play.end(); ++i) {
+            for(std::vector<mamba::MidiEvent>::const_iterator i = xjack->rec.play[0].begin(); i != xjack->rec.play[0].end(); ++i) {
                 outfile << (int)(*i).buffer[0] << " " << (int)(*i).buffer[1] << " " 
-                    << (int)(*i).buffer[2] << " " << (*i).num << " " << (*i).deltaTime << std::endl;
+                    << (int)(*i).buffer[2] << " " << (*i).num << " " << (*i).deltaTime << " " << (*i).absoluteTime << std::endl;
             }
             outfile.close();
         }
@@ -848,15 +850,28 @@ void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
     if (attrs.map_state != IsViewable) return;
+    int width = attrs.width;
+    int height = attrs.height;
+
+    Window parent;
+    Window root;
+    Window * children;
+    unsigned int num_children;
+    XQueryTree(win->app->dpy, win->widget,
+        &root, &parent, &children, &num_children);
+    if (children) XFree(children);
+    if (win->widget == root || parent == root) parent = win->widget;
+    XGetWindowAttributes(w->app->dpy, parent, &attrs);
+
     int x1, y1;
     Window child;
-    XTranslateCoordinates( win->app->dpy, win->widget, DefaultRootWindow(
+    XTranslateCoordinates( win->app->dpy, parent, DefaultRootWindow(
                     win->app->dpy), 0, 0, &x1, &y1, &child );
 
-    xjmkb->main_x = x1;
-    xjmkb->main_y = y1;
-    xjmkb->main_w = attrs.width;
-    xjmkb->main_h = attrs.height;
+    xjmkb->main_x = x1 - min(1,(width - attrs.width))/2;
+    xjmkb->main_y = y1 - min(1,(height - attrs.height))/2;
+    xjmkb->main_w = width;
+    xjmkb->main_h = height;
 }
 
 void XKeyBoard::get_port_entrys(Widget_t *parent, jack_port_t *my_port, JackPortFlags type) {
@@ -985,7 +1000,7 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
 #endif
         adj_set_value(xjmkb->play->adj,0.0);
         adj_set_value(xjmkb->record->adj,0.0);
-        if (!xjmkb->load.load_from_file(&xjmkb->xjack->rec.play, &xjmkb->song_bpm, *(const char**)user_data)) {
+        if (!xjmkb->load.load_from_file(&xjmkb->xjack->rec.play[0], &xjmkb->song_bpm, *(const char**)user_data)) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
             _("Couldn't load file, is that a MIDI file?"),NULL);
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
@@ -1009,7 +1024,7 @@ void XKeyBoard::dialog_save_response(void *w_, void* user_data) {
     if(user_data !=NULL) {
         adj_set_value(xjmkb->play->adj,0.0);
         adj_set_value(xjmkb->record->adj,0.0);
-        xjmkb->save.save_to_file(&xjmkb->xjack->rec.play, *(const char**)user_data);
+        xjmkb->save.save_to_file(xjmkb->xjack->rec.play, *(const char**)user_data);
     }
 }
 
@@ -1170,7 +1185,7 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    xjmkb->mmessage->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
+    xjmkb->xjack->rec.channel = xjmkb->mmessage->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
     if (xjmkb->xjack->play>0) {
         MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
         clear_key_matrix(keys->in_key_matrix);
@@ -1344,10 +1359,9 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
         snprintf(xjmkb->songbpm->input_label, 31,_("File BPM: %d"),  (int) xjmkb->song_bpm);
         xjmkb->songbpm->label = xjmkb->songbpm->input_label;
         expose_widget(xjmkb->songbpm);
-        adj_set_value(xjmkb->play->adj,0.0);
         xjmkb->xjack->store1.clear();
         xjmkb->xjack->store2.clear();
-        xjmkb->xjack->rec.play.clear();
+        xjmkb->xjack->rec.play[xjmkb->mchannel].clear();
         xjmkb->xjack->fresh_take = true;
         xjmkb->xjack->first_play = true;
         xjmkb->xjack->rec.start();
@@ -1358,6 +1372,11 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
         } else {
             xjmkb->xjack->rec.st = &xjmkb->xjack->store1;
         }
+        jack_nframes_t stop = jack_last_frame_time(xjmkb->xjack->client);
+        double deltaTime = (double)(((stop) - xjmkb->xjack->start)/(double)xjmkb->xjack->SampleRate); // seconds
+        double absoluteTime = (double)(((stop) - xjmkb->xjack->absoluteStart)/(double)xjmkb->xjack->SampleRate); // seconds
+        mamba::MidiEvent ev = {{0x80, 0, 0}, 3, deltaTime, absoluteTime};
+        xjmkb->xjack->rec.st->push_back(ev);
         xjmkb->xjack->rec.stop();
     }
 }
@@ -1374,8 +1393,6 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
         clear_key_matrix(keys->in_key_matrix);
         xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3);
         xjmkb->xjack->first_play = true;
-    } else {
-        adj_set_value(xjmkb->record->adj,0.0);
     }
 }
 

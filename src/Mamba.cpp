@@ -116,7 +116,8 @@ bool MidiLoad::load_from_file(std::vector<MidiEvent> *play, int *song_bpm, const
             }
         }
         ev = {{smf_event->midi_buffer[0], smf_event->midi_buffer[1], smf_event->midi_buffer[2]},
-                                        smf_event->midi_buffer_length, smf_event->time_seconds - deltaTime};
+                                        smf_event->midi_buffer_length, smf_event->time_seconds - deltaTime,
+                                                                        smf_event->time_seconds};
         play->push_back(ev);
         deltaTime = smf_event->time_seconds;
         //fprintf(stderr,"%d: %f seconds, %d pulses, %d delta pulses\n", smf_event->event_number,
@@ -183,21 +184,42 @@ void MidiSave::reset_smf() {
     }    
 }
 
-void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name) {
-    double t = 0.0;
-    for(std::vector<MidiEvent>::const_iterator i = play->begin(); i != play->end(); ++i) {
-        smf_event = smf_event_new_from_pointer((void*)(*i).buffer, (*i).num);
-        if (smf_event == NULL) {
-            continue;
-        }
-
-        if(smf_event->midi_buffer_length < 1) continue;
-        channel = smf_event->midi_buffer[0] & 0x0F;
-
-        smf_track_add_event_seconds(tracks[channel], smf_event,(*i).deltaTime + t);
-        t += (*i).deltaTime;
+double MidiSave::get_max_time(std::vector<MidiEvent> *play) {
+    double ret = 0;
+    for (int j = 0; j<16;j++) {
+        if (!play[j].size()) continue;
+        MidiEvent ev = play[j][play[j].size()-1];
+        if (ev.absoluteTime > ret) ret = ev.absoluteTime;
     }
+    return ret;
+}
 
+void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name) {
+    double t[16] = {0.0};
+    double max_time = get_max_time(play);
+    for (int j = 0; j<16;j++) {
+        for(std::vector<MidiEvent>::const_iterator i = play[j].begin(); i != play[j].end(); ++i) {
+            smf_event = smf_event_new_from_pointer((void*)(*i).buffer, (*i).num);
+            if (smf_event == NULL) {
+                continue;
+            }
+
+            if(smf_event->midi_buffer_length < 1) continue;
+            channel = smf_event->midi_buffer[0] & 0x0F;
+
+            smf_track_add_event_seconds(tracks[channel], smf_event,(*i).deltaTime + t[j]);
+            t[j] += (*i).deltaTime;
+            if (t[j]<max_time && i == play[j].end()-1) {
+                i = play[j].begin();
+            } 
+            if ( t[j] >= max_time) {
+                i = play[j].end()-1;
+                if (t[j] > max_time) {
+                    smf_event_remove_from_track(smf_event);
+                }
+            }
+        }
+    }
     smf_rewind(smf);
 
     for (int i = 0; i < 16; i++) {
@@ -226,6 +248,7 @@ void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name)
 MidiRecord::MidiRecord() 
     : _execute(false) {
     st = NULL;
+    channel = 0;
 }
 
 MidiRecord::~MidiRecord() {
@@ -251,10 +274,10 @@ void MidiRecord::start() {
         while (_execute.load(std::memory_order_acquire)) {
             std::unique_lock<std::mutex> lk(m);
             cv.wait(lk);
-            play.reserve(play.size() + st->size());
+            play[channel].reserve(play[channel].size() + st->size());
             
             for (unsigned int i=0; i<st->size(); i++) 
-                play.push_back((*st)[i]); 
+                play[channel].push_back((*st)[i]); 
             st->clear();
         }
     });

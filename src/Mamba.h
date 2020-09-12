@@ -47,6 +47,7 @@ typedef struct {
     unsigned char buffer[3];
     int num;
     double deltaTime;
+    double absoluteTime;
 } MidiEvent;
 
 
@@ -111,6 +112,7 @@ private:
     smf_event_t *smf_event;
     int channel;
     void reset_smf();
+    double get_max_time(std::vector<MidiEvent> *play);
 
 public:
     MidiSave();
@@ -135,13 +137,14 @@ private:
 public:
     MidiRecord();
     ~MidiRecord();
+    int channel;
     void stop();
     void start();
     bool is_running() const noexcept;
     std::condition_variable cv;
     MidiEvent ev;
     std::vector<MidiEvent> *st;
-    std::vector<MidiEvent> play;
+    std::vector<MidiEvent> play[16];
 };
 
 

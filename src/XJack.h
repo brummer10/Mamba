@@ -75,12 +75,14 @@ private:
     MidiClockToBpm mp;
     timespec ts1;
     jack_nframes_t event_count;
-    jack_nframes_t start;
     jack_nframes_t stop;
+    jack_nframes_t stopPlay[16];
     double deltaTime;
+    double absoluteTime;
     jack_position_t current;
     jack_transport_state_t transport_state;
     unsigned int pos;
+    unsigned int posPlay[16];
 
     inline void record_midi(unsigned char* midi_send, unsigned int n, int i);
     inline void play_midi(void *buf, unsigned int n);
@@ -102,6 +104,10 @@ public:
     jack_client_t *client;
     jack_port_t *in_port;
     jack_port_t *out_port;
+    jack_nframes_t start;
+    jack_nframes_t startPlay[16];
+    jack_nframes_t absoluteStart;
+    jack_nframes_t absolutePlayStart;
     std::string client_name;
     void init_jack();
     mamba::MidiRecord rec;

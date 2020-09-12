@@ -88,7 +88,6 @@ XJack::XJack(mamba::MidiMessenger *mmessage_)
      mmessage(mmessage_),
      mp(),
      event_count(0),
-     start(0),
      stop(0),
      deltaTime(0),
      client(NULL),
@@ -98,6 +97,9 @@ XJack::XJack(mamba::MidiMessenger *mmessage_)
         transport_state = JackTransportStopped;
         bpm_changed.store(false, std::memory_order_release);
         bpm_set.store(0, std::memory_order_release);
+        start = 0;
+        absoluteStart = 0;
+        absolutePlayStart = 0;
         record = 0;
         play = 0;
         pos = 0;
@@ -109,6 +111,9 @@ XJack::XJack(mamba::MidiMessenger *mmessage_)
         rec.st = &store1;
         client_name = "Mamba";
         bpm_ratio = 1.0;
+        for ( int i = 0; i < 16; i++) posPlay[i] = 0;
+        for ( int i = 0; i < 16; i++) startPlay[i] = 0;
+        for ( int i = 0; i < 16; i++) stopPlay[i] = 0;
 }
 
 XJack::~XJack() {
@@ -150,9 +155,10 @@ void XJack::init_jack() {
 inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, int i) {
     stop = jack_last_frame_time(client)+n;
     deltaTime = (double)(((stop) - start)/(double)SampleRate); // seconds
+    absoluteTime = (double)(((stop) - absoluteStart)/(double)SampleRate); // seconds
     start = jack_last_frame_time(client)+n;
     unsigned char d = i > 2 ? midi_send[2] : 0;
-    mamba::MidiEvent ev = {{midi_send[0], midi_send[1], d}, i, deltaTime};
+    mamba::MidiEvent ev = {{midi_send[0], midi_send[1], d}, i, deltaTime, absoluteTime};
     st->push_back(ev);
     if (store1.size() >= 256) {
         st = &store2;
@@ -166,42 +172,50 @@ inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, int i) 
 }
 
 inline void XJack::play_midi(void *buf, unsigned int n) {
-    if (!rec.play.size()) return;
     if (first_play) {
         start = jack_last_frame_time(client)+n;
+        absolutePlayStart = jack_last_frame_time(client)+n;
         first_play = false;
         pos = 0;
+        for ( int i = 0; i < 16; i++) posPlay[i] = 0;
+        for ( int i = 0; i < 16; i++) startPlay[i] = jack_last_frame_time(client)+n;
     }
-    stop = jack_last_frame_time(client)+n;
-    deltaTime = (double)(((stop) - start)/(double)SampleRate); // seconds
-    mamba::MidiEvent ev = rec.play[pos];
-    if (deltaTime >= ev.deltaTime * bpm_ratio) {
-        unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.num);
-        if (midi_send) {
-            midi_send[0] = ev.buffer[0];
-            midi_send[1] = ev.buffer[1];
-            if(ev.num > 2)
-                midi_send[2] = ev.buffer[2];
-            bool ch = true;
-            if (mmessage->channel < 16) {
-                if ((mmessage->channel) != (int(ev.buffer[0]&0x0f))) {
-                    ch = false;
+
+    for ( int i = 0; i < 16; i++) {
+        if (!rec.play[i].size()) continue;
+        if (record && i == mmessage->channel) continue;
+        stopPlay[i] = jack_last_frame_time(client)+n;
+        if (posPlay[i] >= rec.play[i].size()) {
+            posPlay[i] = 0;
+            startPlay[i] = jack_last_frame_time(client)+n;
+        }
+        deltaTime = (double)(((stopPlay[i]) - startPlay[i])/(double)SampleRate); // seconds
+        mamba::MidiEvent ev = rec.play[i][posPlay[i]];
+        if (deltaTime >= ev.deltaTime * bpm_ratio) {
+            unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.num);
+            if (midi_send) {
+                midi_send[0] = ev.buffer[0];
+                midi_send[1] = ev.buffer[1];
+                if(ev.num > 2)
+                    midi_send[2] = ev.buffer[2];
+                bool ch = true;
+                if (mmessage->channel < 16) {
+                    if ((mmessage->channel) != (int(ev.buffer[0]&0x0f))) {
+                        ch = false;
+                    }
+                }
+                if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
+                    if (ev.buffer[2] > 0) // velocity 0 treaded as Note Off
+                        std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], true);
+                    else 
+                        std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
+                } else if ((ev.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
+                    std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
                 }
             }
-            if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
-                if (ev.buffer[2] > 0) // velocity 0 treaded as Note Off
-                    std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], true);
-                else 
-                    std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
-            } else if ((ev.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
-                std::async(std::launch::async, trigger_get_midi_in, ev.buffer[1], false);
-            }
-        }
-        start = jack_last_frame_time(client)+n;
-        pos++;
-        if (pos >= rec.play.size()) {
-            pos = 0;
-            start = jack_last_frame_time(client)+n;
+            startPlay[i] = jack_last_frame_time(client)+n;
+            posPlay[i]++;
+            return;
         }
     }
 }
@@ -228,6 +242,7 @@ inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
     XJack *xjack = (XJack*)arg;
     if (xjack->record && xjack->fresh_take) {
         xjack->start = jack_last_frame_time(xjack->client);
+        xjack->absoluteStart = jack_last_frame_time(xjack->client);
         xjack->fresh_take = false;
     }
     jack_midi_event_t in_event;
