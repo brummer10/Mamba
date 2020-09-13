@@ -138,7 +138,11 @@ int XSynth::get_instrument_for_channel(int channel) {
     if (!synth) return -1;
     if (channel >15) channel = 0;
     fluid_preset_t *preset = fluid_synth_get_channel_preset(synth, channel);
-    const char * name = fluid_preset_get_name(preset);
+    int offset = fluid_synth_get_bank_offset(synth, sf_id);
+    char inst[100];
+    snprintf(inst, 100, "%03d %03d %s", fluid_preset_get_banknum(preset) + offset,
+                        fluid_preset_get_num(preset),fluid_preset_get_name(preset));
+    std::string name = inst;
     int ret = 0;
     for(std::vector<std::string>::const_iterator i = instruments.begin(); i != instruments.end(); ++i) {
         if ((*i).find(name) != std::string::npos) {
