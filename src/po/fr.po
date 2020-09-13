@@ -355,7 +355,7 @@ msgstr "Réverb"
 
 #: MidiKeyBoard.cpp:1832
 msgid "Roomsize"
-msgstr "Taille de la pièce"
+msgstr "Dimension"
 
 #: ../libxputty/xputty/dialogs/xmessage-dialog.c:380
 msgid "SELECTION"
