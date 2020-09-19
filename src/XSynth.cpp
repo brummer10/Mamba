@@ -99,14 +99,25 @@ void XSynth::print_soundfont() {
         return ;
     }
 
+#if FLUIDSYNTH_VERSION_MAJOR < 2
+    sfont->iteration_start(sfont);
+    while ((sfont->iteration_next(sfont, preset)) != 0) {
+        char inst[100];
+        snprintf(inst, 100, "%03d %03d %s", preset->get_banknum(preset) + offset,
+                        preset->get_num(preset),preset->get_name(preset));
+        instruments.push_back(inst);
+    }
+#else
+
     fluid_sfont_iteration_start(sfont);
 
     while((preset = fluid_sfont_iteration_next(sfont)) != NULL) {
         char inst[100];
         snprintf(inst, 100, "%03d %03d %s", fluid_preset_get_banknum(preset) + offset,
-                            fluid_preset_get_num(preset),fluid_preset_get_name(preset));
+                        fluid_preset_get_num(preset),fluid_preset_get_name(preset));
         instruments.push_back(inst);
     }
+#endif
     set_default_instruments();
 }
 
@@ -140,8 +151,13 @@ int XSynth::get_instrument_for_channel(int channel) {
     fluid_preset_t *preset = fluid_synth_get_channel_preset(synth, channel);
     int offset = fluid_synth_get_bank_offset(synth, sf_id);
     char inst[100];
+#if FLUIDSYNTH_VERSION_MAJOR < 2
+    snprintf(inst, 100, "%03d %03d %s", preset->get_banknum(preset) + offset,
+                        preset->get_num(preset),preset->get_name(preset));
+#else
     snprintf(inst, 100, "%03d %03d %s", fluid_preset_get_banknum(preset) + offset,
                         fluid_preset_get_num(preset),fluid_preset_get_name(preset));
+#endif
     std::string name = inst;
     int ret = 0;
     for(std::vector<std::string>::const_iterator i = instruments.begin(); i != instruments.end(); ++i) {
