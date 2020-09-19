@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mamba 1.4\n"
+"Project-Id-Version: mamba 1.5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-09-11 09:05+0200\n"
+"POT-Creation-Date: 2020-09-19 07:05+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,55 +17,55 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: MidiKeyBoard.cpp:492 MidiKeyBoard.cpp:995 MidiKeyBoard.cpp:1341
+#: MidiKeyBoard.cpp:494 MidiKeyBoard.cpp:1018 MidiKeyBoard.cpp:1365
 msgid " - Virtual Midi Keyboard"
 msgstr ""
 
-#: MidiKeyBoard.cpp:691
+#: MidiKeyBoard.cpp:693
 msgid "Attack"
 msgstr ""
 
-#: MidiKeyBoard.cpp:653
+#: MidiKeyBoard.cpp:655
 msgid "BPM"
 msgstr ""
 
-#: MidiKeyBoard.cpp:649
+#: MidiKeyBoard.cpp:651
 msgid "BPM:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:673
+#: MidiKeyBoard.cpp:675
 msgid "Balance"
 msgstr ""
 
-#: MidiKeyBoard.cpp:617
+#: MidiKeyBoard.cpp:619
 msgid "Bank"
 msgstr ""
 
-#: MidiKeyBoard.cpp:613
+#: MidiKeyBoard.cpp:615
 msgid "Bank:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:547
+#: MidiKeyBoard.cpp:549
 msgid "C 0"
 msgstr ""
 
-#: MidiKeyBoard.cpp:548
+#: MidiKeyBoard.cpp:550
 msgid "C 1"
 msgstr ""
 
-#: MidiKeyBoard.cpp:549
+#: MidiKeyBoard.cpp:551
 msgid "C 2"
 msgstr ""
 
-#: MidiKeyBoard.cpp:550
+#: MidiKeyBoard.cpp:552
 msgid "C 3"
 msgstr ""
 
-#: MidiKeyBoard.cpp:551
+#: MidiKeyBoard.cpp:553
 msgid "C 4"
 msgstr ""
 
-#: MidiKeyBoard.cpp:564
+#: MidiKeyBoard.cpp:566
 msgid "C_onnect"
 msgstr ""
 
@@ -74,37 +74,37 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: MidiKeyBoard.cpp:598
+#: MidiKeyBoard.cpp:600
 msgid "Channel"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1911
+#: MidiKeyBoard.cpp:1942
 msgid "Channel Pressure"
 msgstr ""
 
-#: MidiKeyBoard.cpp:594
+#: MidiKeyBoard.cpp:596
 msgid "Channel:"
 msgstr ""
 
 #. chorus
-#: MidiKeyBoard.cpp:1861
+#: MidiKeyBoard.cpp:1892
 msgid "Chorus"
 msgstr ""
 
 #. general
-#: MidiKeyBoard.cpp:1919
+#: MidiKeyBoard.cpp:1950
 msgid "Close"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1053
+#: MidiKeyBoard.cpp:1076
 msgid "Couldn't access file, sorry"
 msgstr ""
 
-#: MidiKeyBoard.cpp:981 MidiKeyBoard.cpp:990
+#: MidiKeyBoard.cpp:1002 MidiKeyBoard.cpp:1011
 msgid "Couldn't load file, is that a MIDI file?"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1062
+#: MidiKeyBoard.cpp:1085
 msgid "Couldn't load file, is that a soundfont file?"
 msgstr ""
 
@@ -116,15 +116,15 @@ msgstr ""
 msgid "Custom Keymap - Editor"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1839
+#: MidiKeyBoard.cpp:1870
 msgid "Damp"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1895
+#: MidiKeyBoard.cpp:1926
 msgid "Depth"
 msgstr ""
 
-#: MidiKeyBoard.cpp:682
+#: MidiKeyBoard.cpp:684
 msgid "Detune"
 msgstr ""
 
@@ -137,7 +137,7 @@ msgstr ""
 msgid "ERROR"
 msgstr ""
 
-#: MidiKeyBoard.cpp:580
+#: MidiKeyBoard.cpp:582
 msgid "E_xit Fluidsynth"
 msgstr ""
 
@@ -153,7 +153,7 @@ msgstr ""
 msgid "Exit file selector"
 msgstr ""
 
-#: MidiKeyBoard.cpp:686
+#: MidiKeyBoard.cpp:688
 msgid "Expression"
 msgstr ""
 
@@ -162,11 +162,11 @@ msgstr ""
 msgid "File"
 msgstr ""
 
-#: MidiKeyBoard.cpp:661
+#: MidiKeyBoard.cpp:663
 msgid "File BPM:"
 msgstr ""
 
-#: MidiKeyBoard.cpp:663 MidiKeyBoard.cpp:998 MidiKeyBoard.cpp:1344
+#: MidiKeyBoard.cpp:665 MidiKeyBoard.cpp:1021 MidiKeyBoard.cpp:1368
 #, c-format
 msgid "File BPM: %d"
 msgstr ""
@@ -197,23 +197,23 @@ msgstr ""
 msgid "File write error"
 msgstr ""
 
-#: MidiKeyBoard.cpp:574
+#: MidiKeyBoard.cpp:576
 msgid "Fl_uidsynth"
 msgstr ""
 
-#: MidiKeyBoard.cpp:578
+#: MidiKeyBoard.cpp:580
 msgid "Fluids_ynth Panic"
 msgstr ""
 
-#: MidiKeyBoard.cpp:576
+#: MidiKeyBoard.cpp:578
 msgid "Fluidsy_nth Settings"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1808
+#: MidiKeyBoard.cpp:1839
 msgid "Fluidsynth - Settings"
 msgstr ""
 
-#: MidiKeyBoard.cpp:561
+#: MidiKeyBoard.cpp:563
 msgid "Grab Keyboard"
 msgstr ""
 
@@ -223,19 +223,19 @@ msgstr ""
 msgid "INFO"
 msgstr ""
 
-#: MidiKeyBoard.cpp:565
+#: MidiKeyBoard.cpp:567
 msgid "Input"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1776
+#: MidiKeyBoard.cpp:1807
 msgid "Instruments"
 msgstr ""
 
-#: MidiKeyBoard.cpp:535
+#: MidiKeyBoard.cpp:537
 msgid "Keyboard"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1853 MidiKeyBoard.cpp:1881
+#: MidiKeyBoard.cpp:1884 MidiKeyBoard.cpp:1912
 msgid "Level"
 msgstr ""
 
@@ -243,7 +243,7 @@ msgstr ""
 msgid "Load"
 msgstr ""
 
-#: MidiKeyBoard.cpp:575
+#: MidiKeyBoard.cpp:577
 msgid "Load Soun_dFont"
 msgstr ""
 
@@ -255,23 +255,23 @@ msgstr ""
 msgid "Load: "
 msgstr ""
 
-#: MidiKeyBoard.cpp:1902
+#: MidiKeyBoard.cpp:1933
 msgid "MODE"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1160
+#: MidiKeyBoard.cpp:1183
 msgid "Mamba"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1161
+#: MidiKeyBoard.cpp:1184
 msgid ""
-"Mamba v1.4 is written by Hermann Meyer|released under the BSD Zero Clause "
+"Mamba v1.5 is written by Hermann Meyer|released under the BSD Zero Clause "
 "License|https://github.com/brummer10/Mamba|For MIDI file handling it uses "
 "libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala|https://"
 "github.com/stump/libsmf"
 msgstr ""
 
-#: MidiKeyBoard.cpp:677
+#: MidiKeyBoard.cpp:679
 msgid "ModWheel"
 msgstr ""
 
@@ -283,16 +283,16 @@ msgstr ""
 msgid "OK"
 msgstr ""
 
-#: MidiKeyBoard.cpp:546
+#: MidiKeyBoard.cpp:548
 msgid "Octave"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1750
+#: MidiKeyBoard.cpp:1781
 msgid "Off"
 msgstr ""
 
 #. reverb
-#: MidiKeyBoard.cpp:1752 MidiKeyBoard.cpp:1819 MidiKeyBoard.cpp:1866
+#: MidiKeyBoard.cpp:1783 MidiKeyBoard.cpp:1850 MidiKeyBoard.cpp:1897
 msgid "On"
 msgstr ""
 
@@ -306,11 +306,11 @@ msgstr ""
 msgid "Open sub-directory's"
 msgstr ""
 
-#: MidiKeyBoard.cpp:566
+#: MidiKeyBoard.cpp:568
 msgid "Output"
 msgstr ""
 
-#: MidiKeyBoard.cpp:668
+#: MidiKeyBoard.cpp:670
 msgid "PitchBend"
 msgstr ""
 
@@ -326,11 +326,11 @@ msgstr ""
 msgid "Premature end of file"
 msgstr ""
 
-#: MidiKeyBoard.cpp:635
+#: MidiKeyBoard.cpp:637
 msgid "Program"
 msgstr ""
 
-#: MidiKeyBoard.cpp:631
+#: MidiKeyBoard.cpp:633
 msgid "Program:"
 msgstr ""
 
@@ -338,15 +338,15 @@ msgstr ""
 msgid "QUESTION"
 msgstr ""
 
-#: MidiKeyBoard.cpp:695
+#: MidiKeyBoard.cpp:697
 msgid "Release"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1827
+#: MidiKeyBoard.cpp:1858
 msgid "Reverb"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1832
+#: MidiKeyBoard.cpp:1863
 msgid "Roomsize"
 msgstr ""
 
@@ -354,7 +354,7 @@ msgstr ""
 msgid "SELECTION"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1903
+#: MidiKeyBoard.cpp:1934
 msgid "SINE"
 msgstr ""
 
@@ -384,19 +384,19 @@ msgstr ""
 msgid "Show hidden files and folders"
 msgstr ""
 
-#: MidiKeyBoard.cpp:716
+#: MidiKeyBoard.cpp:718
 msgid "Sostenuto"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1888
+#: MidiKeyBoard.cpp:1919
 msgid "Speed"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1387
+#: MidiKeyBoard.cpp:1418
 msgid "Sto_p"
 msgstr ""
 
-#: MidiKeyBoard.cpp:708
+#: MidiKeyBoard.cpp:710
 msgid "Sustain"
 msgstr ""
 
@@ -404,15 +404,15 @@ msgstr ""
 msgid "TEXT ENTRY"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1904
+#: MidiKeyBoard.cpp:1935
 msgid "TRIANGLE"
 msgstr ""
 
-#: MidiKeyBoard.cpp:703
+#: MidiKeyBoard.cpp:705
 msgid "Velocity"
 msgstr ""
 
-#: MidiKeyBoard.cpp:699
+#: MidiKeyBoard.cpp:701
 msgid "Volume"
 msgstr ""
 
@@ -420,7 +420,7 @@ msgstr ""
 msgid "WARNING"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1846
+#: MidiKeyBoard.cpp:1877
 msgid "Width"
 msgstr ""
 
@@ -428,43 +428,43 @@ msgstr ""
 msgid "YES"
 msgstr ""
 
-#: MidiKeyBoard.cpp:588
+#: MidiKeyBoard.cpp:590
 msgid "_About"
 msgstr ""
 
-#: MidiKeyBoard.cpp:525
+#: MidiKeyBoard.cpp:527
 msgid "_File"
 msgstr ""
 
-#: MidiKeyBoard.cpp:587
+#: MidiKeyBoard.cpp:589
 msgid "_Info"
 msgstr ""
 
-#: MidiKeyBoard.cpp:558
+#: MidiKeyBoard.cpp:560
 msgid "_Keymap Editor"
 msgstr ""
 
-#: MidiKeyBoard.cpp:526
+#: MidiKeyBoard.cpp:528
 msgid "_Load MIDI"
 msgstr ""
 
-#: MidiKeyBoard.cpp:534
+#: MidiKeyBoard.cpp:536
 msgid "_Mapping"
 msgstr ""
 
-#: MidiKeyBoard.cpp:730 MidiKeyBoard.cpp:1389
+#: MidiKeyBoard.cpp:732 MidiKeyBoard.cpp:1420
 msgid "_Play"
 msgstr ""
 
-#: MidiKeyBoard.cpp:528
+#: MidiKeyBoard.cpp:530
 msgid "_Quit"
 msgstr ""
 
-#: MidiKeyBoard.cpp:724
+#: MidiKeyBoard.cpp:726
 msgid "_Record"
 msgstr ""
 
-#: MidiKeyBoard.cpp:527
+#: MidiKeyBoard.cpp:529
 msgid "_Save MIDI as"
 msgstr ""
 
@@ -483,15 +483,15 @@ msgstr ""
 msgid "audio"
 msgstr ""
 
-#: MidiKeyBoard.cpp:539
+#: MidiKeyBoard.cpp:541
 msgid "azerty (be)"
 msgstr ""
 
-#: MidiKeyBoard.cpp:538
+#: MidiKeyBoard.cpp:540
 msgid "azerty (fr)"
 msgstr ""
 
-#: MidiKeyBoard.cpp:540
+#: MidiKeyBoard.cpp:542
 msgid "custom"
 msgstr ""
 
@@ -505,11 +505,11 @@ msgstr ""
 msgid "image"
 msgstr ""
 
-#: MidiKeyBoard.cpp:537
+#: MidiKeyBoard.cpp:539
 msgid "qwerty"
 msgstr ""
 
-#: MidiKeyBoard.cpp:536
+#: MidiKeyBoard.cpp:538
 msgid "qwertz"
 msgstr ""
 
@@ -523,7 +523,7 @@ msgstr ""
 msgid "video"
 msgstr ""
 
-#: MidiKeyBoard.cpp:1874
+#: MidiKeyBoard.cpp:1905
 msgid "voices"
 msgstr ""
 

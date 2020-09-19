@@ -1181,7 +1181,7 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     Widget_t *dia = open_message_dialog(xjmkb->win, INFO_BOX, _("Mamba"), 
-        _("Mamba v1.4 is written by Hermann Meyer|released under the BSD Zero Clause License"
+        _("Mamba v1.5 is written by Hermann Meyer|released under the BSD Zero Clause License"
         "|https://github.com/brummer10/Mamba"
         "|For MIDI file handling it uses libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala"
         "|https://github.com/stump/libsmf"),NULL);
