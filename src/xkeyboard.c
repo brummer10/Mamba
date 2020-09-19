@@ -321,6 +321,16 @@ bool is_key_in_matrix(unsigned long *key_matrix, int key) {
     return ret;
 }
 
+int is_key_in_in_matrix(MidiKeyboard *keys, int key) {
+    int i = 0;
+    for(;i<16;i++) {
+        if (is_key_in_matrix(keys->in_key_matrix[i], key)) {
+           return i; 
+       }
+    }
+    return -1;
+}
+
 bool have_key_in_matrix(unsigned long *key_matrix) {
     
     bool ret = false;
@@ -349,6 +359,18 @@ void clear_key_matrix(unsigned long *key_matrix) {
     }
 }
 
+void use_matrix_color(Widget_t *w, int c) {
+    double ci = ((c+1)/100.0)*12.0;
+    if (c<4)
+        cairo_set_source_rgba(w->crb, ci, 0.2, 0.4, 1.00);
+    else if (c<8)
+        cairo_set_source_rgba(w->crb, 0.6, 0.2+ci-0.48, 0.4, 1.00);
+    else if (c<12)
+        cairo_set_source_rgba(w->crb, 0.6-(ci-0.96), 0.68-(ci-1.08), 0.4, 1.00);
+    else
+        cairo_set_source_rgba(w->crb, 0.12+(ci-1.56), 0.32, 0.4-(ci-1.44), 1.00);
+}
+
 static void draw_keyboard(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XWindowAttributes attrs;
@@ -362,15 +384,17 @@ static void draw_keyboard(void *w_, void* user_data) {
     int set = 0;
     int i = 0;
     int k = 0;
+    int ik = -1;
     cairo_set_font_size (w->crb, w->app->normal_font);
 
     for(;i<width_t;i++) {
+        ik = is_key_in_in_matrix(keys, k+keys->octave);
         cairo_rectangle(w->crb,i,0,25,height_t);
         if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
             use_base_color_scheme(w, ACTIVE_);
             cairo_set_line_width(w->crb, 1.0);
-        } else if (is_key_in_matrix(keys->in_key_matrix,k+keys->octave)) {
-            use_base_color_scheme(w, SELECTED_);
+        } else if (ik > -1) {
+            use_matrix_color(w, ik);
             cairo_set_line_width(w->crb, 2.0);
         } else if ( k+keys->octave == keys->prelight_key) {
             use_base_color_scheme(w, PRELIGHT_);
@@ -452,18 +476,20 @@ static void draw_keyboard(void *w_, void* user_data) {
     space = 1;
     set = 0;
     k = 1;
+    ik = -1;
     i = 0;
 
     for(;i<width_t;i++) {
 
        if (space!=3) {
+            ik = is_key_in_in_matrix(keys, k+keys->octave);
             cairo_set_line_width(w->crb, 1.0);
             cairo_rectangle(w->crb,i+15,0,20,height_t*0.59);
             if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
                 use_base_color_scheme(w, ACTIVE_);
                 cairo_set_line_width(w->crb, 1.0);
-            } else if (is_key_in_matrix(keys->in_key_matrix,k+keys->octave)) {
-                use_base_color_scheme(w, SELECTED_);
+            } else if (ik > -1) {
+                use_matrix_color(w, ik);
                 cairo_set_line_width(w->crb, 2.0);
             } else if ( k+keys->octave == keys->prelight_key) {
                 use_base_color_scheme(w, PRELIGHT_);
@@ -733,10 +759,19 @@ static void keyboard_mem_free(void *w_, void* user_data) {
 }
 
 bool need_redraw(MidiKeyboard *keys) {
+    bool have = false;
+    int i = 0;
+    for(;i<16;i++) {
+        if (have_key_in_matrix(keys->in_key_matrix[i])) {
+            have = true;
+            break;
+        }
+    }
+
     return (keys->active_key > 0 ? 1 : 0) |
     (keys->prelight_key  > 0 ? 1 : 0)  |
     have_key_in_matrix(keys->key_matrix) |
-    have_key_in_matrix(keys->in_key_matrix);
+    have;
 }
 
 void read_keymap(const char* keymapfile, long keys[128]) {
@@ -793,9 +828,12 @@ void add_keyboard(Widget_t *wid, const char * label) {
     for(;j<4;j++) {
         keys->key_matrix[j] = 0;
     }
-    j = 0;
-    for(;j<4;j++) {
-        keys->in_key_matrix[j] = 0;
+    int i = 0;
+    for(;i<16;i++) {
+        j = 0;
+        for(;j<4;j++) {
+            keys->in_key_matrix[i][j] = 0;
+        }
     }
     read_keymap(label, keys->custom_keys);
 

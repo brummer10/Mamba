@@ -323,9 +323,9 @@ void XKeyBoard::show_ui(int present) {
     }
 }
 
-void XKeyBoard::get_midi_in(int n, bool on) {
+void XKeyBoard::get_midi_in(int c, int n, bool on) {
     MidiKeyboard *keys = (MidiKeyboard*)wid->parent_struct;
-    set_key_in_matrix(keys->in_key_matrix, n, on);
+    set_key_in_matrix(keys->in_key_matrix[c], n, on);
 }
 
 void XKeyBoard::quit_by_jack() {
@@ -872,6 +872,12 @@ void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
     xjmkb->main_y = y1 - min(1,(height - attrs.height))/2;
     xjmkb->main_w = width;
     xjmkb->main_h = height;
+
+    XGetWindowAttributes(w->app->dpy, (Window)xjmkb->synth_ui->widget, &attrs);
+    if (attrs.map_state != IsViewable) return;
+    int y = xjmkb->main_y-226;
+    if (xjmkb->main_y < 230) y = xjmkb->main_y + xjmkb->main_h+21;
+    XMoveWindow(win->app->dpy,xjmkb->synth_ui->widget, xjmkb->main_x, y);
 }
 
 void XKeyBoard::get_port_entrys(Widget_t *parent, jack_port_t *my_port, JackPortFlags type) {
@@ -1005,6 +1011,8 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
             _("Couldn't load file, is that a MIDI file?"),NULL);
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
         } else {
+            for(int i = 1;i<16;i++)
+                xjmkb->xjack->rec.play[i].clear();
             std::string file(basename(*(char**)user_data));
             xjmkb->filepath = dirname(*(char**)user_data);
             std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard") + " - " + file;
@@ -1185,11 +1193,12 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    xjmkb->xjack->rec.channel = xjmkb->mmessage->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
     if (xjmkb->xjack->play>0) {
         MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
-        clear_key_matrix(keys->in_key_matrix);
+        for (int i = 0; i<16;i++) 
+            clear_key_matrix(keys->in_key_matrix[i]);
     }
+    xjmkb->xjack->rec.channel = xjmkb->mmessage->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
     if(xjmkb->xsynth->synth_is_active()) {
         xjmkb->only_show_changes = true;
         int i = xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel);
@@ -1361,7 +1370,11 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
         expose_widget(xjmkb->songbpm);
         xjmkb->xjack->store1.clear();
         xjmkb->xjack->store2.clear();
-        xjmkb->xjack->rec.play[xjmkb->mchannel].clear();
+        int c = xjmkb->mchannel;
+        if (xjmkb->mchannel>15) {
+            xjmkb->xjack->rec.channel = xjmkb->mmessage->channel = c = 0;
+        }
+        xjmkb->xjack->rec.play[c].clear();
         xjmkb->xjack->fresh_take = true;
         xjmkb->xjack->first_play = true;
         xjmkb->xjack->rec.start();
@@ -1390,7 +1403,8 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
     xjmkb->xjack->play = value;
     if (value < 1) {
         MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
-        clear_key_matrix(keys->in_key_matrix);
+        for (int i = 0; i<16;i++) 
+            clear_key_matrix(keys->in_key_matrix[i]);
         xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3);
         xjmkb->xjack->first_play = true;
     }
@@ -2131,11 +2145,11 @@ int main (int argc, char *argv[]) {
     main_run(&app);
     
     animidi.stop();
+    if (xjack.client) jack_client_close (xjack.client);
+    xsynth.unload_synth();
     main_quit(&app);
 
     if(!nsmsig.nsm_session_control) xjmkb.save_config();
-    xsynth.unload_synth();
-    if (xjack.client) jack_client_close (xjack.client);
 
     exit (0);
 

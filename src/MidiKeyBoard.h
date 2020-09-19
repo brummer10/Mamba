@@ -256,7 +256,7 @@ private:
     void signal_handle (int sig);
     void exit_handle (int sig);
     void quit_by_jack();
-    void get_midi_in(int n, bool on);
+    void get_midi_in(int c, int n, bool on);
 public:
     XKeyBoard(xjack::XJack *xjack, xsynth::XSynth *xsynth, mamba::MidiMessenger *mmessage,
         nsmhandler::NsmSignalHandler& nsmsig, PosixSignalHandler& xsig, 

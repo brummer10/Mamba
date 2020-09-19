@@ -84,6 +84,7 @@ private:
     unsigned int pos;
     unsigned int posPlay[16];
 
+    inline void get_max_time_loop(std::vector<mamba::MidiEvent> *play, int *v);
     inline void record_midi(unsigned char* midi_send, unsigned int n, int i);
     inline void play_midi(void *buf, unsigned int n);
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
@@ -107,7 +108,6 @@ public:
     jack_nframes_t start;
     jack_nframes_t startPlay[16];
     jack_nframes_t absoluteStart;
-    jack_nframes_t absolutePlayStart;
     std::string client_name;
     void init_jack();
     mamba::MidiRecord rec;
@@ -127,8 +127,8 @@ public:
     sigc::signal<void > trigger_quit_by_jack;
     sigc::signal<void >& signal_trigger_quit_by_jack() { return trigger_quit_by_jack; }
 
-    sigc::signal<void, int, bool> trigger_get_midi_in;
-    sigc::signal<void, int, bool>& signal_trigger_get_midi_in() { return trigger_get_midi_in; }
+    sigc::signal<void, int, int, bool> trigger_get_midi_in;
+    sigc::signal<void, int, int, bool>& signal_trigger_get_midi_in() { return trigger_get_midi_in; }
 };
 
 
