@@ -961,7 +961,7 @@ void XKeyBoard::map_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->visible = 1;
-    make_connection_menu(xjmkb->connection, NULL, NULL);
+    //make_connection_menu(xjmkb->connection, NULL, NULL);
 }
 
 // static
@@ -2147,9 +2147,9 @@ int main (int argc, char *argv[]) {
     animidi.stop();
     if (xjack.client) jack_client_close (xjack.client);
     xsynth.unload_synth();
-    main_quit(&app);
-
     if(!nsmsig.nsm_session_control) xjmkb.save_config();
+
+    main_quit(&app);
 
     exit (0);
 
