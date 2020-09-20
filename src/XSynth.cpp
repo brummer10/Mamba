@@ -90,7 +90,6 @@ int XSynth::load_soundfont(const char *path) {
 
 void XSynth::print_soundfont() {
     instruments.clear();
-    fluid_preset_t *preset;
     fluid_sfont_t * sfont = fluid_synth_get_sfont_by_id(synth, sf_id);
     int offset = fluid_synth_get_bank_offset(synth, sf_id);
 
@@ -100,15 +99,16 @@ void XSynth::print_soundfont() {
     }
 
 #if FLUIDSYNTH_VERSION_MAJOR < 2
+    fluid_preset_t preset;
     sfont->iteration_start(sfont);
-    while ((sfont->iteration_next(sfont, preset)) != 0) {
+    while ((sfont->iteration_next(sfont, &preset)) != 0) {
         char inst[100];
-        snprintf(inst, 100, "%03d %03d %s", preset->get_banknum(preset) + offset,
-                        preset->get_num(preset),preset->get_name(preset));
+        snprintf(inst, 100, "%03d %03d %s", preset.get_banknum(&preset) + offset,
+                        preset.get_num(&preset),preset.get_name(&preset));
         instruments.push_back(inst);
     }
 #else
-
+    fluid_preset_t *preset;
     fluid_sfont_iteration_start(sfont);
 
     while((preset = fluid_sfont_iteration_next(sfont)) != NULL) {
@@ -210,7 +210,7 @@ void XSynth::panic() {
 }
 
 void XSynth::unload_synth() {
-    if (sf_id) {
+    if (sf_id != -1) {
         fluid_synth_sfunload(synth, sf_id, 0);
         sf_id = -1;
     }
