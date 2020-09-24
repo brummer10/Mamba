@@ -22,7 +22,6 @@
 #include "MidiKeyBoard.h"
 #include "xkeyboard.h"
 #include "xcustommap.h"
-#include "xcombobox_private.h"
 
 
 namespace midikeyboard {
@@ -121,7 +120,6 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xsynth::XSynth *xsynth_,
     run_one_more = 0;
     need_save = false;
     only_show_changes = false;
-    instrument_changed.store(false, std::memory_order_release);
     filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
@@ -807,29 +805,6 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         XUnlockDisplay(w->app->dpy);
     }
 
-    if (xjmkb->instrument_changed.load(std::memory_order_acquire)) {
-        if(xjmkb->xsynth->synth_is_active() && xjmkb->fs_instruments) {
-            int i = xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel);
-            if (i > -1 && i != (int)adj_get_value(xjmkb->fs_instruments->adj)) {
-                XLockDisplay(w->app->dpy);
-                xjmkb->fs_instruments->func.adj_callback = dummy_callback;
-                xjmkb->fs_instruments->func.value_changed_callback = dummy_callback;
-                combobox_set_active_entry(xjmkb->fs_instruments, i);
-                Widget_t * menu = xjmkb->fs_instruments->childlist->childs[1];
-                if (childlist_has_child(menu->childlist)) {
-                    Widget_t* view_port =  menu->childlist->childs[0];
-                    xjmkb->fs_instruments->label = view_port->childlist->childs[i]->label;
-                    expose_widget(xjmkb->fs_instruments);
-                    XFlush(w->app->dpy);
-                }
-                xjmkb->fs_instruments->func.value_changed_callback = instrument_callback;
-                xjmkb->fs_instruments->func.adj_callback = _set_entry;
-                XUnlockDisplay(w->app->dpy);
-            }
-        }
-        xjmkb->instrument_changed.store(false, std::memory_order_release);
-    }
-
     bool repeat = need_redraw(keys);
     if ((repeat || xjmkb->run_one_more) && xjmkb->xjack->client) {
         XLockDisplay(w->app->dpy);
@@ -961,7 +936,8 @@ void XKeyBoard::map_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->visible = 1;
-    //make_connection_menu(xjmkb->connection, NULL, NULL);
+    if(!xjmkb->nsmsig.nsm_session_control)
+        make_connection_menu(xjmkb->connection, NULL, NULL);
 }
 
 // static
@@ -1159,9 +1135,6 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
         break;
         case(3):
         {
-            while (xjmkb->instrument_changed.load(std::memory_order_acquire)){
-                std::this_thread::sleep_for(std::chrono::milliseconds(30));
-            }
             xjmkb->show_synth_ui(0);
             xjmkb->xsynth->unload_synth();
             xjmkb->soundfont = "";
@@ -1213,7 +1186,7 @@ void XKeyBoard::bank_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mbank = (int)adj_get_value(w->adj);
-    program_callback(xjmkb->program,NULL);
+    xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
 }
 
 // static
@@ -1222,12 +1195,26 @@ void XKeyBoard::program_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mprogram = (int)adj_get_value(w->adj);
-    if(!xjmkb->only_show_changes) {
+    xjmkb->mbank = (int)adj_get_value(xjmkb->bank->adj);
+    if(xjmkb->xsynth->synth_is_active()) {
+        int ret = 0;
+        int bank = 0;
+        int program = 0;
+        for(std::vector<std::string>::const_iterator i = xjmkb->xsynth->instruments.begin();
+                                                i != xjmkb->xsynth->instruments.end(); ++i) {
+            std::istringstream buf(xjmkb->xsynth->instruments[ret]);
+            buf >> bank;
+            buf >> program;
+            if (bank == xjmkb->mbank && program == xjmkb->mprogram) {
+                adj_set_value(xjmkb->fs_instruments->adj, ret);
+                xjmkb->xsynth->set_instrument_on_channel(xjmkb->mchannel,ret);
+                break;
+            }
+            ret++;
+        }
+    } else {
         xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
         xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2);
-        xjmkb->instrument_changed.store(true, std::memory_order_release);
-    } else {
-        xjmkb->only_show_changes = false;
     }
 }
 
@@ -1613,9 +1600,6 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             case (XK_x):
             {
                 if(!xjmkb->xsynth->synth_is_active()) break;
-                while (xjmkb->instrument_changed.load(std::memory_order_acquire)){
-                    std::this_thread::sleep_for(std::chrono::milliseconds(30));
-                }
                 xjmkb->show_synth_ui(0);
                 xjmkb->xsynth->unload_synth();
                 xjmkb->soundfont = "";
@@ -1797,7 +1781,6 @@ void XKeyBoard::instrument_callback(void *w_, void* user_data) {
     buf >> xjmkb->mprogram;
     adj_set_value(xjmkb->bank->adj,xjmkb->mbank);
     adj_set_value(xjmkb->program->adj,xjmkb->mprogram);
-    
 }
 
 void XKeyBoard::rebuild_instrument_list() {
@@ -1816,6 +1799,9 @@ void XKeyBoard::rebuild_instrument_list() {
         combobox_set_active_entry(fs_instruments, i);
     fs_instruments->func.key_press_callback = key_press;
     fs_instruments->func.key_release_callback = key_release;
+    Widget_t *tmp = fs_instruments->childlist->childs[0];
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
 
 }
 
