@@ -119,7 +119,6 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xsynth::XSynth *xsynth_,
     mchannel = 0;
     run_one_more = 0;
     need_save = false;
-    only_show_changes = false;
     filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
@@ -1173,7 +1172,6 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) {
     }
     xjmkb->xjack->rec.channel = xjmkb->mmessage->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
     if(xjmkb->xsynth->synth_is_active()) {
-        xjmkb->only_show_changes = true;
         int i = xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel);
         if ( i >-1)
             combobox_set_active_entry(xjmkb->fs_instruments, i);
@@ -1185,8 +1183,10 @@ void XKeyBoard::bank_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    xjmkb->mbank = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
+    if(!xjmkb->xsynth->synth_is_active()) {
+        xjmkb->mbank = (int)adj_get_value(w->adj);
+        xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
+    }
 }
 
 // static
@@ -1202,7 +1202,7 @@ void XKeyBoard::program_callback(void *w_, void* user_data) {
         int program = 0;
         for(std::vector<std::string>::const_iterator i = xjmkb->xsynth->instruments.begin();
                                                 i != xjmkb->xsynth->instruments.end(); ++i) {
-            std::istringstream buf(xjmkb->xsynth->instruments[ret]);
+            std::istringstream buf((*i));
             buf >> bank;
             buf >> program;
             if (bank == xjmkb->mbank && program == xjmkb->mprogram) {
