@@ -157,6 +157,11 @@ XKeyBoard::~XKeyBoard() {
 void XKeyBoard::set_config(const char *name, const char *client_id, bool op_gui) {
     client_name = client_id;
     xjack->client_name = client_name;
+    std::string try_path = name;
+    try_path += ".config";
+    if (access(try_path.c_str(), F_OK) == -1 ) {
+        read_config();
+    }
     path = name;
     config_file = path + ".config";
     if (op_gui) {
