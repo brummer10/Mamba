@@ -1057,15 +1057,20 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
             return;
         }
-        xjmkb->xsynth->unload_synth();
-        xjmkb->xsynth->setup(xjmkb->xjack->SampleRate);
-        xjmkb->xsynth->init_synth();
+        if(xjmkb->fs_instruments) {
+            combobox_delete_entrys(xjmkb->fs_instruments);
+        }
+        if (!xjmkb->xsynth->synth_is_active()) {
+            xjmkb->xsynth->setup(xjmkb->xjack->SampleRate);
+            xjmkb->xsynth->init_synth();
+        }
         if (xjmkb->xsynth->load_soundfont( *(const char**)user_data)) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
             _("Couldn't load file, is that a soundfont file?"),NULL);
             XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
             return;
         }
+        xjmkb->rebuild_instrument_list();
         xjmkb->soundfont =  *(const char**)user_data;
         xjmkb->soundfontpath = dirname(*(char**)user_data);
         const char **port_list = NULL;
@@ -1073,15 +1078,16 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         if (port_list) {
             for (int i = 0; port_list[i] != NULL; i++) {
                 if (strstr(port_list[i], "mamba")) {
-                    const char *my_port = jack_port_name(xjmkb->xjack->out_port);
-                    jack_connect(xjmkb->xjack->client, my_port,port_list[i]);
+                    if (!jack_port_connected_to(xjmkb->xjack->out_port, port_list[i])) {
+                        const char *my_port = jack_port_name(xjmkb->xjack->out_port);
+                        jack_connect(xjmkb->xjack->client, my_port,port_list[i]);
+                    }
                     break;
                 }
             }
             jack_free(port_list);
             port_list = NULL;
         }
-        xjmkb->rebuild_instrument_list();
         XWindowAttributes attrs;
         XGetWindowAttributes(win->app->dpy, (Window)xjmkb->synth_ui->widget, &attrs);
         if (attrs.map_state == IsViewable) {
@@ -1459,7 +1465,6 @@ void XKeyBoard::grab_callback(void *w_, void* user_data) {
     } else {
         XUngrabKeyboard(xjmkb->win->app->dpy, CurrentTime); 
     }
-
 }
 
 // static
@@ -1790,24 +1795,17 @@ void XKeyBoard::instrument_callback(void *w_, void* user_data) {
 
 void XKeyBoard::rebuild_instrument_list() {
     if(fs_instruments) {
-        destroy_widget(fs_instruments, win->app);
+        combobox_delete_entrys(fs_instruments);
     }
-    fs_instruments = add_combobox(synth_ui, _("Instruments"), 20, 10, 260, 30);
-    fs_instruments->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    fs_instruments->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    for(std::vector<std::string>::const_iterator i = xsynth->instruments.begin(); i != xsynth->instruments.end(); ++i) {
+
+    for(std::vector<std::string>::const_iterator
+            i = xsynth->instruments.begin();i != xsynth->instruments.end(); ++i) {
         combobox_add_entry(fs_instruments,(*i).c_str());
     }
-    fs_instruments->func.value_changed_callback = instrument_callback;
+
     int i = xsynth->get_instrument_for_channel(mchannel);
     if ( i >-1)
         combobox_set_active_entry(fs_instruments, i);
-    fs_instruments->func.key_press_callback = key_press;
-    fs_instruments->func.key_release_callback = key_release;
-    Widget_t *tmp = fs_instruments->childlist->childs[0];
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-
 }
 
 void XKeyBoard::show_synth_ui(int present) {
@@ -1837,8 +1835,18 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     synth_ui->func.key_press_callback = key_press;
     synth_ui->func.key_release_callback = key_release;
 
+    fs_instruments = add_combobox(synth_ui, _("Instruments"), 20, 10, 260, 30);
+    fs_instruments->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    fs_instruments->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    fs_instruments->func.value_changed_callback = instrument_callback;
+    fs_instruments->func.key_press_callback = key_press;
+    fs_instruments->func.key_release_callback = key_release;
+    Widget_t *tmp = fs_instruments->childlist->childs[0];
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
     // reverb
-    Widget_t *tmp = add_toggle_button(synth_ui, _("On"), 20,  150, 60, 30);
+    tmp = add_toggle_button(synth_ui, _("On"), 20,  150, 60, 30);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.adj_callback = set_on_off_label;
     tmp->func.value_changed_callback = reverb_on_callback;

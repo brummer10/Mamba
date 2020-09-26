@@ -77,7 +77,7 @@ void XSynth::init_synth() {
 }
 
 int XSynth::load_soundfont(const char *path) {
-    if (sf_id != -1) fluid_synth_sfunload(synth, sf_id, 1);
+    if (sf_id != -1) fluid_synth_sfunload(synth, sf_id, 0);
     sf_id = fluid_synth_sfload(synth, path, 1);
     if (sf_id == -1) {
         return 1;
