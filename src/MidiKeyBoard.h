@@ -268,6 +268,7 @@ public:
     std::string filepath;
     std::string soundfontpath;
     std::string soundfont;
+    std::string soundfontname;
 
     bool has_config;
     Widget_t *win;

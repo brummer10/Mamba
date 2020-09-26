@@ -1072,7 +1072,11 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         }
         xjmkb->rebuild_instrument_list();
         xjmkb->soundfont =  *(const char**)user_data;
+        xjmkb->soundfontname =  basename(*(char**)user_data);
         xjmkb->soundfontpath = dirname(*(char**)user_data);
+        std::string title = _("Fluidsynth - ");
+        title += xjmkb->soundfontname;
+        widget_set_title(xjmkb->synth_ui, title.c_str());
         const char **port_list = NULL;
         port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
         if (port_list) {
@@ -1404,6 +1408,7 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
         for (int i = 0; i<16;i++) 
             clear_key_matrix(keys->in_key_matrix[i]);
         xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3);
+        if (xjmkb->xsynth->synth_is_active()) xjmkb->xsynth->panic();
         xjmkb->xjack->first_play = true;
     }
 }
@@ -1825,7 +1830,10 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
     XSetTransientForHint(parent->app->dpy, synth_ui->widget, parent->widget);
-    widget_set_title(synth_ui, _("Fluidsynth - Settings"));
+    soundfontname =  basename((char*)soundfont.c_str());
+    std::string title = _("Fluidsynth - ");
+    title += soundfontname;
+    widget_set_title(synth_ui, title.c_str());
     synth_ui->flags &= ~USE_TRANSPARENCY;
     synth_ui->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     synth_ui->func.expose_callback = draw_synth_ui;

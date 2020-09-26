@@ -38,7 +38,7 @@ MidiMessenger::MidiMessenger() {
     }
 }
 
-int MidiMessenger::next(int i) const {
+int MidiMessenger::next(int i) const noexcept {
     while (++i < max_midi_cc_cnt) {
         if (send_cc[i].load(std::memory_order_acquire)) {
             return i;
@@ -47,7 +47,7 @@ int MidiMessenger::next(int i) const {
     return -1;
 }
 
-void MidiMessenger::fill(unsigned char *midi_send, int i) {
+void MidiMessenger::fill(unsigned char *midi_send, int i) noexcept {
     if (size(i) == 3) {
         midi_send[2] =  bg_num[i];
     }
@@ -56,7 +56,7 @@ void MidiMessenger::fill(unsigned char *midi_send, int i) {
     send_cc[i].store(false, std::memory_order_release);
 }
 
-bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) {
+bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) noexcept {
     if (channel < 16) _cc |=channel;
     for(int i = 0; i < max_midi_cc_cnt; i++) {
         if (send_cc[i].load(std::memory_order_acquire)) {
@@ -184,7 +184,7 @@ void MidiSave::reset_smf() {
     }    
 }
 
-double MidiSave::get_max_time(std::vector<MidiEvent> *play) {
+double MidiSave::get_max_time(std::vector<MidiEvent> *play) noexcept {
     double ret = 0;
     for (int j = 0; j<16;j++) {
         if (!play[j].size()) continue;
@@ -245,7 +245,7 @@ void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name)
  ** 
  */
 
-MidiRecord::MidiRecord() 
+MidiRecord::MidiRecord() noexcept
     : _execute(false) {
     st = NULL;
     channel = 0;
@@ -257,7 +257,7 @@ MidiRecord::~MidiRecord() {
     };
 }
 
-void MidiRecord::stop() {
+void MidiRecord::stop() noexcept {
     _execute.store(false, std::memory_order_release);
     if (_thd.joinable()) {
         cv.notify_one();
@@ -265,7 +265,7 @@ void MidiRecord::stop() {
     }
 }
 
-void MidiRecord::start() {
+void MidiRecord::start() noexcept {
     if( _execute.load(std::memory_order_acquire) ) {
         stop();
     };

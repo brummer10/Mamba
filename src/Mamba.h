@@ -68,10 +68,10 @@ private:
 public:
     MidiMessenger();
     int channel;
-    bool send_midi_cc(int _cc, int _pg, int _bgn, int _num);
-    int next(int i = -1) const;
-    inline int size(int i)  const { return me_num[i]; }
-    void fill(unsigned char *midi_send, int i);
+    bool send_midi_cc(int _cc, int _pg, int _bgn, int _num) noexcept;
+    int next(int i = -1) const noexcept;
+    inline int size(int i)  const noexcept { return me_num[i]; }
+    void fill(unsigned char *midi_send, int i) noexcept;
 };
 
 
@@ -112,7 +112,7 @@ private:
     smf_event_t *smf_event;
     int channel;
     void reset_smf();
-    double get_max_time(std::vector<MidiEvent> *play);
+    double get_max_time(std::vector<MidiEvent> *play) noexcept;
 
 public:
     MidiSave();
@@ -135,11 +135,11 @@ private:
     std::mutex m;
 
 public:
-    MidiRecord();
+    MidiRecord() noexcept;
     ~MidiRecord();
     int channel;
-    void stop();
-    void start();
+    void stop() noexcept;
+    void start() noexcept;
     bool is_running() const noexcept;
     std::condition_variable cv;
     MidiEvent ev;
