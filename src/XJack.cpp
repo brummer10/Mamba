@@ -274,15 +274,10 @@ inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
             midi_send[2] = in_event.buffer[2];
         if (record)
             record_midi(midi_send, i, in_event.size);
-        bool ch = true;
-        if (xjack->mmessage->channel < 16) {
-            if ((xjack->mmessage->channel) != (int(in_event.buffer[0]&0x0f))) {
-                ch = false;
-            }
-        }
-        if ((in_event.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
+
+        if ((in_event.buffer[0] & 0xf0) == 0x90) {   // Note On
             std::async(std::launch::async, xjack->trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], true);
-        } else if ((in_event.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
+        } else if ((in_event.buffer[0] & 0xf0) == 0x80) {   // Note Off
             std::async(std::launch::async, xjack->trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], false);
         } else if ((in_event.buffer[0] ) == 0xf8) {   // midi beat clock
             clock_gettime(CLOCK_MONOTONIC, &xjack->ts1);
