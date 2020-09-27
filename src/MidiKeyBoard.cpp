@@ -22,6 +22,7 @@
 #include "MidiKeyBoard.h"
 #include "xkeyboard.h"
 #include "xcustommap.h"
+#include "XAlsa.h"
 
 
 namespace midikeyboard {
@@ -957,9 +958,9 @@ void XKeyBoard::get_note(Widget_t *w, const int *key, const bool on_off) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     if (on_off) {
-        xjmkb->mmessage->send_midi_cc(0x90, (*key),xjmkb->velocity, 3);
+        xjmkb->mmessage->send_midi_cc(0x90, (*key),xjmkb->velocity, 3, false);
     } else {
-        xjmkb->mmessage->send_midi_cc(0x80, (*key),xjmkb->velocity, 3);
+        xjmkb->mmessage->send_midi_cc(0x80, (*key),xjmkb->velocity, 3, false);
     }
 }
 
@@ -967,7 +968,7 @@ void XKeyBoard::get_note(Widget_t *w, const int *key, const bool on_off) {
 void XKeyBoard::get_all_notes_off(Widget_t *w, const int *value) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    xjmkb->mmessage->send_midi_cc(0xB0, 120, 0, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 120, 0, 3, false);
 }
 
 // static
@@ -1097,7 +1098,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         if (attrs.map_state == IsViewable) {
             widget_show_all(xjmkb->fs_instruments);
         }
-        xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3);
+        xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3, false);
         xjmkb->fs[0]->state = 0;
         xjmkb->fs[1]->state = 0;
         xjmkb->fs[2]->state = 0;
@@ -1200,7 +1201,7 @@ void XKeyBoard::bank_callback(void *w_, void* user_data) {
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     if(!xjmkb->xsynth->synth_is_active()) {
         xjmkb->mbank = (int)adj_get_value(w->adj);
-        xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
+        xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3, false);
     }
 }
 
@@ -1228,8 +1229,8 @@ void XKeyBoard::program_callback(void *w_, void* user_data) {
             ret++;
         }
     } else {
-        xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3);
-        xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2);
+        xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3, false);
+        xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2, false);
     }
 }
 
@@ -1248,7 +1249,7 @@ void XKeyBoard::modwheel_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 1, value, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 1, value, 3, false);
 }
 
 // static
@@ -1257,7 +1258,7 @@ void XKeyBoard::detune_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 94, value, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 94, value, 3, false);
 }
 
 // static
@@ -1266,7 +1267,7 @@ void XKeyBoard::attack_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 73, value, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 73, value, 3, false);
 }
 
 // static
@@ -1275,7 +1276,7 @@ void XKeyBoard::expression_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 11, value, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 11, value, 3, false);
 }
 
 // static 
@@ -1284,7 +1285,7 @@ void XKeyBoard::release_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 72, value, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 72, value, 3, false);
 }
 
 // static 
@@ -1293,7 +1294,7 @@ void XKeyBoard::volume_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->volume = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3, false);
 }
 
 // static 
@@ -1314,7 +1315,7 @@ void XKeyBoard::pitchwheel_callback(void *w_, void* user_data) {
     unsigned int change = (unsigned int)(128 * value);
     unsigned int low = change & 0x7f;  // Low 7 bits
     unsigned int high = (change >> 7) & 0x7f;  // High 7 bits
-    xjmkb->mmessage->send_midi_cc(0xE0,  low, high, 3);
+    xjmkb->mmessage->send_midi_cc(0xE0,  low, high, 3, false);
 }
 // static
 void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_data) {
@@ -1326,7 +1327,7 @@ void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_d
     unsigned int change = (unsigned int)(128 * value);
     unsigned int low = change & 0x7f;  // Low 7 bits
     unsigned int high = (change >> 7) & 0x7f;  // High 7 bits
-    xjmkb->mmessage->send_midi_cc(0xE0,  low, high, 3);
+    xjmkb->mmessage->send_midi_cc(0xE0,  low, high, 3, false);
 }
 
 // static
@@ -1335,7 +1336,7 @@ void XKeyBoard::balance_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 8, value, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 8, value, 3, false);
 }
 
 // static
@@ -1344,7 +1345,7 @@ void XKeyBoard::sustain_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 64, value*127, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 64, value*127, 3, false);
 }
 
 // static
@@ -1353,7 +1354,7 @@ void XKeyBoard::sostenuto_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 66, value*127, 3);
+    xjmkb->mmessage->send_midi_cc(0xB0, 66, value*127, 3, false);
 }
 
 // static
@@ -1407,7 +1408,7 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
         MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
         for (int i = 0; i<16;i++) 
             clear_key_matrix(keys->in_key_matrix[i]);
-        xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3);
+        xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3, false);
         if (xjmkb->xsynth->synth_is_active()) xjmkb->xsynth->panic();
         xjmkb->xjack->first_play = true;
     }
@@ -2097,6 +2098,7 @@ int main (int argc, char *argv[]) {
     nsmhandler::NsmSignalHandler nsmsig;
     midikeyboard::AnimatedKeyBoard  animidi;
     xjack::XJack xjack(&mmessage);
+    xalsa::XAlsa xalsa(&mmessage);
     xsynth::XSynth xsynth;
     midikeyboard::XKeyBoard xjmkb(&xjack, &xsynth, &mmessage, nsmsig, xsig, &animidi);
     nsmhandler::NsmHandler nsmh(&nsmsig);
@@ -2108,54 +2110,55 @@ int main (int argc, char *argv[]) {
     main_init(&app);
     
     xjmkb.init_ui(&app);
-    xjack.init_jack();
-    if (!xjmkb.soundfont.empty()) {
-        xsynth.setup(xjack.SampleRate);
-        xsynth.init_synth();
-        xsynth.load_soundfont(xjmkb.soundfont.c_str());
-        const char **port_list = NULL;
-        port_list = jack_get_ports(xjack.client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
-        if (port_list) {
-            for (int i = 0; port_list[i] != NULL; i++) {
-                if (strstr(port_list[i], "mamba")) {
-                    const char *my_port = jack_port_name(xjack.out_port);
-                    jack_connect(xjack.client, my_port,port_list[i]);
-                    break;
+    xalsa.start((MidiKeyboard*)xjmkb.wid->parent_struct);
+    if (xjack.init_jack()) {
+        if (!xjmkb.soundfont.empty()) {
+            xsynth.setup(xjack.SampleRate);
+            xsynth.init_synth();
+            xsynth.load_soundfont(xjmkb.soundfont.c_str());
+            const char **port_list = NULL;
+            port_list = jack_get_ports(xjack.client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
+            if (port_list) {
+                for (int i = 0; port_list[i] != NULL; i++) {
+                    if (strstr(port_list[i], "mamba")) {
+                        const char *my_port = jack_port_name(xjack.out_port);
+                        jack_connect(xjack.client, my_port,port_list[i]);
+                        break;
+                    }
                 }
+                jack_free(port_list);
+                port_list = NULL;
             }
-            jack_free(port_list);
-            port_list = NULL;
+            mmessage.send_midi_cc(0xB0, 7, xjmkb.volume, 3, false);
+            xjmkb.fs[0]->state = 0;
+            xjmkb.fs[1]->state = 0;
+            xjmkb.fs[2]->state = 0;
+            xjmkb.rebuild_instrument_list();
         }
-        mmessage.send_midi_cc(0xB0, 7, xjmkb.volume, 3);
-        xjmkb.fs[0]->state = 0;
-        xjmkb.fs[1]->state = 0;
-        xjmkb.fs[2]->state = 0;
-        xjmkb.rebuild_instrument_list();
-    }
-    
-    if (argc > 1) {
+        
+        if (argc > 1) {
 
-#ifdef __XDG_MIME_H__
-        if(strstr(xdg_mime_get_mime_type_from_file_name(argv[1]), "midi")) {
-#else
-        if( access(argv[1], F_OK ) != -1 ) {
-#endif
-            xjmkb.dialog_load_response(xjmkb.win, (void*) &argv[1]);
+    #ifdef __XDG_MIME_H__
+            if(strstr(xdg_mime_get_mime_type_from_file_name(argv[1]), "midi")) {
+    #else
+            if( access(argv[1], F_OK ) != -1 ) {
+    #endif
+                xjmkb.dialog_load_response(xjmkb.win, (void*) &argv[1]);
+            }
         }
+
+        xjmkb.show_ui(xjmkb.visible);
+        auto t2 = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+        debug_print("%f sec\n",duration/1e+6);
+
+        main_run(&app);
+        
+        animidi.stop();
+        if (xjack.client) jack_client_close (xjack.client);
+        xsynth.unload_synth();
+        if(!nsmsig.nsm_session_control) xjmkb.save_config();
     }
-
-    xjmkb.show_ui(xjmkb.visible);
-    auto t2 = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
-    debug_print("%f sec\n",duration/1e+6);
-
-    main_run(&app);
-    
-    animidi.stop();
-    if (xjack.client) jack_client_close (xjack.client);
-    xsynth.unload_synth();
-    if(!nsmsig.nsm_session_control) xjmkb.save_config();
-
     main_quit(&app);
 
     exit (0);

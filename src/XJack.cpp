@@ -120,11 +120,10 @@ XJack::~XJack() {
     if (rec.is_running()) rec.stop();
 }
 
-void XJack::init_jack() {
+int XJack::init_jack() {
     if ((client = jack_client_open (client_name.c_str(), JackNullOption, NULL)) == 0) {
         fprintf (stderr, "jack server not running?\n");
-        trigger_quit_by_jack();
-        return;
+        return 0;
     }
 
     in_port = jack_port_register(
@@ -140,8 +139,7 @@ void XJack::init_jack() {
 
     if (jack_activate (client)) {
         fprintf (stderr, "cannot activate client");
-        trigger_quit_by_jack();
-        return;
+        return 0;
     }
 
     if (!jack_is_realtime(client)) {
@@ -149,6 +147,7 @@ void XJack::init_jack() {
     } else {
         fprintf (stderr, "jack running with realtime priority\n");
     }
+    return 1;
 }
 
 inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, int i) {

@@ -56,8 +56,8 @@ void MidiMessenger::fill(unsigned char *midi_send, int i) noexcept {
     send_cc[i].store(false, std::memory_order_release);
 }
 
-bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num) noexcept {
-    if (channel < 16) _cc |=channel;
+bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept {
+    if (!have_channel && channel < 16) _cc |=channel;
     for(int i = 0; i < max_midi_cc_cnt; i++) {
         if (send_cc[i].load(std::memory_order_acquire)) {
             if (cc_num[i] == _cc && pg_num[i] == _pg &&
@@ -245,7 +245,7 @@ void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name)
  ** 
  */
 
-MidiRecord::MidiRecord() noexcept
+MidiRecord::MidiRecord()
     : _execute(false) {
     st = NULL;
     channel = 0;
@@ -257,7 +257,7 @@ MidiRecord::~MidiRecord() {
     };
 }
 
-void MidiRecord::stop() noexcept {
+void MidiRecord::stop() {
     _execute.store(false, std::memory_order_release);
     if (_thd.joinable()) {
         cv.notify_one();
@@ -265,7 +265,7 @@ void MidiRecord::stop() noexcept {
     }
 }
 
-void MidiRecord::start() noexcept {
+void MidiRecord::start() {
     if( _execute.load(std::memory_order_acquire) ) {
         stop();
     };

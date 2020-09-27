@@ -1,12 +1,13 @@
 # Mamba
-Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Kit
+Virtual MIDI Keyboard and MIDI file player/recorder for Jack Audio Connection Kit
 
 ![Mamba](https://github.com/brummer10/Mamba/raw/master/Mamba.png)
 
 
 ## Features
 
-- Virtual Midi Keyboard for [Jack Audio Connection Kit](https://jackaudio.org/)
+- Virtual MIDI Keyboard for [Jack Audio Connection Kit](https://jackaudio.org/)
+- Including [ALSA](https://www.alsa-project.org/wiki/Main_Page) MIDI in support
 - Including [NSM](https://linuxaudio.github.io/new-session-manager/) support
 - Including [gettext](https://www.gnu.org/software/gettext/) localization support
 - Including [fluidsynth](https://github.com/FluidSynth/fluidsynth) support
@@ -21,14 +22,15 @@ Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Ki
 - Pitchbend, Balance, Modwheel, Detune, Expression, Attack, Release, Volume and Velocity controllers
 - Sustain and Sostenuto switches
 - Connection management Menu
-- Support Midi-file load, save, record and play in loop
+- Support MIDI-file load, save, record and play in loop
 - BPM controller for playback speed
-- Support Midi Beat Clock for playback speed
-- Midi Through: forward midi input to output
-- Midi input highlighting
+- Support MIDI Beat Clock for playback speed
+- MIDI Through: forward ALSA MIDI in to jack
+- MIDI Through: forward MIDI input to output
+- MIDI input highlighting
 - Resizable to a full range 127 key view
-- Load Midi-files on command-line
-- Support jack_transport to start/stop Midi-Loops
+- Load MIDI-files on command-line
+- Support jack_transport to start/stop MIDI-Loops
 - Keyboard Shortcuts
 - `ctrl + r` toggle Record Button
 - `ctrl + p` toggle Play Button
@@ -49,6 +51,7 @@ Virtual Midi Keyboard and Midi file player/recorder for Jack Audio Connection Ki
 - liblo-dev
 - libsigc++-2.0-dev
 - libjack-(jackd2)-dev
+- libasound2-dev
 
 ## Build
 

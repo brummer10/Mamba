@@ -46,10 +46,10 @@
 	-fstrength-reduce -fschedule-insns $(SSE_CFLAGS)
 	DEBUG_CXXFLAGS += -g -D DEBUG
 	LDFLAGS += -Wl,-z,noexecstack -I./ -I../libxputty/libxputty/include/ \
-	`pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo smf fluidsynth` -lm -pthread \
+	`pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo smf fluidsynth` -lm -pthread -lasound \
 	-DVERSION=\"$(VER)\"
 	# invoke build files
-	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XJack.cpp NsmHandler.cpp xkeyboard.c xcustommap.c XSynth.cpp
+	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XAlsa.cpp XJack.cpp NsmHandler.cpp xkeyboard.c xcustommap.c XSynth.cpp
 	LOCALIZE = $(LOCALIZE_DIR)xfile-dialog.c $(LOCALIZE_DIR)xmessage-dialog.c $(LOCALIZE_DIR)xsavefile-dialoge.c
 	## output style (bash colours)
 	BLUE = "\033[1;34m"

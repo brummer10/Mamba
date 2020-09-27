@@ -109,7 +109,7 @@ public:
     jack_nframes_t startPlay[16];
     jack_nframes_t absoluteStart;
     std::string client_name;
-    void init_jack();
+    int init_jack();
     mamba::MidiRecord rec;
     std::vector<mamba::MidiEvent> store1;
     std::vector<mamba::MidiEvent> store2;
