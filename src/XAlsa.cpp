@@ -74,7 +74,10 @@ void XAlsa::start(MidiKeyboard *keys) {
     _execute.store(true, std::memory_order_release);
     _thd = std::thread([this, keys]() {
         while (_execute.load(std::memory_order_acquire)) {
-            if (sequencer < 0) stop();
+            if (sequencer < 0) {
+                _execute.store(false, std::memory_order_release);
+                continue;
+            }
             snd_seq_event_t *ev = NULL;
             snd_seq_event_input(seq_handle, &ev);
             if (ev->type == SND_SEQ_EVENT_NOTEON) {
@@ -85,6 +88,13 @@ void XAlsa::start(MidiKeyboard *keys) {
                 set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, false);
             } else if(ev->type == SND_SEQ_EVENT_CONTROLLER) {
                 mmessage->send_midi_cc(0xB0 | ev->data.control.channel, ev->data.control.param, ev->data.control.value, 3, true);
+            } else if(ev->type == SND_SEQ_EVENT_PGMCHANGE) {
+                mmessage->send_midi_cc( 0xC0| ev->data.control.channel, ev->data.control.value, 0, 2, true);
+            } else if(ev->type == SND_SEQ_EVENT_PITCHBEND) {
+                unsigned int change = (unsigned int)(ev->data.control.value);
+                unsigned int low = change & 0x7f;  // Low 7 bits
+                unsigned int high = (change >> 7) & 0x7f;  // High 7 bits
+                mmessage->send_midi_cc(0xE0| ev->data.control.channel,  low, high, 3, true);
             }
         } 
     });
