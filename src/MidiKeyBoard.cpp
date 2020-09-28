@@ -2160,7 +2160,11 @@ int main (int argc, char *argv[]) {
     main_init(&app);
     
     xjmkb.init_ui(&app);
-    xalsa.start((MidiKeyboard*)xjmkb.wid->parent_struct);
+    if (xalsa.xalsa_init("Mamba", "input") >= 0) {
+        xalsa.xalsa_start((MidiKeyboard*)xjmkb.wid->parent_struct);
+    } else {
+        fprintf(stderr, _("Couldn't open a alsa port, is the alsa sequencer running?\n"));
+    }
     if (xjack.init_jack()) {
         if (!xjmkb.soundfont.empty()) {
             xsynth.setup(xjack.SampleRate);

@@ -34,30 +34,32 @@ namespace xalsa {
 XAlsa::XAlsa(mamba::MidiMessenger *mmessage_) 
     :mmessage(mmessage_),
     _execute(false) {
-    sequencer = snd_seq_open(&seq_handle, "default", SND_SEQ_OPEN_INPUT, 0);
-    if (sequencer == 0) {
-        snd_seq_set_client_name(seq_handle, "Mamba");
-        in_port = snd_seq_create_simple_port(seq_handle, "input",
-                          SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE,
-                          SND_SEQ_PORT_TYPE_APPLICATION);
-        if (in_port < 0) {
-            snd_seq_close(seq_handle);
-            sequencer = -1;
-        }
-    }
-    if (sequencer < 0) {
-        fprintf(stderr, "ALSA sequencer faild to open port, ALSA input is disabled\n");
-    }
+    sequencer = -1;
+    in_port = -1;
 }
 
 XAlsa::~XAlsa() {
     if( _execute.load(std::memory_order_acquire) ) {
-        stop();
+        xalsa_stop();
     };
     if (in_port < 0)
         snd_seq_delete_simple_port(seq_handle, in_port);
     if (sequencer == 0)
         snd_seq_close(seq_handle);
+}
+
+int XAlsa::xalsa_init(const char *client, const char *port) {
+    sequencer = snd_seq_open(&seq_handle, "default", SND_SEQ_OPEN_INPUT, 0);
+    if (sequencer < 0) return sequencer;
+    snd_seq_set_client_name(seq_handle, client);
+    in_port = snd_seq_create_simple_port(seq_handle, port,
+                      SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE,
+                      SND_SEQ_PORT_TYPE_APPLICATION);
+    if (in_port < 0) {
+        snd_seq_close(seq_handle);
+        sequencer = -1;
+    }
+    return sequencer;
 }
 
 void XAlsa::xalsa_get_ports(std::vector<std::string> *ports) {
@@ -134,16 +136,16 @@ void XAlsa::xalsa_disconnect(int client, int port) {
     snd_seq_disconnect_from(seq_handle, in_port, client, port);
 }
 
-void XAlsa::stop() {
+void XAlsa::xalsa_stop() {
     _execute.store(false, std::memory_order_release);
     if (_thd.joinable()) {
         _thd.join();
     }
 }
 
-void XAlsa::start(MidiKeyboard *keys) {
+void XAlsa::xalsa_start(MidiKeyboard *keys) {
     if( _execute.load(std::memory_order_acquire) ) {
-        stop();
+        xalsa_stop();
     };
     _execute.store(true, std::memory_order_release);
     _thd = std::thread([this, keys]() {

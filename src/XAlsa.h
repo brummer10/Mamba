@@ -59,8 +59,9 @@ public:
     void xalsa_get_connections(std::vector<std::string> *ports);
     void xalsa_connect(int client, int port);
     void xalsa_disconnect(int client, int port);
-    void stop();
-    void start(MidiKeyboard *keys);
+    void xalsa_stop();
+    int  xalsa_init(const char *client, const char *port);
+    void xalsa_start(MidiKeyboard *keys);
     bool is_running() const noexcept;
 };
 
