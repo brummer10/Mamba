@@ -48,6 +48,7 @@
 #include "NsmHandler.h"
 #include "Mamba.h"
 #include "XJack.h"
+#include "XAlsa.h"
 #include "xwidgets.h"
 #include "xfile-dialog.h"
 #include "xmessage-dialog.h"
@@ -138,6 +139,7 @@ public:
 class XKeyBoard {
 private:
     xjack::XJack *xjack;
+    xalsa::XAlsa *xalsa;
     xsynth::XSynth *xsynth;
     mamba::MidiSave save;
     mamba::MidiLoad load;
@@ -160,6 +162,7 @@ private:
     Widget_t *connection;
     Widget_t *inputs;
     Widget_t *outputs;
+    Widget_t *alsa_inputs;
     Widget_t *bpm;
     Widget_t *songbpm;
     Widget_t *synth;
@@ -216,6 +219,7 @@ private:
     static void make_connection_menu(void *w_, void* button, void* user_data);
     static void connection_in_callback(void *w_, void* user_data);
     static void connection_out_callback(void *w_, void* user_data);
+    static void alsa_connection_callback(void *w_, void* user_data);
     static void key_press(void *w_, void *key_, void *user_data);
     static void key_release(void *w_, void *key_, void *user_data);
     static void win_configure_callback(void *w_, void* user_data);
@@ -249,6 +253,7 @@ private:
                                 int x, int y, int width, int height);
     void get_port_entrys(Widget_t *parent, jack_port_t *my_port,
                                                 JackPortFlags type);
+    void get_alsa_port_menu();
     void nsm_show_ui();
     void nsm_hide_ui();
     void signal_handle (int sig);
@@ -256,9 +261,9 @@ private:
     void quit_by_jack();
     void get_midi_in(int c, int n, bool on);
 public:
-    XKeyBoard(xjack::XJack *xjack, xsynth::XSynth *xsynth, mamba::MidiMessenger *mmessage,
-        nsmhandler::NsmSignalHandler& nsmsig, PosixSignalHandler& xsig, 
-        AnimatedKeyBoard * animidi);
+    XKeyBoard(xjack::XJack *xjack, xalsa::XAlsa *xalsa, xsynth::XSynth *xsynth,
+        mamba::MidiMessenger *mmessage, nsmhandler::NsmSignalHandler& nsmsig,
+        PosixSignalHandler& xsig, AnimatedKeyBoard * animidi);
     ~XKeyBoard();
 
     std::string client_name;
@@ -269,6 +274,8 @@ public:
     std::string soundfontpath;
     std::string soundfont;
     std::string soundfontname;
+    std::vector<std::string> alsa_ports;
+    std::vector<std::string> alsa_connections;
 
     bool has_config;
     Widget_t *win;

@@ -22,7 +22,6 @@
 #include "MidiKeyBoard.h"
 #include "xkeyboard.h"
 #include "xcustommap.h"
-#include "XAlsa.h"
 
 
 namespace midikeyboard {
@@ -79,10 +78,11 @@ bool AnimatedKeyBoard::is_running() const noexcept {
  ** 
  */
 
-XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xsynth::XSynth *xsynth_,
+XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth *xsynth_,
         mamba::MidiMessenger *mmessage_, nsmhandler::NsmSignalHandler& nsmsig_,
         PosixSignalHandler& xsig_, AnimatedKeyBoard * animidi_)
     : xjack(xjack_),
+    xalsa(xalsa_),
     xsynth(xsynth_),
     save(),
     load(),
@@ -567,14 +567,16 @@ void XKeyBoard::init_ui(Xputty *app) {
     entry->func.value_changed_callback = grab_callback;
 
     connection = menubar_add_menu(menubar,_("C_onnect"));
-    inputs = menu_add_submenu(connection,_("Input"));
-    outputs = menu_add_submenu(connection,_("Output"));
+    inputs = menu_add_submenu(connection,_("Jack input"));
+    outputs = menu_add_submenu(connection,_("Jack output"));
+    alsa_inputs = menu_add_submenu(connection,_("ALSA input"));
     connection->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     connection->func.key_press_callback = key_press;
     connection->func.key_release_callback = key_release;
     connection->func.button_press_callback = make_connection_menu;
     inputs->func.value_changed_callback = connection_in_callback;
     outputs->func.value_changed_callback = connection_out_callback;
+    alsa_inputs->func.value_changed_callback = alsa_connection_callback;
 
     synth = menubar_add_menu(menubar,_("Fl_uidsynth"));
     menu_add_entry(synth,_("Load Soun_dFont"));
@@ -863,10 +865,11 @@ void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
 void XKeyBoard::get_port_entrys(Widget_t *parent, jack_port_t *my_port, JackPortFlags type) {
     Widget_t *menu = parent->childlist->childs[0];
     Widget_t *view_port = menu->childlist->childs[0];
-    destroy_widget(view_port,win->app);
-    create_viewport(menu, 10, 5*25);
-    set_adjustment(parent->adj,0.0, 0.0, 0.0, -1.0,1.0, CL_NONE);
-    XResizeWindow (menu->app->dpy, menu->widget, 10, 25);
+    
+    int i = view_port->childlist->elem;
+    for(;i>-1;i--) {
+        menu_remove_item(menu,view_port->childlist->childs[i]);
+    }
 
     bool new_port = true;
     const char **port_list = NULL;
@@ -892,6 +895,31 @@ void XKeyBoard::get_port_entrys(Widget_t *parent, jack_port_t *my_port, JackPort
     }
 } 
 
+void XKeyBoard::get_alsa_port_menu() {
+    xalsa->xalsa_get_ports(&alsa_ports);
+    xalsa->xalsa_get_connections(&alsa_connections);
+
+    Widget_t *menu = alsa_inputs->childlist->childs[0];
+    Widget_t *view_port = menu->childlist->childs[0];
+    
+    int i = view_port->childlist->elem;
+    for(;i>-1;i--) {
+        menu_remove_item(menu,view_port->childlist->childs[i]);
+    }
+
+    for(std::vector<std::string>::const_iterator i = alsa_ports.begin(); i != alsa_ports.end(); ++i) {
+        Widget_t *entry = menu_add_check_entry(alsa_inputs,(*i).c_str());
+        for(std::vector<std::string>::const_iterator j = alsa_connections.begin(); j != alsa_connections.end(); ++j) {
+            if ((*i).find((*j)) != std::string::npos) {
+                adj_set_value(entry->adj,1.0);
+            } else {
+                adj_set_value(entry->adj,0.0);
+            }
+        }
+    }
+    
+}
+
 // static
 void XKeyBoard::make_connection_menu(void *w_, void* button, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
@@ -899,6 +927,7 @@ void XKeyBoard::make_connection_menu(void *w_, void* button, void* user_data) {
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->get_port_entrys(xjmkb->outputs, xjmkb->xjack->out_port, JackPortIsInput);
     xjmkb->get_port_entrys(xjmkb->inputs, xjmkb->xjack->in_port, JackPortIsOutput);
+    if (xjmkb->xalsa->is_running()) xjmkb->get_alsa_port_menu();
 }
 
 // static
@@ -934,7 +963,28 @@ void XKeyBoard::connection_out_callback(void *w_, void* user_data) {
         jack_disconnect(xjmkb->xjack->client, my_port,entry->label);
     }
 }
-
+// static
+void XKeyBoard::alsa_connection_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    Widget_t *menu = w->childlist->childs[0];
+    Widget_t *view_port =  menu->childlist->childs[0];
+    int i = (int)adj_get_value(w->adj);
+    Widget_t *entry = view_port->childlist->childs[i];
+    int client = -1;
+    int port = -1;
+    std::istringstream buf(entry->label);
+        buf >> client;
+        buf >> port;
+    if (client == -1 || port == -1) return;
+    if (adj_get_value(entry->adj)) {
+        xjmkb->xalsa->xalsa_connect(client, port);
+    } else {
+        xjmkb->xalsa->xalsa_disconnect(client, port);
+    }
+        
+}
 // static
 void XKeyBoard::map_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
@@ -2100,7 +2150,7 @@ int main (int argc, char *argv[]) {
     xjack::XJack xjack(&mmessage);
     xalsa::XAlsa xalsa(&mmessage);
     xsynth::XSynth xsynth;
-    midikeyboard::XKeyBoard xjmkb(&xjack, &xsynth, &mmessage, nsmsig, xsig, &animidi);
+    midikeyboard::XKeyBoard xjmkb(&xjack, &xalsa, &xsynth, &mmessage, nsmsig, xsig, &animidi);
     nsmhandler::NsmHandler nsmh(&nsmsig);
 
     nsmsig.nsm_session_control = nsmh.check_nsm(xjmkb.client_name.c_str(), argv);

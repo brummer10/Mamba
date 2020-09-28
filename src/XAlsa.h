@@ -19,6 +19,7 @@
  */
 
 #include <atomic>
+#include <vector>
 #include <thread>
 
 #include <alsa/asoundlib.h>
@@ -49,10 +50,15 @@ private:
     int in_port;
     std::atomic<bool> _execute;
     std::thread _thd;
+    void print_ports(snd_seq_t *seq);
 
 public:
     XAlsa(mamba::MidiMessenger *mmessage_);
     ~XAlsa();
+    void xalsa_get_ports(std::vector<std::string> *ports);
+    void xalsa_get_connections(std::vector<std::string> *ports);
+    void xalsa_connect(int client, int port);
+    void xalsa_disconnect(int client, int port);
     void stop();
     void start(MidiKeyboard *keys);
     bool is_running() const noexcept;
