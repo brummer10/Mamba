@@ -97,11 +97,13 @@ XJack::XJack(mamba::MidiMessenger *mmessage_)
         transport_state = JackTransportStopped;
         bpm_changed.store(false, std::memory_order_release);
         bpm_set.store(0, std::memory_order_release);
+        loop_zero.store(false, std::memory_order_release);
         start = 0;
         absoluteStart = 0;
         record = 0;
         play = 0;
         pos = 0;
+        freeweel = 0;
         fresh_take = true;
         first_play = true;
         store1.reserve(256);
@@ -196,15 +198,18 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
         if (posPlay[i] >= rec.play[i].size()) {
             
             // this will sync the loops to the longest one
-            //int ml = 0;
-            //get_max_time_loop(rec.play, &ml);
-            //if (i != ml) continue;
-            //if (i != 0) continue;
-            //for (int i = 0; i < 16; i++) posPlay[i] = 0;
-            //for (int i = 0; i < 16; i++) startPlay[i] = jack_last_frame_time(client)+n;
-            
-            posPlay[i] = 0;
-            startPlay[i] = jack_last_frame_time(client)+n;
+            if (!freeweel) {
+                int ml = 0;
+                get_max_time_loop(rec.play, &ml);
+                if (i != ml) continue;
+                //if (i != 0) continue;
+                for (int i = 0; i < 16; i++) posPlay[i] = 0;
+                for (int i = 0; i < 16; i++) startPlay[i] = jack_last_frame_time(client)+n;
+                loop_zero.store(true, std::memory_order_release);
+            } else {
+                posPlay[i] = 0;
+                startPlay[i] = jack_last_frame_time(client)+n;
+            }
         }
         deltaTime = (double)(((stopPlay[i]) - startPlay[i])/(double)SampleRate); // seconds
         mamba::MidiEvent ev = rec.play[i][posPlay[i]];

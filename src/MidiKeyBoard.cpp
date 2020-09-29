@@ -118,9 +118,12 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     keylayout = 0;
     octave = 2;
     mchannel = 0;
+    freeweel = 0;
     run_one_more = 0;
     need_save = false;
     filepath = getenv("HOME") ? getenv("HOME") : "/";
+    loop_zero_reset.store(false, std::memory_order_release);
+    loop_reset.store(0, std::memory_order_release);
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
         sigc::mem_fun(this, &XKeyBoard::nsm_show_ui));
@@ -193,6 +196,7 @@ void XKeyBoard::read_config() {
             else if (key.compare("[filepath]") == 0) filepath = value;
             else if (key.compare("[octave]") == 0) octave = std::stoi(value);
             else if (key.compare("[volume]") == 0) volume = std::stoi(value);
+            else if (key.compare("[freeweel]") == 0) freeweel = std::stoi(value);
             else if (key.compare("[soundfontpath]") == 0) soundfontpath = value;
             else if (key.compare("[soundfont]") == 0) soundfont = value;
             else if (key.compare("[reverb_on]") == 0) xsynth->reverb_on = std::stoi(value);
@@ -262,6 +266,7 @@ void XKeyBoard::save_config() {
          outfile << "[filepath] " << filepath << std::endl;
          outfile << "[octave] " << octave << std::endl;
          outfile << "[volume] " << volume << std::endl;
+         outfile << "[freeweel] " << freeweel << std::endl;
          outfile << "[soundfontpath] " << soundfontpath << std::endl;
          outfile << "[soundfont] " << soundfont << std::endl;
          outfile << "[reverb_on] " << xsynth->reverb_on << std::endl;
@@ -591,6 +596,12 @@ void XKeyBoard::init_ui(Xputty *app) {
     synth->func.key_release_callback = key_release;
     synth->func.value_changed_callback = synth_callback;
 
+    looper = menubar_add_menu(menubar,_("Looper"));
+    free_weel = menu_add_check_entry(looper,_("Freeweel"));
+    free_weel->func.value_changed_callback = freeweel_callback;
+    entry = menu_add_entry(looper,_("Clear Loops"));
+    looper->func.value_changed_callback = clear_loops_callback;
+
     info = menubar_add_menu(menubar,_("_Info"));
     menu_add_entry(info,_("_About"));
     info->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -767,6 +778,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     adj_set_value(octavemap->adj,octave);
     adj_set_value(w[6]->adj, velocity);
     adj_set_value(w[5]->adj, volume);
+    adj_set_value(free_weel->adj, freeweel);
 
     // set window to saved size
     XResizeWindow (win->app->dpy, win->widget, main_w, main_h);
@@ -796,7 +808,40 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
             (float)xjmkb->xjack->transport_set.load(std::memory_order_acquire));
         expose_widget(xjmkb->play);
         XFlush(w->app->dpy);
-        xjmkb->play->func.adj_callback = transparent_draw;
+        xjmkb->play->func.adj_callback = set_play_label;
+        XUnlockDisplay(w->app->dpy);
+    }
+
+    if (xjmkb->loop_zero_reset.load(std::memory_order_acquire)) {
+        if (xjmkb->loop_reset.load(std::memory_order_acquire)) {
+            xjmkb->loop_reset--;
+            
+        } else {
+            xjmkb->loop_zero_reset.store(false, std::memory_order_release);
+            XLockDisplay(w->app->dpy);
+            xjmkb->play->func.adj_callback = dummy_callback;
+            if ((int)adj_get_value(xjmkb->play->adj)) {
+                xjmkb->play->state = 3;
+            } else {
+                xjmkb->play->state = 0;
+            }
+            expose_widget(xjmkb->play);
+            XFlush(w->app->dpy);
+            xjmkb->play->func.adj_callback = set_play_label;
+            XUnlockDisplay(w->app->dpy);
+        }
+    }
+
+    if (xjmkb->xjack->loop_zero.load(std::memory_order_acquire)) {
+        xjmkb->xjack->loop_zero.store(false, std::memory_order_release);
+        xjmkb->loop_zero_reset.store(true, std::memory_order_release);
+        xjmkb->loop_reset.store(2, std::memory_order_release);
+        XLockDisplay(w->app->dpy);
+        xjmkb->play->func.adj_callback = dummy_callback;
+        xjmkb->play->state = 2;
+        expose_widget(xjmkb->play);
+        XFlush(w->app->dpy);
+        xjmkb->play->func.adj_callback = set_play_label;
         XUnlockDisplay(w->app->dpy);
     }
 
@@ -1474,6 +1519,33 @@ void XKeyBoard::set_play_label(void *w_, void* user_data) {
         w->label = _("_Play");
     }
     expose_widget(w);
+}
+
+// static
+void XKeyBoard::freeweel_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int value = (int)adj_get_value(w->adj);
+    xjmkb->xjack->freeweel = xjmkb->freeweel = xjmkb->save.freeweel = value;
+}
+
+// static
+void XKeyBoard::clear_loops_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    if ((int)adj_get_value(w->adj) == 1) {
+        xjmkb->xjack->play = 0.0;
+        //adj_set_value(xjmkb->play->adj, 0.0);
+        //set_play_label(xjmkb->play,NULL);
+        //adj_set_value(xjmkb->record->adj, 0.0);
+        for (int i = 0; i<16;i++) 
+            xjmkb->xjack->rec.play[i].clear();
+        MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+        for (int i = 0; i<16;i++) 
+            clear_key_matrix(keys->in_key_matrix[i]);
+    }
 }
 
 // static

@@ -156,6 +156,8 @@ private:
     Widget_t *record;
     Widget_t *play;
     Widget_t *filemenu;
+    Widget_t *looper;
+    Widget_t *free_weel;
     Widget_t *info;
     Widget_t *mapping;
     Widget_t *keymap;
@@ -182,6 +184,7 @@ private:
     int keylayout;
     int octave;
     int mchannel;
+    int freeweel;
     int run_one_more;
     bool need_save;
 
@@ -213,6 +216,8 @@ private:
     static void sostenuto_callback(void *w_, void* user_data);
     static void record_callback(void *w_, void* user_data);
     static void play_callback(void *w_, void* user_data);
+    static void freeweel_callback(void *w_, void* user_data);
+    static void clear_loops_callback(void *w_, void* user_data);
     static void animate_midi_keyboard(void *w_);
     static void dialog_save_response(void *w_, void* user_data);
 
@@ -284,6 +289,8 @@ public:
     Widget_t *fs_instruments;
     int visible;
     int volume;
+    std::atomic<bool> loop_zero_reset;
+    std::atomic<int> loop_reset;
 
     void init_ui(Xputty *app);
     void init_synth_ui(Widget_t *win);

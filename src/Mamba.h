@@ -117,6 +117,8 @@ private:
 public:
     MidiSave();
     ~MidiSave();
+    int freeweel;
+
     void save_to_file(std::vector<MidiEvent> *play, const char* file_name);
 };
 

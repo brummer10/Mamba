@@ -102,6 +102,7 @@ public:
     std::atomic<int> transport_set;
     std::atomic<bool> bpm_changed;
     std::atomic<int> bpm_set;
+    std::atomic<bool> loop_zero;
     jack_client_t *client;
     jack_port_t *in_port;
     jack_port_t *out_port;
@@ -117,6 +118,7 @@ public:
 
     int record;
     int play;
+    int freeweel;
     bool fresh_take;
     bool first_play;
     unsigned int SampleRate;

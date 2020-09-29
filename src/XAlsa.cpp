@@ -78,17 +78,15 @@ void XAlsa::xalsa_get_ports(std::vector<std::string> *ports) {
         snd_seq_port_info_set_port(pinfo, -1);
         while (snd_seq_query_next_port(seq_handle, pinfo) >= 0) {
             char port[256];
-            if (snd_seq_port_info_get_capability(pinfo) & (SND_SEQ_PORT_CAP_READ|SND_SEQ_PORT_CAP_SUBS_READ)) {
-                if ((snd_seq_port_info_get_capability(pinfo) & SND_SEQ_PORT_CAP_NO_EXPORT) == 0) {
-                    if (snd_seq_port_info_get_type(pinfo) & SND_SEQ_PORT_TYPE_MIDI_GENERIC) {
-                        snprintf(port,256,"%3d %d %s:%s",
-                            snd_seq_port_info_get_client(pinfo),
-                            snd_seq_port_info_get_port(pinfo),
-                            snd_seq_client_info_get_name(cinfo),
-                            snd_seq_port_info_get_name(pinfo));
-                        ports->push_back(port);
-                    }
-                }
+            if ((snd_seq_port_info_get_capability(pinfo) & (SND_SEQ_PORT_CAP_READ|SND_SEQ_PORT_CAP_SUBS_READ)) &&
+                                 ((snd_seq_port_info_get_capability(pinfo) & SND_SEQ_PORT_CAP_NO_EXPORT) == 0) &&
+                                         (snd_seq_port_info_get_type(pinfo) & SND_SEQ_PORT_TYPE_MIDI_GENERIC)) {
+                snprintf(port,256,"%3d %d %s:%s",
+                    snd_seq_port_info_get_client(pinfo),
+                    snd_seq_port_info_get_port(pinfo),
+                    snd_seq_client_info_get_name(cinfo),
+                    snd_seq_port_info_get_name(pinfo));
+                ports->push_back(port);
             }
         }
     }
