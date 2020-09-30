@@ -76,7 +76,6 @@ private:
     timespec ts1;
     jack_nframes_t event_count;
     jack_nframes_t stop;
-    jack_nframes_t stopPlay[16];
     double deltaTime;
     double absoluteTime;
     jack_position_t current;
@@ -84,7 +83,6 @@ private:
     unsigned int pos;
     unsigned int posPlay[16];
 
-    inline int get_max_time_loop(std::vector<mamba::MidiEvent> *play);
     inline void record_midi(unsigned char* midi_send, unsigned int n, int i);
     inline void play_midi(void *buf, unsigned int n);
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
@@ -107,6 +105,7 @@ public:
     jack_port_t *in_port;
     jack_port_t *out_port;
     jack_nframes_t start;
+    jack_nframes_t stopPlay[16];
     jack_nframes_t startPlay[16];
     jack_nframes_t absoluteStart;
     std::string client_name;
@@ -119,13 +118,16 @@ public:
     int record;
     int record_finished;
     int play;
-    int freeweel;
+    int freewheel;
     bool fresh_take;
     bool first_play;
     unsigned int SampleRate;
     double srms;
     double bpm_ratio;
     unsigned int bpm;
+    float max_loop_time;
+
+    int get_max_time_loop(std::vector<mamba::MidiEvent> *play);
 
     sigc::signal<void > trigger_quit_by_jack;
     sigc::signal<void >& signal_trigger_quit_by_jack() { return trigger_quit_by_jack; }

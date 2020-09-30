@@ -157,7 +157,7 @@ private:
     Widget_t *play;
     Widget_t *filemenu;
     Widget_t *looper;
-    Widget_t *free_weel;
+    Widget_t *free_wheel;
     Widget_t *info;
     Widget_t *mapping;
     Widget_t *keymap;
@@ -167,6 +167,7 @@ private:
     Widget_t *alsa_inputs;
     Widget_t *bpm;
     Widget_t *songbpm;
+    Widget_t *time_line;
     Widget_t *synth;
     Widget_t *synth_ui;
     Widget_t *menubar;
@@ -184,7 +185,7 @@ private:
     int keylayout;
     int octave;
     int mchannel;
-    int freeweel;
+    int freewheel;
     int run_one_more;
     bool need_save;
 
@@ -216,7 +217,7 @@ private:
     static void sostenuto_callback(void *w_, void* user_data);
     static void record_callback(void *w_, void* user_data);
     static void play_callback(void *w_, void* user_data);
-    static void freeweel_callback(void *w_, void* user_data);
+    static void freewheel_callback(void *w_, void* user_data);
     static void clear_loops_callback(void *w_, void* user_data);
     static void animate_midi_keyboard(void *w_);
     static void dialog_save_response(void *w_, void* user_data);
