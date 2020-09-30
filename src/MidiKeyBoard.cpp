@@ -1474,7 +1474,6 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
         }
         xjmkb->xjack->rec.play[c].clear();
         xjmkb->xjack->fresh_take = true;
-        xjmkb->xjack->first_play = true;
         xjmkb->xjack->rec.start();
         xjmkb->need_save = true;
     } else if ( xjmkb->xjack->rec.is_running()) {
@@ -1489,6 +1488,7 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
         mamba::MidiEvent ev = {{0x80, 0, 0}, 3, deltaTime, absoluteTime};
         xjmkb->xjack->rec.st->push_back(ev);
         xjmkb->xjack->rec.stop();
+        xjmkb->xjack->record_finished = 1;
     }
 }
 

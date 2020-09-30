@@ -84,7 +84,7 @@ private:
     unsigned int pos;
     unsigned int posPlay[16];
 
-    inline void get_max_time_loop(std::vector<mamba::MidiEvent> *play, int *v);
+    inline int get_max_time_loop(std::vector<mamba::MidiEvent> *play);
     inline void record_midi(unsigned char* midi_send, unsigned int n, int i);
     inline void play_midi(void *buf, unsigned int n);
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
@@ -117,6 +117,7 @@ public:
     std::vector<mamba::MidiEvent> *st;
 
     int record;
+    int record_finished;
     int play;
     int freeweel;
     bool fresh_take;
