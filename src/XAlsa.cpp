@@ -156,7 +156,10 @@ void XAlsa::xalsa_start(MidiKeyboard *keys) {
             snd_seq_event_input(seq_handle, &ev);
             if (ev->type == SND_SEQ_EVENT_NOTEON) {
                 mmessage->send_midi_cc(0x90 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
-                set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, true);
+                if (ev->data.note.velocity)
+                    set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, true);
+                else
+                    set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, false);
             } else if (ev->type == SND_SEQ_EVENT_NOTEOFF) {
                 mmessage->send_midi_cc(0x80 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
                 set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, false);
