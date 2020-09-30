@@ -863,7 +863,7 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         XUnlockDisplay(w->app->dpy);
     }
 
-    if (xjmkb->xjack->record && !xjmkb->xjack->freewheel) {
+    if ((xjmkb->xjack->record || xjmkb->xjack->play) && !xjmkb->xjack->freewheel) {
         static int scip = 4;
         if (scip >= 4) {
             XLockDisplay(w->app->dpy);
@@ -1539,11 +1539,11 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
         xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3, false);
         if (xjmkb->xsynth->synth_is_active()) xjmkb->xsynth->panic();
         xjmkb->xjack->first_play = true;
-    } else {
-        snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
-        xjmkb->time_line->label = xjmkb->time_line->input_label;
-        expose_widget(xjmkb->time_line);
     }
+    snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
+    xjmkb->time_line->label = xjmkb->time_line->input_label;
+    expose_widget(xjmkb->time_line);
+
 }
 
 // static

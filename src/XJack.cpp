@@ -187,6 +187,7 @@ float XJack::get_max_loop_time() {
 
 inline int XJack::get_max_time_loop() {
     int v = -1;
+     max_loop_time = 0.0;
     for (int j = 0; j<16;j++) {
         if (!rec.play[j].size()) continue;
         mamba::MidiEvent ev = rec.play[j][rec.play[j].size()-1];
@@ -205,6 +206,7 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
         pos = 0;
         for (int i = 0; i < 16; i++) posPlay[i] = 0;
         for (int i = 0; i < 16; i++) startPlay[i] = jack_last_frame_time(client)+n;
+        absoluteStart = jack_last_frame_time(client)+n;
     }
 
     for ( int i = 0; i < 16; i++) {
