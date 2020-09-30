@@ -173,11 +173,23 @@ inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, int i) 
     }
 }
 
-int XJack::get_max_time_loop(std::vector<mamba::MidiEvent> *play) {
+float XJack::get_max_loop_time() {
+    max_loop_time = 0.0;
+    for (int j = 0; j<16;j++) {
+        if (!rec.play[j].size()) continue;
+        mamba::MidiEvent ev = rec.play[j][rec.play[j].size()-1];
+        if (ev.absoluteTime > max_loop_time) {
+            max_loop_time = ev.absoluteTime;
+        }
+    }
+    return max_loop_time;
+}
+
+inline int XJack::get_max_time_loop() {
     int v = -1;
     for (int j = 0; j<16;j++) {
-        if (!play[j].size()) continue;
-        mamba::MidiEvent ev = play[j][play[j].size()-1];
+        if (!rec.play[j].size()) continue;
+        mamba::MidiEvent ev = rec.play[j][rec.play[j].size()-1];
         if (ev.absoluteTime > max_loop_time) {
             max_loop_time = ev.absoluteTime;
             v = j;
@@ -189,6 +201,7 @@ int XJack::get_max_time_loop(std::vector<mamba::MidiEvent> *play) {
 inline void XJack::play_midi(void *buf, unsigned int n) {
     if (first_play) {
         first_play = false;
+        get_max_time_loop();
         pos = 0;
         for (int i = 0; i < 16; i++) posPlay[i] = 0;
         for (int i = 0; i < 16; i++) startPlay[i] = jack_last_frame_time(client)+n;
@@ -202,7 +215,7 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
             
             // this will sync all loops to the first recorded one
             if (!freewheel) {
-                int ml = get_max_time_loop(rec.play);
+                int ml = get_max_time_loop();
                 if (i != ml) continue;
                 //if (i != 0) continue;
                 for (int i = 0; i < 16; i++) posPlay[i] = 0;
@@ -270,13 +283,13 @@ inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
         xjack->start = jack_last_frame_time(xjack->client);
         xjack->absoluteStart = jack_last_frame_time(xjack->client);
         xjack->fresh_take = false;
-        if (!freewheel && (get_max_time_loop(xjack->rec.play) > -1)) {
+        if (!freewheel && (get_max_time_loop() > -1)) {
             xjack->start = xjack->startPlay[xjack->mmessage->channel];
             xjack->absoluteStart = xjack->startPlay[xjack->mmessage->channel];
         }
-    } else if (xjack->record_finished && !freewheel && (get_max_time_loop(xjack->rec.play) > -1)) {
+    } else if (xjack->record_finished && !freewheel && (get_max_time_loop() > -1)) {
         xjack->record_finished = 0;
-        xjack->posPlay[xjack->mmessage->channel] = xjack->posPlay[get_max_time_loop(xjack->rec.play)];
+        xjack->posPlay[xjack->mmessage->channel] = xjack->posPlay[get_max_time_loop()];
     }
     jack_midi_event_t in_event;
     event_count = jack_midi_get_event_count(buf);

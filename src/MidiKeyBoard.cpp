@@ -685,7 +685,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     songbpm->func.key_release_callback = key_release;
 
     time_line = add_label(win,_("--"),610,30,100,20);
-    snprintf(time_line->input_label, 31,"%.2f sec", xjack->max_loop_time);
+    snprintf(time_line->input_label, 31,"%.2f sec", xjack->get_max_loop_time());
     time_line->label = time_line->input_label;
 
 
@@ -867,14 +867,19 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         static int scip = 4;
         if (scip >= 4) {
             XLockDisplay(w->app->dpy);
-            snprintf(xjmkb->time_line->input_label, 31,_("%.2f sec"), 
-                xjmkb->xjack->max_loop_time -
-                (double)((xjmkb->xjack->stopPlay[0] - xjmkb->xjack->absoluteStart)/(double)xjmkb->xjack->SampleRate));
+            if (xjmkb->xjack->get_max_loop_time() > 0.0) {
+                snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", 
+                    xjmkb->xjack->get_max_loop_time() -
+                    (double)((xjmkb->xjack->stopPlay[0] - xjmkb->xjack->absoluteStart)/(double)xjmkb->xjack->SampleRate));
+            } else {
+                snprintf(xjmkb->time_line->input_label, 31,_("0.00 sec"));
+            }
             xjmkb->time_line->label = xjmkb->time_line->input_label;
             expose_widget(xjmkb->time_line);
             XFlush(w->app->dpy);
             XUnlockDisplay(w->app->dpy);
             scip = 0;
+            
         }
         scip++;
     }
@@ -1119,6 +1124,9 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
             snprintf(xjmkb->songbpm->input_label, 31,_("File BPM: %d"),  (int) xjmkb->song_bpm);
             xjmkb->songbpm->label = xjmkb->songbpm->input_label;
             expose_widget(xjmkb->songbpm);
+            snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
+            xjmkb->time_line->label = xjmkb->time_line->input_label;
+            expose_widget(xjmkb->time_line);
         }
     }
 }
@@ -1511,7 +1519,7 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
         xjmkb->xjack->rec.st->push_back(ev);
         xjmkb->xjack->rec.stop();
         xjmkb->xjack->record_finished = 1;
-        snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->max_loop_time);
+        snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
         xjmkb->time_line->label = xjmkb->time_line->input_label;
         expose_widget(xjmkb->time_line);
     }
@@ -1531,8 +1539,8 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
         xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3, false);
         if (xjmkb->xsynth->synth_is_active()) xjmkb->xsynth->panic();
         xjmkb->xjack->first_play = true;
-    } else if (xjmkb->xjack->get_max_time_loop(xjmkb->xjack->rec.play) > -1) {
-        snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->max_loop_time);
+    } else {
+        snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
         xjmkb->time_line->label = xjmkb->time_line->input_label;
         expose_widget(xjmkb->time_line);
     }
@@ -1578,8 +1586,10 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) {
         widget_set_title(xjmkb->win, tittle.c_str());
         adj_set_value(xjmkb->bpm->adj,120.0);
         xjmkb->song_bpm = adj_get_value(xjmkb->bpm->adj);
+        xjmkb->mbpm = (int)adj_get_value(xjmkb->bpm->adj);
         snprintf(xjmkb->songbpm->input_label, 31,_("File BPM: %d"),  (int) xjmkb->song_bpm);
         xjmkb->songbpm->label = xjmkb->songbpm->input_label;
+        xjmkb->xjack->bpm_ratio = (double)xjmkb->song_bpm/(double)xjmkb->mbpm;
         expose_widget(xjmkb->songbpm);
         snprintf(xjmkb->time_line->input_label, 31,"0.00 sec");
         xjmkb->time_line->label = xjmkb->time_line->input_label;

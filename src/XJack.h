@@ -83,6 +83,7 @@ private:
     unsigned int pos;
     unsigned int posPlay[16];
 
+    inline int get_max_time_loop();
     inline void record_midi(unsigned char* midi_send, unsigned int n, int i);
     inline void play_midi(void *buf, unsigned int n);
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
@@ -127,8 +128,7 @@ public:
     unsigned int bpm;
     float max_loop_time;
 
-    int get_max_time_loop(std::vector<mamba::MidiEvent> *play);
-
+    float get_max_loop_time();
     sigc::signal<void > trigger_quit_by_jack;
     sigc::signal<void >& signal_trigger_quit_by_jack() { return trigger_quit_by_jack; }
 
