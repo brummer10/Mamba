@@ -50,7 +50,6 @@ private:
     int in_port;
     std::atomic<bool> _execute;
     std::thread _thd;
-    void print_ports(snd_seq_t *seq);
 
 public:
     XAlsa(mamba::MidiMessenger *mmessage_);

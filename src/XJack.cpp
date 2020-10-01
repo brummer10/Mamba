@@ -206,6 +206,7 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
         pos = 0;
         for (int i = 0; i < 16; i++) posPlay[i] = 0;
         for (int i = 0; i < 16; i++) startPlay[i] = jack_last_frame_time(client)+n;
+        start = jack_last_frame_time(client)+n;
         absoluteStart = jack_last_frame_time(client)+n;
     }
 
@@ -292,6 +293,7 @@ inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
     } else if (xjack->record_finished && !freewheel && (get_max_time_loop() > -1)) {
         xjack->record_finished = 0;
         xjack->posPlay[xjack->mmessage->channel] = xjack->posPlay[get_max_time_loop()];
+        xjack->absoluteStart = jack_last_frame_time(xjack->client);
     }
     jack_midi_event_t in_event;
     event_count = jack_midi_get_event_count(buf);

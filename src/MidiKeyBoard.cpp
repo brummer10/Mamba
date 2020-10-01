@@ -599,8 +599,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     looper = menubar_add_menu(menubar,_("Looper"));
     free_wheel = menu_add_check_entry(looper,_("Freewheel"));
     free_wheel->func.value_changed_callback = freewheel_callback;
-    menu_add_entry(looper,_("Clear All Loops"));
-    menu_add_entry(looper,_("Clear Current Loop"));
+    menu_add_entry(looper,_("Clear All Channels"));
+    menu_add_entry(looper,_("Clear Current Channel"));
     looper->func.value_changed_callback = clear_loops_callback;
 
     info = menubar_add_menu(menubar,_("_Info"));
@@ -687,7 +687,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     time_line = add_label(win,_("--"),610,30,100,20);
     snprintf(time_line->input_label, 31,"%.2f sec", xjack->get_max_loop_time());
     time_line->label = time_line->input_label;
-
+    time_line->func.key_press_callback = key_press;
+    time_line->func.key_release_callback = key_release;
 
     w[0] = add_keyboard_knob(win, _("PitchBend"), 5, 65, 60, 75);
     w[0]->data = PITCHBEND;
@@ -864,22 +865,22 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
     }
 
     if ((xjmkb->xjack->record || xjmkb->xjack->play) && !xjmkb->xjack->freewheel) {
-        static int scip = 4;
-        if (scip >= 4) {
+        static int scip = 8;
+        if (scip >= 8) {
             XLockDisplay(w->app->dpy);
             if (xjmkb->xjack->get_max_loop_time() > 0.0) {
                 snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", 
                     xjmkb->xjack->get_max_loop_time() -
                     (double)((xjmkb->xjack->stopPlay[0] - xjmkb->xjack->absoluteStart)/(double)xjmkb->xjack->SampleRate));
             } else {
-                snprintf(xjmkb->time_line->input_label, 31,_("0.00 sec"));
+                snprintf(xjmkb->time_line->input_label, 31, "%.2f sec",
+                    (double)((xjmkb->xjack->start - xjmkb->xjack->absoluteStart)/(double)xjmkb->xjack->SampleRate));
             }
             xjmkb->time_line->label = xjmkb->time_line->input_label;
             expose_widget(xjmkb->time_line);
             XFlush(w->app->dpy);
             XUnlockDisplay(w->app->dpy);
             scip = 0;
-            
         }
         scip++;
     }
@@ -989,7 +990,6 @@ void XKeyBoard::get_alsa_port_menu() {
             }
         }
     }
-    
 }
 
 // static
@@ -1035,6 +1035,7 @@ void XKeyBoard::connection_out_callback(void *w_, void* user_data) {
         jack_disconnect(xjmkb->xjack->client, my_port,entry->label);
     }
 }
+
 // static
 void XKeyBoard::alsa_connection_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
@@ -1055,8 +1056,8 @@ void XKeyBoard::alsa_connection_callback(void *w_, void* user_data) {
     } else {
         xjmkb->xalsa->xalsa_disconnect(client, port);
     }
-        
 }
+
 // static
 void XKeyBoard::map_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
@@ -1442,6 +1443,7 @@ void XKeyBoard::pitchwheel_callback(void *w_, void* user_data) {
     unsigned int high = (change >> 7) & 0x7f;  // High 7 bits
     xjmkb->mmessage->send_midi_cc(0xE0,  low, high, 3, false);
 }
+
 // static
 void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
@@ -1543,7 +1545,6 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
     snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
     xjmkb->time_line->label = xjmkb->time_line->input_label;
     expose_widget(xjmkb->time_line);
-
 }
 
 // static
@@ -1591,7 +1592,7 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) {
         xjmkb->songbpm->label = xjmkb->songbpm->input_label;
         xjmkb->xjack->bpm_ratio = (double)xjmkb->song_bpm/(double)xjmkb->mbpm;
         expose_widget(xjmkb->songbpm);
-        snprintf(xjmkb->time_line->input_label, 31,"0.00 sec");
+        snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
         xjmkb->time_line->label = xjmkb->time_line->input_label;
         expose_widget(xjmkb->time_line);
     } else if ((int)adj_get_value(w->adj) == 2) {
@@ -1945,7 +1946,6 @@ void XKeyBoard::channel_pressure_callback(void *w_, void* user_data) {
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->xsynth->set_channel_pressure(xjmkb->mchannel, (int)adj_get_value(w->adj));
-    
 }
 
 // static
@@ -2317,11 +2317,11 @@ int main (int argc, char *argv[]) {
         
         if (argc > 1) {
 
-    #ifdef __XDG_MIME_H__
+#ifdef __XDG_MIME_H__
             if(strstr(xdg_mime_get_mime_type_from_file_name(argv[1]), "midi")) {
-    #else
+#else
             if( access(argv[1], F_OK ) != -1 ) {
-    #endif
+#endif
                 xjmkb.dialog_load_response(xjmkb.win, (void*) &argv[1]);
             }
         }
