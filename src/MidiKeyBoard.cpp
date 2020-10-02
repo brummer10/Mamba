@@ -942,10 +942,10 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
             if (xjmkb->xjack->get_max_loop_time() > 0.0) {
                 snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", 
                     xjmkb->xjack->get_max_loop_time() -
-                    (double)((xjmkb->xjack->stopPlay[0] - xjmkb->xjack->absoluteStart)/(double)xjmkb->xjack->SampleRate));
+                    (double)((xjmkb->xjack->stPlay - xjmkb->xjack->stStart)/(double)xjmkb->xjack->SampleRate));
             } else {
                 snprintf(xjmkb->time_line->input_label, 31, "%.2f sec",
-                    (double)((xjmkb->xjack->start - xjmkb->xjack->absoluteStart)/(double)xjmkb->xjack->SampleRate));
+                    (double)((xjmkb->xjack->stPlay - xjmkb->xjack->stStart)/(double)xjmkb->xjack->SampleRate));
             }
             xjmkb->time_line->label = xjmkb->time_line->input_label;
             expose_widget(xjmkb->time_line);
@@ -954,6 +954,16 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
             scip = 0;
         }
         scip++;
+        if (xjmkb->xjack->record_off.load(std::memory_order_acquire)) {
+            xjmkb->xjack->record_off.store(false, std::memory_order_release);
+            XLockDisplay(w->app->dpy);
+            xjmkb->record->func.adj_callback = dummy_callback;
+            adj_set_value(xjmkb->record->adj, 0.0);
+            expose_widget(xjmkb->record);
+            XFlush(w->app->dpy);
+            xjmkb->record->func.adj_callback = transparent_draw;
+            XUnlockDisplay(w->app->dpy);
+        }
     }
 
     bool repeat = need_redraw(keys);

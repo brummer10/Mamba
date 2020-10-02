@@ -78,15 +78,17 @@ private:
     jack_nframes_t stop;
     double deltaTime;
     double absoluteTime;
+    double absoluteRecordTime;
     double playPosTime;
     jack_position_t current;
     jack_transport_state_t transport_state;
     unsigned int pos;
     unsigned int posPlay[16];
+    int NotOn;
 
-    inline int find_pos_for_playtime();
-    inline int get_max_time_loop();
-    inline void record_midi(unsigned char* midi_send, unsigned int n, int i);
+    inline int find_pos_for_playtime() noexcept;
+    inline int get_max_time_loop() noexcept;
+    inline void record_midi(unsigned char* midi_send, unsigned int n, int i) noexcept;
     inline void play_midi(void *buf, unsigned int n);
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
     inline void process_midi_in(void* buf, void* out_buf, void *arg);
@@ -104,13 +106,17 @@ public:
     std::atomic<bool> bpm_changed;
     std::atomic<int> bpm_set;
     std::atomic<bool> loop_zero;
+    std::atomic<bool> record_off;
     jack_client_t *client;
     jack_port_t *in_port;
     jack_port_t *out_port;
     jack_nframes_t start;
     jack_nframes_t stopPlay[16];
     jack_nframes_t startPlay[16];
+    jack_nframes_t stPlay;
+    jack_nframes_t stStart;
     jack_nframes_t absoluteStart;
+    jack_nframes_t absoluteRecordStart;
     std::string client_name;
     int init_jack();
     mamba::MidiRecord rec;
@@ -130,7 +136,7 @@ public:
     unsigned int bpm;
     float max_loop_time;
 
-    float get_max_loop_time();
+    float get_max_loop_time() noexcept;
     sigc::signal<void > trigger_quit_by_jack;
     sigc::signal<void >& signal_trigger_quit_by_jack() { return trigger_quit_by_jack; }
 
