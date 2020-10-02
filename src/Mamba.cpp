@@ -249,7 +249,8 @@ void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name)
  */
 
 MidiRecord::MidiRecord()
-    : _execute(false) {
+    : _execute(false),
+    is_sorted(false) {
     st = NULL;
     channel = 0;
 }
@@ -288,15 +289,20 @@ void MidiRecord::start() {
 
             // sort vector ascending to absolute time in loop
             std::sort( play[channel].begin(), play[channel].end(),
-                    [ ](const MidiEvent& lhs, const MidiEvent& rhs) {
-               return lhs.absoluteTime < rhs.absoluteTime;
+                    [this](const MidiEvent& lhs, const MidiEvent& rhs) {
+                if (lhs.absoluteTime > rhs.absoluteTime)
+                    is_sorted.store(true, std::memory_order_release);
+                return lhs.absoluteTime < rhs.absoluteTime;
             });
 
             // recalculate the delta time for sorted vector
-            double aTime = 0.0;
-            for(std::vector<MidiEvent>::iterator i = play[channel].begin(); i != play[channel].end(); ++i) {
-                (*i).deltaTime = (*i).absoluteTime - aTime;
-                aTime = (*i).absoluteTime;
+            if (is_sorted.load(std::memory_order_acquire)) {
+                double aTime = 0.0;
+                for(std::vector<MidiEvent>::iterator i = play[channel].begin();
+                                                i != play[channel].end(); ++i) {
+                    (*i).deltaTime = (*i).absoluteTime - aTime;
+                    aTime = (*i).absoluteTime;
+                }
             }
         }
     });

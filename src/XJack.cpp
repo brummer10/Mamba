@@ -295,7 +295,12 @@ inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
         }
     } else if (xjack->record_finished && !freewheel && (get_max_time_loop() > -1)) {
         xjack->record_finished = 0;
-        xjack->posPlay[xjack->mmessage->channel] = xjack->find_pos_for_playtime();
+        if (xjack->rec.is_sorted.load(std::memory_order_acquire)) {
+            xjack->posPlay[xjack->mmessage->channel] = xjack->find_pos_for_playtime();
+            xjack->rec.is_sorted.store(false, std::memory_order_release);
+        } else {
+            xjack->posPlay[xjack->mmessage->channel] = xjack->posPlay[get_max_time_loop()];
+        }
         //xjack->absoluteStart = jack_last_frame_time(xjack->client);
     }
     jack_midi_event_t in_event;

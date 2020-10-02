@@ -143,6 +143,7 @@ public:
     int channel;
     void stop();
     void start();
+    std::atomic<bool> is_sorted;
     bool is_running() const noexcept;
     std::condition_variable cv;
     MidiEvent ev;
