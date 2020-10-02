@@ -391,7 +391,8 @@ static void draw_keyboard(void *w_, void* user_data) {
         ik = is_key_in_in_matrix(keys, k+keys->octave);
         cairo_rectangle(w->crb,i,0,25,height_t);
         if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
-            use_base_color_scheme(w, ACTIVE_);
+            //use_base_color_scheme(w, ACTIVE_);
+            use_matrix_color(w, keys->channel);
             cairo_set_line_width(w->crb, 1.0);
         } else if (ik > -1) {
             use_matrix_color(w, ik);
@@ -486,7 +487,8 @@ static void draw_keyboard(void *w_, void* user_data) {
             cairo_set_line_width(w->crb, 1.0);
             cairo_rectangle(w->crb,i+15,0,20,height_t*0.59);
             if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
-                use_base_color_scheme(w, ACTIVE_);
+                //use_base_color_scheme(w, ACTIVE_);
+                use_matrix_color(w, keys->channel);
                 cairo_set_line_width(w->crb, 1.0);
             } else if (ik > -1) {
                 use_matrix_color(w, ik);
@@ -823,6 +825,7 @@ void add_keyboard(Widget_t *wid, const char * label) {
     keys->send_key = -1;
     keys->octave = 12*2;
     keys->layout = 0;
+    keys->channel = 0;
     memset(keys->custom_keys, 0, 128*sizeof(long));
     int j = 0;
     for(;j<4;j++) {

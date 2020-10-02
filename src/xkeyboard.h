@@ -35,6 +35,7 @@ typedef void (*midiwheelfunc)(Widget_t *w, const int *value);
 
 typedef struct {
 
+    int channel;
     int octave;
     int layout;
     int modwheel;

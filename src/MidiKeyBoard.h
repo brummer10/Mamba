@@ -231,6 +231,7 @@ private:
     static void win_configure_callback(void *w_, void* user_data);
     static void unmap_callback(void *w_, void* user_data);
     static void map_callback(void *w_, void* user_data);
+    static void draw_my_combobox_entrys(void *w_, void* user_data);
     static void draw_board(void *w_, void* user_data);
     static void draw_synth_ui(void *w_, void* user_data);
     static void mk_draw_knob(void *w_, void* user_data);

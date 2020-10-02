@@ -345,6 +345,74 @@ void XKeyBoard::quit_by_jack() {
 }
 
 // static
+void XKeyBoard::draw_my_combobox_entrys(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XWindowAttributes attrs;
+    XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
+    if (attrs.map_state != IsViewable) return;
+    int width = attrs.width;
+    int height = attrs.height;
+    ComboBox_t *comboboxlist = (ComboBox_t*)w->parent_struct;
+
+    use_base_color_scheme(w, NORMAL_);
+    cairo_rectangle(w->crb, 0, 0, width, height);
+    cairo_fill (w->crb);
+
+    int i = (int)max(0,adj_get_value(w->adj));
+    int a = 0;
+    int j = comboboxlist->list_size<comboboxlist->show_items+i+1 ? 
+      comboboxlist->list_size : comboboxlist->show_items+i+1;
+    for(;i<j;i++) {
+        double ci = ((i+1)/100.0)*12.0;
+        if (i<4)
+            cairo_set_source_rgba(w->crb, ci, 0.2, 0.4, 1.00);
+        else if (i<8)
+            cairo_set_source_rgba(w->crb, 0.6, 0.2+ci-0.48, 0.4, 1.00);
+        else if (i<12)
+            cairo_set_source_rgba(w->crb, 0.6-(ci-0.96), 0.68-(ci-1.08), 0.4, 1.00);
+        else
+            cairo_set_source_rgba(w->crb, 0.12+(ci-1.56), 0.32, 0.4-(ci-1.44), 1.00);
+        if(i == comboboxlist->prelight_item && i == comboboxlist->active_item)
+            use_base_color_scheme(w, ACTIVE_);
+        else if(i == comboboxlist->prelight_item)
+            use_base_color_scheme(w, PRELIGHT_);
+        cairo_rectangle(w->crb, 0, a*25, width, 25);
+        cairo_fill_preserve(w->crb);
+        cairo_set_line_width(w->crb, 1.0);
+        use_frame_color_scheme(w, PRELIGHT_);
+        cairo_stroke(w->crb); 
+        cairo_text_extents_t extents;
+        /** show label **/
+        if(i == comboboxlist->prelight_item && i == comboboxlist->active_item)
+            use_text_color_scheme(w, ACTIVE_);
+        else if(i == comboboxlist->prelight_item)
+            use_text_color_scheme(w, PRELIGHT_);
+        else if (i == comboboxlist->active_item)
+            use_text_color_scheme(w, SELECTED_);
+        else
+            use_text_color_scheme(w,NORMAL_ );
+
+        cairo_set_font_size (w->crb, 12);
+        cairo_text_extents(w->crb,"Ay", &extents);
+        double h = extents.height;
+        cairo_text_extents(w->crb,comboboxlist->list_names[i] , &extents);
+
+        cairo_move_to (w->crb, 15, (25*(a+1)) - h +2);
+        cairo_show_text(w->crb, comboboxlist->list_names[i]);
+        cairo_new_path (w->crb);
+        if (i == comboboxlist->prelight_item && extents.width > (float)width-20) {
+            tooltip_set_text(w,comboboxlist->list_names[i]);
+            w->flags |= HAS_TOOLTIP;
+            show_tooltip(w);
+        } else {
+            w->flags &= ~HAS_TOOLTIP;
+            hide_tooltip(w);
+        }
+        a++;
+    }
+}
+
+// static
 void XKeyBoard::mk_draw_knob(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XWindowAttributes attrs;
@@ -625,6 +693,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     channel->func.value_changed_callback = channel_callback;
     channel->func.key_press_callback = key_press;
     channel->func.key_release_callback = key_release;
+    Widget_t *menu = channel->childlist->childs[1];
+    Widget_t *view_port = menu->childlist->childs[0];
+    view_port->func.expose_callback = draw_my_combobox_entrys;
     tmp = channel->childlist->childs[0];
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
@@ -1307,12 +1378,12 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     if (xjmkb->xjack->play>0) {
-        MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
         for (int i = 0; i<16;i++) 
             clear_key_matrix(keys->in_key_matrix[i]);
     }
-    xjmkb->xjack->rec.channel = xjmkb->mmessage->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
+    xjmkb->xjack->rec.channel = xjmkb->mmessage->channel = keys->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
     if(xjmkb->xsynth->synth_is_active()) {
         int i = xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel);
         if ( i >-1)
