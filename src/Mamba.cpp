@@ -209,8 +209,8 @@ void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name)
             channel = smf_event->midi_buffer[0] & 0x0F;
 
             smf_track_add_event_seconds(tracks[channel], smf_event,(*i).deltaTime + t[j]);
+            t[j] += (*i).deltaTime;
             if (!freewheel) {
-                t[j] += (*i).deltaTime;
                 if (t[j]<max_time && i == play[j].end()-1) {
                     i = play[j].begin();
                 } 
