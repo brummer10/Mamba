@@ -78,11 +78,13 @@ private:
     jack_nframes_t stop;
     double deltaTime;
     double absoluteTime;
+    double playPosTime;
     jack_position_t current;
     jack_transport_state_t transport_state;
     unsigned int pos;
     unsigned int posPlay[16];
 
+    inline int find_pos_for_playtime();
     inline int get_max_time_loop();
     inline void record_midi(unsigned char* midi_send, unsigned int n, int i);
     inline void play_midi(void *buf, unsigned int n);

@@ -20,7 +20,8 @@
 
 
 #include "Mamba.h"
-
+#include <ostream>
+#include <iostream>
 
 namespace mamba {
 
@@ -188,7 +189,7 @@ double MidiSave::get_max_time(std::vector<MidiEvent> *play) noexcept {
     double ret = 0;
     for (int j = 0; j<16;j++) {
         if (!play[j].size()) continue;
-        MidiEvent ev = play[j][play[j].size()-1];
+        const MidiEvent ev = play[j][play[j].size()-1];
         if (ev.absoluteTime > ret) ret = ev.absoluteTime;
     }
     return ret;
@@ -275,12 +276,28 @@ void MidiRecord::start() {
     _thd = std::thread([this]() {
         while (_execute.load(std::memory_order_acquire)) {
             std::unique_lock<std::mutex> lk(m);
+            // wait for signal from jack that record vector is ready
             cv.wait(lk);
+            // reserve space in play vector to push the recorded vector into
             play[channel].reserve(play[channel].size() + st->size());
-            
+
+            // push recorded vector to play vector
             for (unsigned int i=0; i<st->size(); i++) 
                 play[channel].push_back((*st)[i]); 
             st->clear();
+
+            // sort vector ascending to absolute time in loop
+            std::sort( play[channel].begin(), play[channel].end(),
+                    [ ](const MidiEvent& lhs, const MidiEvent& rhs) {
+               return lhs.absoluteTime < rhs.absoluteTime;
+            });
+
+            // recalculate the delta time for sorted vector
+            double aTime = 0.0;
+            for(std::vector<MidiEvent>::iterator i = play[channel].begin(); i != play[channel].end(); ++i) {
+                (*i).deltaTime = (*i).absoluteTime - aTime;
+                aTime = (*i).absoluteTime;
+            }
         }
     });
 }

@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <vector>
+#include <algorithm>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
