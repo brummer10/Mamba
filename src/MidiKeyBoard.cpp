@@ -119,11 +119,10 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     octave = 2;
     mchannel = 0;
     freewheel = 0;
+    lchannels = 0;
     run_one_more = 0;
     need_save = false;
     filepath = getenv("HOME") ? getenv("HOME") : "/";
-    loop_zero_reset.store(false, std::memory_order_release);
-    loop_reset.store(0, std::memory_order_release);
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
         sigc::mem_fun(this, &XKeyBoard::nsm_show_ui));
@@ -197,6 +196,7 @@ void XKeyBoard::read_config() {
             else if (key.compare("[octave]") == 0) octave = std::stoi(value);
             else if (key.compare("[volume]") == 0) volume = std::stoi(value);
             else if (key.compare("[freewheel]") == 0) freewheel = std::stoi(value);
+            else if (key.compare("[lchannels]") == 0) lchannels = std::stoi(value);
             else if (key.compare("[soundfontpath]") == 0) soundfontpath = value;
             else if (key.compare("[soundfont]") == 0) soundfont = value;
             else if (key.compare("[reverb_on]") == 0) xsynth->reverb_on = std::stoi(value);
@@ -267,6 +267,7 @@ void XKeyBoard::save_config() {
          outfile << "[octave] " << octave << std::endl;
          outfile << "[volume] " << volume << std::endl;
          outfile << "[freewheel] " << freewheel << std::endl;
+         outfile << "[lchannels] " << lchannels << std::endl;
          outfile << "[soundfontpath] " << soundfontpath << std::endl;
          outfile << "[soundfont] " << soundfont << std::endl;
          outfile << "[reverb_on] " << xsynth->reverb_on << std::endl;
@@ -345,7 +346,7 @@ void XKeyBoard::quit_by_jack() {
 }
 
 // static
-void XKeyBoard::draw_my_combobox_entrys(void *w_, void* user_data) {
+void XKeyBoard::draw_my_combobox_entrys(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
@@ -413,7 +414,7 @@ void XKeyBoard::draw_my_combobox_entrys(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::mk_draw_knob(void *w_, void* user_data) {
+void XKeyBoard::mk_draw_knob(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
@@ -524,7 +525,8 @@ void XKeyBoard::mk_draw_knob(void *w_, void* user_data) {
     cairo_new_path (w->crb);
 }
 
-void XKeyBoard::draw_board(void *w_, void* user_data) {
+// static
+void XKeyBoard::draw_board(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
@@ -665,11 +667,23 @@ void XKeyBoard::init_ui(Xputty *app) {
     synth->func.value_changed_callback = synth_callback;
 
     looper = menubar_add_menu(menubar,_("Looper"));
+    view_channels = menu_add_submenu(looper,_("Show"));
+    menu_add_radio_entry(view_channels,_("All Channels"));
+    menu_add_radio_entry(view_channels,_("Only selected Channel"));
+    adj_set_value(view_channels->adj, 0.0);
+    view_channels->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    view_channels->func.key_press_callback = key_press;
+    view_channels->func.key_release_callback = key_release;
+    view_channels->func.value_changed_callback = view_channels_callback;
+    
+    looper->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     free_wheel = menu_add_check_entry(looper,_("Freewheel"));
     free_wheel->func.value_changed_callback = freewheel_callback;
     menu_add_entry(looper,_("Clear All Channels"));
     menu_add_entry(looper,_("Clear Current Channel"));
     looper->func.value_changed_callback = clear_loops_callback;
+    looper->func.key_press_callback = key_press;
+    looper->func.key_release_callback = key_release;
 
     info = menubar_add_menu(menubar,_("_Info"));
     menu_add_entry(info,_("_About"));
@@ -756,6 +770,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     songbpm->func.key_release_callback = key_release;
 
     time_line = add_label(win,_("--"),610,30,100,20);
+    time_line->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     snprintf(time_line->input_label, 31,"%.2f sec", xjack->get_max_loop_time());
     time_line->label = time_line->input_label;
     time_line->func.key_press_callback = key_press;
@@ -884,39 +899,6 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         xjmkb->play->func.adj_callback = dummy_callback;
         adj_set_value(xjmkb->play->adj,
             (float)xjmkb->xjack->transport_set.load(std::memory_order_acquire));
-        expose_widget(xjmkb->play);
-        XFlush(w->app->dpy);
-        xjmkb->play->func.adj_callback = set_play_label;
-        XUnlockDisplay(w->app->dpy);
-    }
-
-    if (xjmkb->loop_zero_reset.load(std::memory_order_acquire)) {
-        if (xjmkb->loop_reset.load(std::memory_order_acquire)) {
-            xjmkb->loop_reset--;
-            
-        } else {
-            xjmkb->loop_zero_reset.store(false, std::memory_order_release);
-            XLockDisplay(w->app->dpy);
-            xjmkb->play->func.adj_callback = dummy_callback;
-            if ((int)adj_get_value(xjmkb->play->adj)) {
-                xjmkb->play->state = 3;
-            } else {
-                xjmkb->play->state = 0;
-            }
-            expose_widget(xjmkb->play);
-            XFlush(w->app->dpy);
-            xjmkb->play->func.adj_callback = set_play_label;
-            XUnlockDisplay(w->app->dpy);
-        }
-    }
-
-    if (xjmkb->xjack->loop_zero.load(std::memory_order_acquire)) {
-        xjmkb->xjack->loop_zero.store(false, std::memory_order_release);
-        xjmkb->loop_zero_reset.store(true, std::memory_order_release);
-        xjmkb->loop_reset.store(2, std::memory_order_release);
-        XLockDisplay(w->app->dpy);
-        xjmkb->play->func.adj_callback = dummy_callback;
-        xjmkb->play->state = 2;
         expose_widget(xjmkb->play);
         XFlush(w->app->dpy);
         xjmkb->play->func.adj_callback = set_play_label;
@@ -1150,7 +1132,7 @@ void XKeyBoard::map_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::unmap_callback(void *w_, void* user_data) {
+void XKeyBoard::unmap_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1158,7 +1140,7 @@ void XKeyBoard::unmap_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::get_note(Widget_t *w, const int *key, const bool on_off) {
+void XKeyBoard::get_note(Widget_t *w, const int *key, const bool on_off) noexcept{
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     if (on_off) {
@@ -1169,7 +1151,7 @@ void XKeyBoard::get_note(Widget_t *w, const int *key, const bool on_off) {
 }
 
 // static
-void XKeyBoard::get_all_notes_off(Widget_t *w, const int *value) {
+void XKeyBoard::get_all_notes_off(Widget_t *w, const int *value) noexcept{
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     xjmkb->mmessage->send_midi_cc(0xB0, 120, 0, 3, false);
@@ -1384,7 +1366,7 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::channel_callback(void *w_, void* user_data) {
+void XKeyBoard::channel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1402,7 +1384,7 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::bank_callback(void *w_, void* user_data) {
+void XKeyBoard::bank_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1417,8 +1399,8 @@ void XKeyBoard::program_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    xjmkb->mprogram = (int)adj_get_value(w->adj);
-    xjmkb->mbank = (int)adj_get_value(xjmkb->bank->adj);
+    xjmkb->mprogram = xjmkb->xjack->program = (int)adj_get_value(w->adj);
+    xjmkb->mbank = xjmkb->xjack->bank = (int)adj_get_value(xjmkb->bank->adj);
     if(xjmkb->xsynth->synth_is_active()) {
         int ret = 0;
         int bank = 0;
@@ -1442,7 +1424,7 @@ void XKeyBoard::program_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::bpm_callback(void *w_, void* user_data) {
+void XKeyBoard::bpm_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1451,7 +1433,7 @@ void XKeyBoard::bpm_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::modwheel_callback(void *w_, void* user_data) {
+void XKeyBoard::modwheel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1460,7 +1442,7 @@ void XKeyBoard::modwheel_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::detune_callback(void *w_, void* user_data) {
+void XKeyBoard::detune_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1469,7 +1451,7 @@ void XKeyBoard::detune_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::attack_callback(void *w_, void* user_data) {
+void XKeyBoard::attack_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1478,7 +1460,7 @@ void XKeyBoard::attack_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::expression_callback(void *w_, void* user_data) {
+void XKeyBoard::expression_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1487,7 +1469,7 @@ void XKeyBoard::expression_callback(void *w_, void* user_data) {
 }
 
 // static 
-void XKeyBoard::release_callback(void *w_, void* user_data) {
+void XKeyBoard::release_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1496,7 +1478,7 @@ void XKeyBoard::release_callback(void *w_, void* user_data) {
 }
 
 // static 
-void XKeyBoard::volume_callback(void *w_, void* user_data) {
+void XKeyBoard::volume_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1505,7 +1487,7 @@ void XKeyBoard::volume_callback(void *w_, void* user_data) {
 }
 
 // static 
-void XKeyBoard::velocity_callback(void *w_, void* user_data) {
+void XKeyBoard::velocity_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1514,7 +1496,7 @@ void XKeyBoard::velocity_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::pitchwheel_callback(void *w_, void* user_data) {
+void XKeyBoard::pitchwheel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1526,7 +1508,7 @@ void XKeyBoard::pitchwheel_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_data) {
+void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1539,7 +1521,7 @@ void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_d
 }
 
 // static
-void XKeyBoard::balance_callback(void *w_, void* user_data) {
+void XKeyBoard::balance_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1548,7 +1530,7 @@ void XKeyBoard::balance_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::sustain_callback(void *w_, void* user_data) {
+void XKeyBoard::sustain_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1557,7 +1539,7 @@ void XKeyBoard::sustain_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::sostenuto_callback(void *w_, void* user_data) {
+void XKeyBoard::sostenuto_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1609,7 +1591,7 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::play_callback(void *w_, void* user_data) {
+void XKeyBoard::play_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1629,7 +1611,7 @@ void XKeyBoard::play_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::set_play_label(void *w_, void* user_data) {
+void XKeyBoard::set_play_label(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     int value = (int)adj_get_value(w->adj);
     if (value) {
@@ -1641,7 +1623,7 @@ void XKeyBoard::set_play_label(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::freewheel_callback(void *w_, void* user_data) {
+void XKeyBoard::freewheel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1650,7 +1632,7 @@ void XKeyBoard::freewheel_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::clear_loops_callback(void *w_, void* user_data) {
+void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1699,7 +1681,7 @@ void XKeyBoard::layout_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::octave_callback(void *w_, void* user_data) {
+void XKeyBoard::octave_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
@@ -1707,6 +1689,19 @@ void XKeyBoard::octave_callback(void *w_, void* user_data) {
     keys->octave = (int)12*adj_get_value(w->adj);
     xjmkb->octave = (int)adj_get_value(w->adj);
     expose_widget(xjmkb->wid);
+}
+
+// static
+void XKeyBoard::view_channels_callback(void *w_, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    xjmkb->xjack->view_channels = xjmkb->lchannels = (int)adj_get_value(w->adj);
+    if (xjmkb->lchannels) {
+        MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+        for (int i = 0; i<16;i++) 
+            clear_key_matrix(keys->in_key_matrix[i]);
+    }
 }
 
 // static
@@ -1906,7 +1901,7 @@ void XKeyBoard::key_release(void *w_, void *key_, void *user_data) {
 /**************** Fluidsynth settings window *****************/
 
 //static 
-void XKeyBoard::draw_synth_ui(void *w_, void* user_data) {
+void XKeyBoard::draw_synth_ui(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
     cairo_paint (w->crb);
@@ -2030,7 +2025,7 @@ void XKeyBoard::channel_pressure_callback(void *w_, void* user_data) {
 }
 
 // static
-void XKeyBoard::set_on_off_label(void *w_, void* user_data) {
+void XKeyBoard::set_on_off_label(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     int value = (int)adj_get_value(w->adj);
     if (value) {

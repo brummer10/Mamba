@@ -157,6 +157,7 @@ private:
     Widget_t *play;
     Widget_t *filemenu;
     Widget_t *looper;
+    Widget_t *view_channels;
     Widget_t *free_wheel;
     Widget_t *info;
     Widget_t *mapping;
@@ -187,38 +188,40 @@ private:
     int mchannel;
     int freewheel;
     int run_one_more;
+    int lchannels;
     bool need_save;
 
-    static void get_note(Widget_t *w, const int *key, const bool on_off);
-    static void get_all_notes_off(Widget_t *w, const int *value);
+    static void get_note(Widget_t *w, const int *key, const bool on_off) noexcept;
+    static void get_all_notes_off(Widget_t *w, const int *value) noexcept;
 
     static void info_callback(void *w_, void* user_data);
     static void file_callback(void *w_, void* user_data);
-    static void channel_callback(void *w_, void* user_data);
-    static void bank_callback(void *w_, void* user_data);
+    static void channel_callback(void *w_, void* user_data) noexcept;
+    static void bank_callback(void *w_, void* user_data) noexcept;
     static void program_callback(void *w_, void* user_data);
-    static void bpm_callback(void *w_, void* user_data);
+    static void bpm_callback(void *w_, void* user_data) noexcept;
     static void layout_callback(void *w_, void* user_data);
-    static void octave_callback(void *w_, void* user_data);
+    static void octave_callback(void *w_, void* user_data) noexcept;
     static void keymap_callback(void *w_, void* user_data);
     static void grab_callback(void *w_, void* user_data);
     static void synth_callback(void *w_, void* user_data);
-    static void modwheel_callback(void *w_, void* user_data);
-    static void detune_callback(void *w_, void* user_data);
-    static void attack_callback(void *w_, void* user_data);
-    static void expression_callback(void *w_, void* user_data);
-    static void release_callback(void *w_, void* user_data);
-    static void volume_callback(void *w_, void* user_data);
-    static void velocity_callback(void *w_, void* user_data);
-    static void pitchwheel_callback(void *w_, void* user_data);
-    static void balance_callback(void *w_, void* user_data);
-    static void pitchwheel_release_callback(void *w_, void* button, void* user_data);
-    static void sustain_callback(void *w_, void* user_data);
-    static void sostenuto_callback(void *w_, void* user_data);
+    static void modwheel_callback(void *w_, void* user_data) noexcept;
+    static void detune_callback(void *w_, void* user_data) noexcept;
+    static void attack_callback(void *w_, void* user_data) noexcept;
+    static void expression_callback(void *w_, void* user_data) noexcept;
+    static void release_callback(void *w_, void* user_data) noexcept;
+    static void volume_callback(void *w_, void* user_data) noexcept;
+    static void velocity_callback(void *w_, void* user_data) noexcept;
+    static void pitchwheel_callback(void *w_, void* user_data) noexcept;
+    static void balance_callback(void *w_, void* user_data) noexcept;
+    static void pitchwheel_release_callback(void *w_, void* button, void* user_data) noexcept;
+    static void sustain_callback(void *w_, void* user_data) noexcept;
+    static void sostenuto_callback(void *w_, void* user_data) noexcept;
     static void record_callback(void *w_, void* user_data);
-    static void play_callback(void *w_, void* user_data);
-    static void freewheel_callback(void *w_, void* user_data);
-    static void clear_loops_callback(void *w_, void* user_data);
+    static void play_callback(void *w_, void* user_data) noexcept;
+    static void freewheel_callback(void *w_, void* user_data) noexcept;
+    static void clear_loops_callback(void *w_, void* user_data) noexcept;
+    static void view_channels_callback(void *w_, void* user_data) noexcept;
     static void animate_midi_keyboard(void *w_);
     static void dialog_save_response(void *w_, void* user_data);
 
@@ -229,13 +232,13 @@ private:
     static void key_press(void *w_, void *key_, void *user_data);
     static void key_release(void *w_, void *key_, void *user_data);
     static void win_configure_callback(void *w_, void* user_data);
-    static void unmap_callback(void *w_, void* user_data);
+    static void unmap_callback(void *w_, void* user_data) noexcept;
     static void map_callback(void *w_, void* user_data);
-    static void draw_my_combobox_entrys(void *w_, void* user_data);
-    static void draw_board(void *w_, void* user_data);
-    static void draw_synth_ui(void *w_, void* user_data);
-    static void mk_draw_knob(void *w_, void* user_data);
-    static void set_play_label(void *w_, void* user_data);
+    static void draw_my_combobox_entrys(void *w_, void* user_data) noexcept;
+    static void draw_board(void *w_, void* user_data) noexcept;
+    static void draw_synth_ui(void *w_, void* user_data) noexcept;
+    static void mk_draw_knob(void *w_, void* user_data) noexcept;
+    static void set_play_label(void *w_, void* user_data) noexcept;
     static void win_mem_free(void *w_, void* user_data);
 
     static void synth_ui_callback(void *w_, void* user_data);
@@ -252,7 +255,7 @@ private:
     static void reverb_damp_callback(void *w_, void* user_data);
     static void reverb_roomsize_callback(void *w_, void* user_data);
     static void reverb_on_callback(void *w_, void* user_data);
-    static void set_on_off_label(void *w_, void* user_data);
+    static void set_on_off_label(void *w_, void* user_data) noexcept;
     static void channel_pressure_callback(void *w_, void* user_data);
     static void instrument_callback(void *w_, void* user_data);
 
@@ -291,8 +294,6 @@ public:
     Widget_t *fs_instruments;
     int visible;
     int volume;
-    std::atomic<bool> loop_zero_reset;
-    std::atomic<int> loop_reset;
 
     void init_ui(Xputty *app);
     void init_synth_ui(Widget_t *win);

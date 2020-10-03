@@ -201,11 +201,10 @@ void MidiSave::save_to_file(std::vector<MidiEvent> *play, const char* file_name)
     for (int j = 0; j<16;j++) {
         for(std::vector<MidiEvent>::const_iterator i = play[j].begin(); i != play[j].end(); ++i) {
             smf_event = smf_event_new_from_pointer((void*)(*i).buffer, (*i).num);
-            if (smf_event == NULL) {
-                continue;
-            }
 
+            if (smf_event == NULL) continue;
             if(smf_event->midi_buffer_length < 1) continue;
+
             channel = smf_event->midi_buffer[0] & 0x0F;
 
             smf_track_add_event_seconds(tracks[channel], smf_event,(*i).deltaTime + t[j]);

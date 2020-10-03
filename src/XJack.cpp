@@ -97,7 +97,6 @@ XJack::XJack(mamba::MidiMessenger *mmessage_)
         transport_state = JackTransportStopped;
         bpm_changed.store(false, std::memory_order_release);
         bpm_set.store(0, std::memory_order_release);
-        loop_zero.store(false, std::memory_order_release);
         record_off.store(false, std::memory_order_release);
         start = 0;
         NotOn = 0;
@@ -106,7 +105,10 @@ XJack::XJack(mamba::MidiMessenger *mmessage_)
         record_finished = 0;
         play = 0;
         pos = 0;
+        bank = 0;
+        program = 0;
         freewheel = 0;
+        view_channels = 0;
         max_loop_time = 0;
         playPosTime = 0.0;
         fresh_take = true;
@@ -166,7 +168,8 @@ inline void XJack::record_midi(unsigned char* midi_send, unsigned int n, int i) 
     absoluteTime = (double)(((stop) - absoluteStart)/(double)SampleRate); // seconds
     absoluteRecordTime = (double)(((stop) - absoluteRecordStart)/(double)SampleRate); // seconds
     start = jack_last_frame_time(client)+n;
-    if ((midi_send[0] & 0xf0) == 0x90) NotOn++;
+    if (((midi_send[0] & 0xf0) == 0x90) && midi_send[2] > 0) NotOn++;
+    else if (((midi_send[0] & 0xf0) == 0x90) && midi_send[2] == 0) NotOn--;
     else if ((midi_send[0] & 0xf0) == 0x80) NotOn--;
     if (absoluteRecordTime >= max_loop_time && !NotOn && (get_max_time_loop() > -1)) {
         record_off.store(true, std::memory_order_release);
@@ -240,7 +243,6 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
                 start = jack_last_frame_time(client)+n;
                 absoluteStart = jack_last_frame_time(client)+n;
                 stStart = jack_last_frame_time(client)+n;
-                loop_zero.store(true, std::memory_order_release);
             } else {
                 posPlay[i] = 0;
                 startPlay[i] = jack_last_frame_time(client)+n;
@@ -257,7 +259,7 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
                 if(ev.num > 2)
                     midi_send[2] = ev.buffer[2];
                 bool ch = true;
-                if (mmessage->channel < 16) {
+                if (mmessage->channel < 16 && view_channels) {
                     if ((mmessage->channel) != (int(ev.buffer[0]&0x0f))) {
                         ch = false;
                     }
@@ -304,6 +306,13 @@ inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
         xjack->absoluteRecordStart = jack_last_frame_time(xjack->client);
         xjack->fresh_take = false;
         NotOn = 0;
+        int b = 0xB0 | xjack->mmessage->channel;
+        int p = 0xC0 | xjack->mmessage->channel;
+        const mamba::MidiEvent evb = {{(unsigned char)b, 32, (unsigned char)xjack->bank}, 3, 0, 0};
+        xjack->st->push_back(evb);
+        const mamba::MidiEvent evp = {{(unsigned char)p, (unsigned char)xjack->program, 0}, 2, 0, 0};
+        xjack->st->push_back(evp);
+
         if (!freewheel && (get_max_time_loop() > -1)) {
             xjack->start = xjack->startPlay[xjack->mmessage->channel];
             xjack->absoluteStart = xjack->startPlay[xjack->mmessage->channel];
