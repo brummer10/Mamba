@@ -1200,9 +1200,21 @@ void XKeyBoard::dialog_save_response(void *w_, void* user_data) {
     Widget_t *win = (Widget_t*)w_;
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     if(user_data !=NULL) {
+        std::string filename = *(const char**)user_data;
+        std::string::size_type idx;
+        idx = filename.rfind('.');
+        if(idx != std::string::npos) {
+            std::string extension = filename.substr(idx+1);
+            if (extension.find("mid") == std::string::npos) {
+                filename += ".midi";
+            }
+        } else {
+            filename += ".midi";
+        }
+        const char* fn = filename.data();
         adj_set_value(xjmkb->play->adj,0.0);
         adj_set_value(xjmkb->record->adj,0.0);
-        xjmkb->save.save_to_file(xjmkb->xjack->rec.play, *(const char**)user_data);
+        xjmkb->save.save_to_file(xjmkb->xjack->rec.play, fn);
     }
 }
 
@@ -1637,7 +1649,7 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
-    if ((int)adj_get_value(w->adj) == 1) {
+    if ((int)adj_get_value(w->adj) == 2) {
         xjmkb->xjack->play = 0.0;
         //adj_set_value(xjmkb->play->adj, 0.0);
         //set_play_label(xjmkb->play,NULL);
@@ -1658,7 +1670,7 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
         snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
         xjmkb->time_line->label = xjmkb->time_line->input_label;
         expose_widget(xjmkb->time_line);
-    } else if ((int)adj_get_value(w->adj) == 2) {
+    } else if ((int)adj_get_value(w->adj) == 3) {
         xjmkb->xjack->rec.play[xjmkb->xjack->rec.channel].clear();
         clear_key_matrix(keys->in_key_matrix[xjmkb->xjack->rec.channel]);
         xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->xjack->rec.channel, 123, 0, 3, true);
@@ -1713,6 +1725,7 @@ void XKeyBoard::keymap_callback(void *w_, void* user_data) {
         open_custom_keymap(xjmkb->wid, win, xjmkb->keymap_file.c_str());
 }
 
+// static
 void XKeyBoard::grab_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
