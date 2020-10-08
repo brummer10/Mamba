@@ -921,13 +921,15 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         static int scip = 8;
         if (scip >= 8) {
             XLockDisplay(w->app->dpy);
-            if (xjmkb->xjack->get_max_loop_time() > 0.0) {
+            if ( xjmkb->xjack->play && xjmkb->xjack->get_max_loop_time() > 0.0) {
                 snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", 
                     xjmkb->xjack->get_max_loop_time() -
                     (double)((xjmkb->xjack->stPlay - xjmkb->xjack->stStart)/(double)xjmkb->xjack->SampleRate));
-            } else {
+            } else if (xjmkb->xjack->record && xjmkb->xjack->play) {
                 snprintf(xjmkb->time_line->input_label, 31, "%.2f sec",
-                    (double)((xjmkb->xjack->stPlay - xjmkb->xjack->stStart)/(double)xjmkb->xjack->SampleRate));
+                    (double)((xjmkb->xjack->stPlay - xjmkb->xjack->rcStart)/(double)xjmkb->xjack->SampleRate));
+            } else {
+                snprintf(xjmkb->time_line->input_label, 31, "%.2f sec", xjmkb->xjack->get_max_loop_time());
             }
             xjmkb->time_line->label = xjmkb->time_line->input_label;
             expose_widget(xjmkb->time_line);
@@ -1564,7 +1566,7 @@ void XKeyBoard::sostenuto_callback(void *w_, void* user_data) noexcept{
 void XKeyBoard::find_next_beat_time(double *absoluteTime) {
     double beat = 60.0/(double)song_bpm;
     int beats = std::round(((*absoluteTime)/beat));
-    (*absoluteTime) = beats*beat;
+    (*absoluteTime) = (double)beats*beat;
 }
 
 // static

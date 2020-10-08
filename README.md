@@ -41,6 +41,26 @@ Virtual MIDI Keyboard and MIDI file player/recorder for Jack Audio Connection Ki
 - `ctrl + q` quit
 - `ctrl + c` quit
 
+## Description
+
+16 Channel Live MIDI Looper: 
+
+To record a loop, press "Play" and then to start recording press "Record".
+To stop recording press record again. Playback will start immediately.
+
+The first recorded channel will become the Master channel. This one set the time frame for all later recorded loops.
+For the Master Channel the recording time will be streched/clipped to match the next full beat time point.
+
+To record a new loop, switch to a other channel, select your instrument and press "Record" again to start recording.
+
+The later recorded loops will be synced to the master loop. When the recording time extend the absolute Master loop time
+record will be switched off. Absolute time is not bound to the loop point, so you could record loops crossing it.
+You could as well stop recording by pess "Record" again before the time expires.
+
+Each Channel could be cleared and re-recorded seperate at any time.
+
+You could record the connected input device or play the Keyboard itself.
+
 ## Dependencies
 
 - libfluidsynth-dev

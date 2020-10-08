@@ -293,7 +293,6 @@ void MidiRecord::start() {
                     is_sorted.store(true, std::memory_order_release);
                 return lhs.absoluteTime < rhs.absoluteTime;
             });
-
         }
         // when record stop, recalculate the delta time for sorted vector
         double aTime = 0.0;

@@ -114,6 +114,7 @@ public:
     jack_port_t *out_port;
     jack_nframes_t stPlay;
     jack_nframes_t stStart;
+    jack_nframes_t rcStart;
     jack_nframes_t start;
     jack_nframes_t absoluteStart;
     std::string client_name;
