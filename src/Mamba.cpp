@@ -294,15 +294,13 @@ void MidiRecord::start() {
                 return lhs.absoluteTime < rhs.absoluteTime;
             });
 
-            // recalculate the delta time for sorted vector
-            if (is_sorted.load(std::memory_order_acquire)) {
-                double aTime = 0.0;
-                for(std::vector<MidiEvent>::iterator i = play[channel].begin();
-                                                i != play[channel].end(); ++i) {
-                    (*i).deltaTime = (*i).absoluteTime - aTime;
-                    aTime = (*i).absoluteTime;
-                }
-            }
+        }
+        // when record stop, recalculate the delta time for sorted vector
+        double aTime = 0.0;
+        for(std::vector<MidiEvent>::iterator i = play[channel].begin();
+                                        i != play[channel].end(); ++i) {
+            (*i).deltaTime = (*i).absoluteTime - aTime;
+            aTime = (*i).absoluteTime;
         }
     });
 }

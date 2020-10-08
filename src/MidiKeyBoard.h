@@ -263,6 +263,7 @@ private:
                                 int x, int y, int width, int height);
     void get_port_entrys(Widget_t *parent, jack_port_t *my_port,
                                                 JackPortFlags type);
+    void find_next_beat_time(double *absoluteTime);
     void get_alsa_port_menu();
     void nsm_show_ui();
     void nsm_hide_ui();

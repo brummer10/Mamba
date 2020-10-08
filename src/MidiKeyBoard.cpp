@@ -1369,11 +1369,13 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    Widget_t *dia = open_message_dialog(xjmkb->win, INFO_BOX, _("Mamba"), 
-        _("Mamba v1.5 is written by Hermann Meyer|released under the BSD Zero Clause License"
-        "|https://github.com/brummer10/Mamba"
-        "|For MIDI file handling it uses libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala"
-        "|https://github.com/stump/libsmf"),NULL);
+    std::string info = _("Mamba ");
+    info += VERSION;
+    info += _(" is written by Hermann Meyer|released under the BSD Zero Clause License|");
+    info += "https://github.com/brummer10/Mamba";
+    info += _("|For MIDI file handling it uses libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala|");
+    info += "https://github.com/stump/libsmf";
+    Widget_t *dia = open_message_dialog(xjmkb->win, INFO_BOX, _("Mamba"), info.data(), NULL);
     XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
 }
 
@@ -1559,6 +1561,12 @@ void XKeyBoard::sostenuto_callback(void *w_, void* user_data) noexcept{
     xjmkb->mmessage->send_midi_cc(0xB0, 66, value*127, 3, false);
 }
 
+void XKeyBoard::find_next_beat_time(double *absoluteTime) {
+    double beat = 60.0/(double)song_bpm;
+    int beats = std::round(((*absoluteTime)/beat));
+    (*absoluteTime) = beats*beat;
+}
+
 // static
 void XKeyBoard::record_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
@@ -1592,6 +1600,8 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
         jack_nframes_t stop = jack_last_frame_time(xjmkb->xjack->client);
         double deltaTime = (double)(((stop) - xjmkb->xjack->start)/(double)xjmkb->xjack->SampleRate); // seconds
         double absoluteTime = (double)(((stop) - xjmkb->xjack->absoluteStart)/(double)xjmkb->xjack->SampleRate); // seconds
+        if(!xjmkb->xjack->get_max_loop_time() && !xjmkb->freewheel)
+            xjmkb->find_next_beat_time(&absoluteTime);
         mamba::MidiEvent ev = {{0x80, 0, 0}, 3, deltaTime, absoluteTime};
         xjmkb->xjack->rec.st->push_back(ev);
         xjmkb->xjack->rec.stop();
