@@ -11,15 +11,15 @@ Virtual MIDI Keyboard and MIDI file player/recorder for Jack Audio Connection Ki
 - Including [NSM](https://linuxaudio.github.io/new-session-manager/) support
 - Including [gettext](https://www.gnu.org/software/gettext/) localization support
 - Including [fluidsynth](https://github.com/FluidSynth/fluidsynth) support
-- Soundfont loader for fluidsynth
+- Sound-font loader for fluidsynth
 - Controls for fluidsynth reverb, chorus and channel pressure
 - Instrument selector for fluidsynth
 - Channel selector
 - Bank and Program selector
 - Keyboard mapping for qwertz, qwerty, azerty(fr) and azerty(be) selectable from menu
-- Keymap Editor to setup a custom Keymap
+- Key-map Editor to setup a custom Key-map
 - PC Keyboard mapping selector from C0 to C4
-- Pitchbend, Balance, Modwheel, Detune, Expression, Attack, Release, Volume and Velocity controllers
+- Pitch-bend, Balance, Mod-wheel, Detune, Expression, Attack, Release, Volume and Velocity controllers
 - Sustain and Sostenuto switches
 - Connection management Menu
 - Support MIDI-file load, save, record and play in loop
@@ -28,38 +28,55 @@ Virtual MIDI Keyboard and MIDI file player/recorder for Jack Audio Connection Ki
 - MIDI Through: forward ALSA MIDI in to jack
 - MIDI Through: forward MIDI input to output
 - MIDI input highlighting
-- Resizable to a full range 127 key view
+- Resizeable to a full range 127 key view
 - Load MIDI-files on command-line
 - Support jack_transport to start/stop MIDI-Loops
 - Keyboard Shortcuts
 - `ctrl + r` toggle Record Button
 - `ctrl + p` toggle Play Button
-- `ctrl + l` open load file dialog
-- `ctrl + s` open save file dialog
+- `ctrl + l` open load file dialogue
+- `ctrl + s` open save file dialogue
 - `ctrl + a` show info box
-- `ctrl + k` show Keymap Editor
+- `ctrl + k` show Key-map Editor
 - `ctrl + q` quit
 - `ctrl + c` quit
 
 ## Description
 
-16 Channel Live MIDI Looper: 
+### 16 Channel Live MIDI Looper: 
 
 To record a loop, press "Play" and then to start recording press "Record".
 To stop recording press record again. Playback will start immediately.
 
 The first recorded channel will become the Master channel. This one set the time frame for all later recorded loops.
-For the Master Channel the recording time will be streched/clipped to match the next full beat time point.
+For the Master Channel the recording time will be stretched/clipped to match the next full beat time point.
 
 To record a new loop, switch to a other channel, select your instrument and press "Record" again to start recording.
 
 The later recorded loops will be synced to the master loop. When the recording time extend the absolute Master loop time
 record will be switched off. Absolute time is not bound to the loop point, so you could record loops crossing it.
-You could as well stop recording by pess "Record" again before the time expires.
+You could as well stop recording by press "Record" again before the time expires.
 
-Each Channel could be cleared and re-recorded seperate at any time.
+Each Channel could be cleared and re-recorded separate at any time.
+even when you press "Record" on a already recorded channel, it will be cleared before recording starts.
 
 You could record the connected input device or play the Keyboard itself.
+
+### MIDI File player
+
+You could select a MIDI file with the File Selector. It will be loaded in the play buffer of the first channel,
+regardless how much channels it use. You could use then channel 2 - 16 to record your own playing into it.
+To play along with it you could use any channel.
+
+To save your work just go to Menu -> "File" -> "Save MIDI file as", select the path and enter a file name.
+If you don't give the usual file extension (*.mid 
+
+### Fluidsynth
+
+When you load a Sound-font via the Menu -> "Fluidsynth" -> "Load Sound-font" Mamba will start the Fluidsynth engine 
+and do the needed connections so that you could just play along. Menu -> "Fluidsynth" -> "Settings" will pop-up
+a new Window were you could select the Instrument for the channel and do settings for Fluisynth Reverb and Chorus.
+All you Settings will be saved on exit, so on next start you could just play along.
 
 ## Dependencies
 
