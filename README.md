@@ -43,6 +43,12 @@ Virtual MIDI Keyboard and MIDI file player/recorder for Jack Audio Connection Ki
 
 ## Description
 
+### Virtual MIDI Keyboard
+
+Mamba comes with some predefined key-maps, qwertz, qwerty, azerty(fr) and azerty(be), but you could define your own
+with the included Key-map Editor as well. Beside the computer keyboard and mouse, Mamba supports jack MIDI in and
+ALSA (seq) MIDI in. Output goes to jack MIDI out. Every channel use it's own Colour to display the played Notes per channel.
+
 ### 16 Channel Live MIDI Looper: 
 
 To record a loop, press "Play" and then to start recording press "Record".
@@ -67,9 +73,10 @@ You could record the connected input device or play the Keyboard itself.
 You could select a MIDI file with the File Selector. It will be loaded in the play buffer of the first channel,
 regardless how much channels it use. You could use then channel 2 - 16 to record your own playing into it.
 To play along with it you could use any channel.
+A loaded file will become the Master channel for the looper.
 
 To save your work just go to Menu -> "File" -> "Save MIDI file as", select the path and enter a file name.
-If you don't give the usual file extension (*.mid 
+If you don't give the usual file extension Mamba will add the extension .midi befor save it.
 
 ### Fluidsynth
 
