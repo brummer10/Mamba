@@ -1377,6 +1377,7 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
     info += "https://github.com/brummer10/Mamba";
     info += _("|For MIDI file handling it uses libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala|");
     info += "https://github.com/stump/libsmf";
+    info += _("|");
     Widget_t *dia = open_message_dialog(xjmkb->win, INFO_BOX, _("Mamba"), info.data(), NULL);
     XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
 }
