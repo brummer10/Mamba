@@ -307,6 +307,7 @@ public:
 
     static void dialog_load_response(void *w_, void* user_data);
     static void synth_load_response(void *w_, void* user_data);
+    static XKeyBoard* get_instance(void *w_);
 };
 
 } // namespace midikeyboard

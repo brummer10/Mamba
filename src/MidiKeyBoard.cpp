@@ -156,6 +156,13 @@ XKeyBoard::~XKeyBoard() {
     }
 }
 
+//static
+XKeyBoard* XKeyBoard::get_instance(void *w_) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    return (XKeyBoard*) win->parent_struct;
+}
+
 // GUI stuff starts here
 void XKeyBoard::set_config(const char *name, const char *client_id, bool op_gui) {
     client_name = client_id;
@@ -229,21 +236,25 @@ void XKeyBoard::read_config() {
         mamba::MidiEvent ev;
         int word = 0;
         double time = 0;
-        while (std::getline(vinfile, line)) {
-            std::istringstream buf(line);
-            buf >> word;
-            ev.buffer[0] = word;
-            buf >> word;
-            ev.buffer[1] = word;
-            buf >> word;
-            ev.buffer[2] = word;
-            buf >> word;
-            ev.num = word;
-            buf >> time;
-            ev.deltaTime = time;
-            buf >> time;
-            ev.absoluteTime = time;
-            xjack->rec.play[0].push_back(ev);
+        std::getline(vinfile, line);
+        for (int j = 0; j < 16; j++) {
+            while (std::getline(vinfile, line)) {
+                std::istringstream buf(line);
+                if(line.find("CHANNEL") != std::string::npos) break;
+                buf >> word;
+                ev.buffer[0] = word;
+                buf >> word;
+                ev.buffer[1] = word;
+                buf >> word;
+                ev.buffer[2] = word;
+                buf >> word;
+                ev.num = word;
+                buf >> time;
+                ev.deltaTime = time;
+                buf >> time;
+                ev.absoluteTime = time;
+                xjack->rec.play[j].push_back(ev);
+            }
         }
         vinfile.close();
     }
@@ -288,12 +299,15 @@ void XKeyBoard::save_config() {
          outfile << std::endl;
          outfile.close();
     }
-    if (need_save && xjack->rec.play[0].size()) {
+    if (need_save ) {
         std::ofstream outfile(config_file+"vec");
         if (outfile.is_open()) {
-            for(std::vector<mamba::MidiEvent>::const_iterator i = xjack->rec.play[0].begin(); i != xjack->rec.play[0].end(); ++i) {
-                outfile << (int)(*i).buffer[0] << " " << (int)(*i).buffer[1] << " " 
-                    << (int)(*i).buffer[2] << " " << (*i).num << " " << (*i).deltaTime << " " << (*i).absoluteTime << std::endl;
+            for (int j = 0; j < 16; j++) {
+                outfile << "[CHANNEL" << j << "]"  << std::endl;
+                for(std::vector<mamba::MidiEvent>::const_iterator i = xjack->rec.play[j].begin(); i != xjack->rec.play[j].end(); ++i) {
+                    outfile << (int)(*i).buffer[0] << " " << (int)(*i).buffer[1] << " " 
+                        << (int)(*i).buffer[2] << " " << (*i).num << " " << (*i).deltaTime << " " << (*i).absoluteTime << std::endl;
+                }
             }
             outfile.close();
         }
@@ -890,8 +904,7 @@ void dummy_callback(void *w_, void* user_data) {
 void XKeyBoard::animate_midi_keyboard(void *w_) {
     Widget_t *w = (Widget_t*)w_;
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
 
     if (xjmkb->xjack->transport_state_changed.load(std::memory_order_acquire)) {
         xjmkb->xjack->transport_state_changed.store(false, std::memory_order_release);
@@ -965,8 +978,7 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
 // static
 void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
     if (attrs.map_state != IsViewable) return;
@@ -977,16 +989,16 @@ void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
     Window root;
     Window * children;
     unsigned int num_children;
-    XQueryTree(win->app->dpy, win->widget,
+    XQueryTree(xjmkb->win->app->dpy, xjmkb->win->widget,
         &root, &parent, &children, &num_children);
     if (children) XFree(children);
-    if (win->widget == root || parent == root) parent = win->widget;
+    if (xjmkb->win->widget == root || parent == root) parent = xjmkb->win->widget;
     XGetWindowAttributes(w->app->dpy, parent, &attrs);
 
     int x1, y1;
     Window child;
-    XTranslateCoordinates( win->app->dpy, parent, DefaultRootWindow(
-                    win->app->dpy), 0, 0, &x1, &y1, &child );
+    XTranslateCoordinates( xjmkb->win->app->dpy, parent, DefaultRootWindow(
+                    xjmkb->win->app->dpy), 0, 0, &x1, &y1, &child );
 
     xjmkb->main_x = x1 - min(1,(width - attrs.width))/2;
     xjmkb->main_y = y1 - min(1,(height - attrs.height))/2;
@@ -997,7 +1009,7 @@ void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
     if (attrs.map_state != IsViewable) return;
     int y = xjmkb->main_y-226;
     if (xjmkb->main_y < 230) y = xjmkb->main_y + xjmkb->main_h+21;
-    XMoveWindow(win->app->dpy,xjmkb->synth_ui->widget, xjmkb->main_x, y);
+    XMoveWindow(xjmkb->win->app->dpy,xjmkb->synth_ui->widget, xjmkb->main_x, y);
 }
 
 void XKeyBoard::get_port_entrys(Widget_t *parent, jack_port_t *my_port, JackPortFlags type) {
@@ -1059,9 +1071,7 @@ void XKeyBoard::get_alsa_port_menu() {
 
 // static
 void XKeyBoard::make_connection_menu(void *w_, void* button, void* user_data) {
-    Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     xjmkb->get_port_entrys(xjmkb->outputs, xjmkb->xjack->out_port, JackPortIsInput);
     xjmkb->get_port_entrys(xjmkb->inputs, xjmkb->xjack->in_port, JackPortIsOutput);
     if (xjmkb->xalsa->is_running()) xjmkb->get_alsa_port_menu();
@@ -1070,8 +1080,7 @@ void XKeyBoard::make_connection_menu(void *w_, void* button, void* user_data) {
 // static
 void XKeyBoard::connection_in_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     Widget_t *menu = w->childlist->childs[0];
     Widget_t *view_port =  menu->childlist->childs[0];
     int i = (int)adj_get_value(w->adj);
@@ -1087,8 +1096,7 @@ void XKeyBoard::connection_in_callback(void *w_, void* user_data) {
 // static
 void XKeyBoard::connection_out_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     Widget_t *menu = w->childlist->childs[0];
     Widget_t *view_port =  menu->childlist->childs[0];
     int i = (int)adj_get_value(w->adj);
@@ -1104,8 +1112,6 @@ void XKeyBoard::connection_out_callback(void *w_, void* user_data) {
 // static
 void XKeyBoard::alsa_connection_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     Widget_t *menu = w->childlist->childs[0];
     Widget_t *view_port =  menu->childlist->childs[0];
     int i = (int)adj_get_value(w->adj);
@@ -1117,17 +1123,15 @@ void XKeyBoard::alsa_connection_callback(void *w_, void* user_data) {
         buf >> port;
     if (client == -1 || port == -1) return;
     if (adj_get_value(entry->adj)) {
-        xjmkb->xalsa->xalsa_connect(client, port);
+        XKeyBoard::get_instance(w)->xalsa->xalsa_connect(client, port);
     } else {
-        xjmkb->xalsa->xalsa_disconnect(client, port);
+        XKeyBoard::get_instance(w)->xalsa->xalsa_disconnect(client, port);
     }
 }
 
 // static
 void XKeyBoard::map_callback(void *w_, void* user_data) {
-    Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     xjmkb->visible = 1;
     if(!xjmkb->nsmsig.nsm_session_control)
         make_connection_menu(xjmkb->connection, NULL, NULL);
@@ -1135,16 +1139,13 @@ void XKeyBoard::map_callback(void *w_, void* user_data) {
 
 // static
 void XKeyBoard::unmap_callback(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     xjmkb->visible = 0;
 }
 
 // static
 void XKeyBoard::get_note(Widget_t *w, const int *key, const bool on_off) noexcept{
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     if (on_off) {
         xjmkb->mmessage->send_midi_cc(0x90, (*key),xjmkb->velocity, 3, false);
     } else {
@@ -1154,22 +1155,20 @@ void XKeyBoard::get_note(Widget_t *w, const int *key, const bool on_off) noexcep
 
 // static
 void XKeyBoard::get_all_notes_off(Widget_t *w, const int *value) noexcept{
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->mmessage->send_midi_cc(0xB0, 120, 0, 3, false);
 }
 
 // static
 void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
-    Widget_t *win = (Widget_t*)w_;
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     if(user_data !=NULL) {
          
 #ifdef __XDG_MIME_H__
         if(!strstr(xdg_mime_get_mime_type_from_file_name(*(const char**)user_data), "midi")) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
             _("Couldn't load file, is that a MIDI file?"),NULL);
-            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
             return;
         }
 #endif
@@ -1178,7 +1177,7 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
         if (!xjmkb->load.load_from_file(&xjmkb->xjack->rec.play[0], &xjmkb->song_bpm, *(const char**)user_data)) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
             _("Couldn't load file, is that a MIDI file?"),NULL);
-            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
         } else {
             for(int i = 1;i<16;i++)
                 xjmkb->xjack->rec.play[i].clear();
@@ -1199,8 +1198,7 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
 
 // static
 void XKeyBoard::dialog_save_response(void *w_, void* user_data) {
-    Widget_t *win = (Widget_t*)w_;
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     if(user_data !=NULL) {
         std::string filename = *(const char**)user_data;
         std::string::size_type idx;
@@ -1223,21 +1221,20 @@ void XKeyBoard::dialog_save_response(void *w_, void* user_data) {
 //static
 void XKeyBoard::file_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int value = (int)adj_get_value(w->adj);
     switch (value) {
         case(0):
         {
             Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
-            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
             xjmkb->win->func.dialog_callback = dialog_load_response;
         }
         break;
         case(1):
         {
             Widget_t *dia = save_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
-            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
             xjmkb->win->func.dialog_callback = dialog_save_response;
         }
         break;
@@ -1251,14 +1248,13 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
 
 // static
 void XKeyBoard::synth_load_response(void *w_, void* user_data) {
-    Widget_t *win = (Widget_t*)w_;
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     if(user_data !=NULL) {
          
         if( access(*(const char**)user_data, F_OK ) == -1 ) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
             _("Couldn't access file, sorry"),NULL);
-            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
             return;
         }
         if(xjmkb->fs_instruments) {
@@ -1271,7 +1267,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         if (xjmkb->xsynth->load_soundfont( *(const char**)user_data)) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
             _("Couldn't load file, is that a soundfont file?"),NULL);
-            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
             return;
         }
         xjmkb->rebuild_instrument_list();
@@ -1297,7 +1293,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             port_list = NULL;
         }
         XWindowAttributes attrs;
-        XGetWindowAttributes(win->app->dpy, (Window)xjmkb->synth_ui->widget, &attrs);
+        XGetWindowAttributes(xjmkb->win->app->dpy, (Window)xjmkb->synth_ui->widget, &attrs);
         if (attrs.map_state == IsViewable) {
             widget_show_all(xjmkb->fs_instruments);
         }
@@ -1330,14 +1326,13 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
 //static
 void XKeyBoard::synth_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int value = (int)adj_get_value(w->adj);
     switch (value) {
         case(0):
         {
             Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->soundfontpath.c_str(), ".sf");
-            XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
             xjmkb->win->func.dialog_callback = synth_load_response;
         }
         break;
@@ -1370,7 +1365,6 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
 void XKeyBoard::info_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     std::string info = _("Mamba ");
     info += VERSION;
     info += _(" is written by Hermann Meyer|released under the BSD Zero Clause License|");
@@ -1378,15 +1372,14 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
     info += _("|For MIDI file handling it uses libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala|");
     info += "https://github.com/stump/libsmf";
     info += _("|");
-    Widget_t *dia = open_message_dialog(xjmkb->win, INFO_BOX, _("Mamba"), info.data(), NULL);
+    Widget_t *dia = open_message_dialog(win, INFO_BOX, _("Mamba"), info.data(), NULL);
     XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
 }
 
 // static
 void XKeyBoard::channel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     if (xjmkb->xjack->play>0) {
         for (int i = 0; i<16;i++) 
@@ -1403,8 +1396,7 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::bank_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     if(!xjmkb->xsynth->synth_is_active()) {
         xjmkb->mbank = (int)adj_get_value(w->adj);
         xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3, false);
@@ -1414,8 +1406,7 @@ void XKeyBoard::bank_callback(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::program_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->mprogram = xjmkb->xjack->program = (int)adj_get_value(w->adj);
     xjmkb->mbank = xjmkb->xjack->bank = (int)adj_get_value(xjmkb->bank->adj);
     if(xjmkb->xsynth->synth_is_active()) {
@@ -1443,8 +1434,7 @@ void XKeyBoard::program_callback(void *w_, void* user_data) {
 // static
 void XKeyBoard::bpm_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->mbpm = (int)adj_get_value(w->adj);
     xjmkb->xjack->bpm_ratio = (double)xjmkb->song_bpm/(double)xjmkb->mbpm;
 }
@@ -1452,53 +1442,42 @@ void XKeyBoard::bpm_callback(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::modwheel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 1, value, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 1, value, 3, false);
 }
 
 // static
 void XKeyBoard::detune_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 94, value, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 94, value, 3, false);
 }
 
 // static
 void XKeyBoard::attack_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 73, value, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 73, value, 3, false);
 }
 
 // static
 void XKeyBoard::expression_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 11, value, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 11, value, 3, false);
 }
 
 // static 
 void XKeyBoard::release_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 72, value, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 72, value, 3, false);
 }
 
 // static 
 void XKeyBoard::volume_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->volume = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3, false);
 }
@@ -1506,62 +1485,50 @@ void XKeyBoard::volume_callback(void *w_, void* user_data) noexcept{
 // static 
 void XKeyBoard::velocity_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->velocity = value; 
+    XKeyBoard::get_instance(w)->velocity = value; 
 }
 
 // static
 void XKeyBoard::pitchwheel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
     unsigned int change = (unsigned int)(128 * value);
     unsigned int low = change & 0x7f;  // Low 7 bits
     unsigned int high = (change >> 7) & 0x7f;  // High 7 bits
-    xjmkb->mmessage->send_midi_cc(0xE0,  low, high, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xE0,  low, high, 3, false);
 }
 
 // static
 void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     adj_set_value(w->adj,64);
     int value = (int)adj_get_value(w->adj);
     unsigned int change = (unsigned int)(128 * value);
     unsigned int low = change & 0x7f;  // Low 7 bits
     unsigned int high = (change >> 7) & 0x7f;  // High 7 bits
-    xjmkb->mmessage->send_midi_cc(0xE0,  low, high, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xE0,  low, high, 3, false);
 }
 
 // static
 void XKeyBoard::balance_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 8, value, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 8, value, 3, false);
 }
 
 // static
 void XKeyBoard::sustain_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 64, value*127, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 64, value*127, 3, false);
 }
 
 // static
 void XKeyBoard::sostenuto_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
     int value = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 66, value*127, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 66, value*127, 3, false);
 }
 
 void XKeyBoard::find_next_beat_time(double *absoluteTime) {
@@ -1573,8 +1540,7 @@ void XKeyBoard::find_next_beat_time(double *absoluteTime) {
 // static
 void XKeyBoard::record_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int value = (int)adj_get_value(w->adj);
     xjmkb->xjack->record = value;
     if (value > 0) {
@@ -1618,8 +1584,7 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
 // static
 void XKeyBoard::play_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int value = (int)adj_get_value(w->adj);
     xjmkb->xjack->play = value;
     if (value < 1) {
@@ -1650,8 +1615,7 @@ void XKeyBoard::set_play_label(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::freewheel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int value = (int)adj_get_value(w->adj);
     xjmkb->xjack->freewheel = xjmkb->freewheel = xjmkb->save.freewheel = value;
 }
@@ -1659,8 +1623,7 @@ void XKeyBoard::freewheel_callback(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     if ((int)adj_get_value(w->adj) == 2) {
         xjmkb->xjack->play = 0.0;
@@ -1683,24 +1646,25 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
         snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
         xjmkb->time_line->label = xjmkb->time_line->input_label;
         expose_widget(xjmkb->time_line);
+        xjmkb->need_save = true;
     } else if ((int)adj_get_value(w->adj) == 3) {
         xjmkb->xjack->rec.play[xjmkb->xjack->rec.channel].clear();
         clear_key_matrix(keys->in_key_matrix[xjmkb->xjack->rec.channel]);
         xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->xjack->rec.channel, 123, 0, 3, true);
+        xjmkb->need_save = true;
     }
 }
 
 // static
 void XKeyBoard::layout_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     keys->layout = xjmkb->keylayout = (int)adj_get_value(w->adj);
     
     if ((int)adj_get_value(w->adj) == 3) {
         if( access(xjmkb->keymap_file.c_str(), F_OK ) == -1 ) {
-            open_custom_keymap(xjmkb->wid, win, xjmkb->keymap_file.c_str());
+            open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->keymap_file.c_str());
         }
     }
 }
@@ -1708,8 +1672,7 @@ void XKeyBoard::layout_callback(void *w_, void* user_data) {
 // static
 void XKeyBoard::octave_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     keys->octave = (int)12*adj_get_value(w->adj);
     xjmkb->octave = (int)adj_get_value(w->adj);
@@ -1719,8 +1682,7 @@ void XKeyBoard::octave_callback(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::view_channels_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xjack->view_channels = xjmkb->lchannels = (int)adj_get_value(w->adj);
     if (xjmkb->lchannels) {
         MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
@@ -1732,17 +1694,15 @@ void XKeyBoard::view_channels_callback(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::keymap_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     if ((int)adj_get_value(w->adj) == 2)
-        open_custom_keymap(xjmkb->wid, win, xjmkb->keymap_file.c_str());
+        open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->keymap_file.c_str());
 }
 
 // static
 void XKeyBoard::grab_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     if (adj_get_value(w->adj)) {
         XGrabKeyboard(xjmkb->win->app->dpy, xjmkb->wid->widget, true, 
                     GrabModeAsync, GrabModeAsync, CurrentTime); 
@@ -1754,8 +1714,7 @@ void XKeyBoard::grab_callback(void *w_, void* user_data) {
 // static
 void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     XKeyEvent *key = (XKeyEvent*)key_;
     if (!key) return;
     if (key->state & ControlMask) {
@@ -1775,7 +1734,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             case (XK_d):
             {
                 Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->soundfontpath.c_str(), ".sf");
-                XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+                XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
                 xjmkb->win->func.dialog_callback = synth_load_response;
             }
             break;
@@ -1805,13 +1764,13 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_k):
             {
-                open_custom_keymap(xjmkb->wid, win, xjmkb->keymap_file.c_str());
+                open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->keymap_file.c_str());
             }
             break;
             case (XK_l):
             {
                 Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
-                XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+                XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
                 xjmkb->win->func.dialog_callback = dialog_load_response;
             }
             break;
@@ -1875,7 +1834,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             case (XK_s):
             {
                 Widget_t *dia = save_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
-                XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
+                XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
                 xjmkb->win->func.dialog_callback = dialog_save_response;
             }
             break;
@@ -1918,9 +1877,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
 
 // static
 void XKeyBoard::key_release(void *w_, void *key_, void *user_data) {
-    Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     xjmkb->wid->func.key_release_callback(xjmkb->wid, key_, user_data);
 }
 
@@ -1937,17 +1894,14 @@ void XKeyBoard::draw_synth_ui(void *w_, void* user_data) noexcept{
 void XKeyBoard::synth_ui_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     if (w->flags & HAS_POINTER && !*(int*)user_data){
-        Widget_t *win = get_toplevel_widget(w->app);
-        XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-        xjmkb->show_synth_ui(0);
+        XKeyBoard::get_instance(w)->show_synth_ui(0);
     }
 }
 
 //static 
 void XKeyBoard::reverb_level_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->reverb_level = adj_get_value(w->adj);
     xjmkb->xsynth->set_reverb_levels();
 }
@@ -1955,8 +1909,7 @@ void XKeyBoard::reverb_level_callback(void *w_, void* user_data) {
 //static 
 void XKeyBoard::reverb_width_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->reverb_width = adj_get_value(w->adj);
     xjmkb->xsynth->set_reverb_levels();
 }
@@ -1964,8 +1917,7 @@ void XKeyBoard::reverb_width_callback(void *w_, void* user_data) {
 //static 
 void XKeyBoard::reverb_damp_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->reverb_damp = adj_get_value(w->adj);
     xjmkb->xsynth->set_reverb_levels();
 }
@@ -1973,8 +1925,7 @@ void XKeyBoard::reverb_damp_callback(void *w_, void* user_data) {
 //static 
 void XKeyBoard::reverb_roomsize_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->reverb_roomsize = adj_get_value(w->adj);
     xjmkb->xsynth->set_reverb_levels();
 }
@@ -1982,8 +1933,7 @@ void XKeyBoard::reverb_roomsize_callback(void *w_, void* user_data) {
 //static 
 void XKeyBoard::reverb_on_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->reverb_on = (int)adj_get_value(w->adj);
     xjmkb->xsynth->set_reverb_on(xjmkb->xsynth->reverb_on);
 }
@@ -1991,8 +1941,7 @@ void XKeyBoard::reverb_on_callback(void *w_, void* user_data) {
 //static 
 void XKeyBoard::chorus_type_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->chorus_type = (int)adj_get_value(w->adj);
     xjmkb->xsynth->set_chorus_levels();
 }
@@ -2000,8 +1949,7 @@ void XKeyBoard::chorus_type_callback(void *w_, void* user_data) {
 //static 
 void XKeyBoard::chorus_depth_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->chorus_depth = adj_get_value(w->adj);
     xjmkb->xsynth->set_chorus_levels();
 }
@@ -2009,8 +1957,7 @@ void XKeyBoard::chorus_depth_callback(void *w_, void* user_data) {
 //static 
 void XKeyBoard::chorus_speed_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->chorus_speed = adj_get_value(w->adj);
     xjmkb->xsynth->set_chorus_levels();
 }
@@ -2018,8 +1965,7 @@ void XKeyBoard::chorus_speed_callback(void *w_, void* user_data) {
 //static 
 void XKeyBoard::chorus_level_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->chorus_level = adj_get_value(w->adj);
     xjmkb->xsynth->set_chorus_levels();
 }
@@ -2027,8 +1973,7 @@ void XKeyBoard::chorus_level_callback(void *w_, void* user_data) {
 //static 
 void XKeyBoard::chorus_voices_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->chorus_voices = (int)adj_get_value(w->adj);
     xjmkb->xsynth->set_chorus_levels();
 }
@@ -2036,8 +1981,7 @@ void XKeyBoard::chorus_voices_callback(void *w_, void* user_data) {
 //static 
 void XKeyBoard::chorus_on_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->chorus_on = (int)adj_get_value(w->adj);
     xjmkb->xsynth->set_chorus_on(xjmkb->xsynth->chorus_on);
 }
@@ -2045,8 +1989,7 @@ void XKeyBoard::chorus_on_callback(void *w_, void* user_data) {
 // static
 void XKeyBoard::channel_pressure_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->set_channel_pressure(xjmkb->mchannel, (int)adj_get_value(w->adj));
 }
 
@@ -2261,8 +2204,7 @@ void XKeyBoard::exit_handle (int sig) {
 // static
 void XKeyBoard::win_mem_free(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     if(xjmkb->icon) {
         XFreePixmap(xjmkb->win->app->dpy, *xjmkb->icon);
         xjmkb->icon = NULL;
@@ -2444,5 +2386,7 @@ int main (int argc, char *argv[]) {
 
     exit (0);
 
-} // namespace midikeyboard
+} 
+
+
 
