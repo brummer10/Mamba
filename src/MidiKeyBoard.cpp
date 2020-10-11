@@ -1571,6 +1571,8 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
         double absoluteTime = (double)(((stop) - xjmkb->xjack->absoluteStart)/(double)xjmkb->xjack->SampleRate); // seconds
         if(!xjmkb->xjack->get_max_loop_time() && !xjmkb->freewheel)
             xjmkb->find_next_beat_time(&absoluteTime);
+        else if (xjmkb->xjack->get_max_loop_time() && !xjmkb->freewheel)
+            absoluteTime = xjmkb->xjack->get_max_loop_time();
         mamba::MidiEvent ev = {{0x80, 0, 0}, 3, deltaTime, absoluteTime};
         xjmkb->xjack->rec.st->push_back(ev);
         xjmkb->xjack->rec.stop();
