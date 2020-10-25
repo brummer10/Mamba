@@ -405,6 +405,11 @@ int XJack::jack_process(jack_nframes_t nframes, void *arg) {
         xjack->transport_state_changed.store(true, std::memory_order_release);
         xjack->transport_set.store((int)xjack->transport_state, std::memory_order_release);
     }
+    if (xjack->current.valid && xjack->current.beats_per_minute != (double)xjack->bpm) {
+        xjack->bpm = (unsigned int)xjack->current.beats_per_minute;
+        xjack->bpm_changed.store(true, std::memory_order_release);
+        xjack->bpm_set.store((int)xjack->bpm, std::memory_order_release);
+    } 
     void *in = jack_port_get_buffer (xjack->in_port, nframes);
     void *out = jack_port_get_buffer (xjack->out_port, nframes);
     jack_midi_clear_buffer(out);
