@@ -261,6 +261,8 @@ private:
 
     Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
+    Widget_t *add_keyboard_button(Widget_t *parent, const char * label,
+                                int x, int y, int width, int height);
     void get_port_entrys(Widget_t *parent, jack_port_t *my_port,
                                                 JackPortFlags type);
     void find_next_beat_time(double *absoluteTime);

@@ -577,6 +577,22 @@ Widget_t *XKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
     return wid;
 }
 
+Widget_t *XKeyBoard::add_keyboard_button(Widget_t *parent, const char * label,
+                                int x, int y, int width, int height) {
+    Widget_t *wid = add_toggle_button(parent,label, x, y, width, height);
+    XButton_t *xbutton = (XButton_t*) wid->parent_struct;
+    xbutton->pat = cairo_pattern_create_linear (0, 0, 0, height);
+    cairo_pattern_add_color_stop_rgba (xbutton->pat, 0,  0.2, 0.2, 0.2, 1.0);
+    cairo_pattern_add_color_stop_rgba (xbutton->pat, 0.5,  0.15, 0.15, 0.15, 1.0);
+    cairo_pattern_add_color_stop_rgba (xbutton->pat, 0.75,  0.1, 0.1, 0.1, 1.0);
+    cairo_pattern_add_color_stop_rgba (xbutton->pat, 1,  0.05, 0.05, 0.05, 1.0);
+    
+    wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    wid->func.key_press_callback = key_press;
+    wid->func.key_release_callback = key_release;
+    return wid;
+}
+
 void XKeyBoard::init_ui(Xputty *app) {
     win = create_window(app, DefaultRootWindow(app->dpy), 0, 0, 700, 265);
     XSelectInput(win->app->dpy, win->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
@@ -830,34 +846,22 @@ void XKeyBoard::init_ui(Xputty *app) {
     set_adjustment(w[6]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[6]->func.value_changed_callback = velocity_callback;
 
-    w[7] = add_toggle_button(win, _("Sustain"), 550, 70, 75, 30);
+    w[7] = add_keyboard_button(win, _("Sustain"), 550, 70, 75, 30);
     w[7]->data = SUSTAIN;
     w[7]->scale.gravity = ASPECT;
-    w[7]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     w[7]->func.value_changed_callback = sustain_callback;
-    w[7]->func.key_press_callback = key_press;
-    w[7]->func.key_release_callback = key_release;
 
-    w[8] = add_toggle_button(win, _("Sostenuto"), 550, 105, 75, 30);
+    w[8] = add_keyboard_button(win, _("Sostenuto"), 550, 105, 75, 30);
     w[8]->data = SOSTENUTO;
     w[8]->scale.gravity = ASPECT;
-    w[8]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     w[8]->func.value_changed_callback = sostenuto_callback;
-    w[8]->func.key_press_callback = key_press;
-    w[8]->func.key_release_callback = key_release;
 
-    record = add_toggle_button(win, _("_Record"), 635, 70, 55, 30);
-    record->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    record = add_keyboard_button(win, _("_Record"), 635, 70, 55, 30);
     record->func.value_changed_callback = record_callback;
-    record->func.key_press_callback = key_press;
-    record->func.key_release_callback = key_release;
 
-    play = add_toggle_button(win, _("_Play"), 635, 105, 55, 30);
-    play->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    play = add_keyboard_button(win, _("_Play"), 635, 105, 55, 30);
     play->func.adj_callback = set_play_label;
     play->func.value_changed_callback = play_callback;
-    play->func.key_press_callback = key_press;
-    play->func.key_release_callback = key_release;
 
     // open a widget for the keyboard layout
     wid = create_widget(app, win, 0, 145, 700, 120);
