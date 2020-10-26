@@ -579,14 +579,7 @@ Widget_t *XKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
 
 Widget_t *XKeyBoard::add_keyboard_button(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height) {
-    Widget_t *wid = add_toggle_button(parent,label, x, y, width, height);
-    XButton_t *xbutton = (XButton_t*) wid->parent_struct;
-    xbutton->pat = cairo_pattern_create_linear (0, 0, 0, height);
-    cairo_pattern_add_color_stop_rgba (xbutton->pat, 0,  0.2, 0.2, 0.2, 1.0);
-    cairo_pattern_add_color_stop_rgba (xbutton->pat, 0.5,  0.15, 0.15, 0.15, 1.0);
-    cairo_pattern_add_color_stop_rgba (xbutton->pat, 0.75,  0.1, 0.1, 0.1, 1.0);
-    cairo_pattern_add_color_stop_rgba (xbutton->pat, 1,  0.05, 0.05, 0.05, 1.0);
-    
+    Widget_t *wid = add_toggle_button(parent,label, x, y, width, height);   
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     wid->func.key_press_callback = key_press;
     wid->func.key_release_callback = key_release;
