@@ -479,10 +479,14 @@ static void draw_keyboard(void *w_, void* user_data) {
     k = 1;
     ik = -1;
     i = 0;
+    cairo_pattern_t *pat = cairo_pattern_create_linear (0, 0, 0, height_t*0.59);
+    cairo_pattern_add_color_stop_rgba(pat, 0.0, 0.85, 0.85, 0.85, 0.4);
+    cairo_pattern_add_color_stop_rgba(pat, 0.2, 0.0, 0.0, 0.0, 0.0);
+    cairo_pattern_add_color_stop_rgba(pat, 1.0, 0.0, 0.0, 0.0, 0.0);
 
     for(;i<width_t;i++) {
 
-       if (space!=3) {
+        if (space!=3) {
             ik = is_key_in_in_matrix(keys, k+keys->octave);
             cairo_set_line_width(w->crb, 1.0);
             cairo_rectangle(w->crb,i+15,0,20,height_t*0.59);
@@ -501,6 +505,8 @@ static void draw_keyboard(void *w_, void* user_data) {
                 cairo_set_line_width(w->crb, 1.0);
             }
 
+            cairo_fill_preserve(w->crb);
+            cairo_set_source(w->crb, pat);
             cairo_fill_preserve(w->crb);
             use_base_color_scheme(w, NORMAL_);
             cairo_stroke(w->crb);
@@ -525,6 +531,15 @@ static void draw_keyboard(void *w_, void* user_data) {
         k++;
         if(k>127)break;
     }
+    cairo_pattern_destroy (pat);
+    pat = cairo_pattern_create_linear (0, 0, 0, height_t);
+    cairo_pattern_add_color_stop_rgba(pat, 1.0, 0.0, 0.0, 0.0, 0.4);
+    cairo_pattern_add_color_stop_rgba(pat, 0.8, 0.0, 0.0, 0.0, 0.0);
+    cairo_pattern_add_color_stop_rgba(pat, 0.0, 0.0, 0.0, 0.0, 0.0);
+    cairo_set_source(w->crb, pat);
+    cairo_rectangle(w->crb,0,0,width_t,height_t);
+    cairo_fill(w->crb);
+    cairo_pattern_destroy (pat);
 }
 
 static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
@@ -845,6 +860,7 @@ void add_keyboard(Widget_t *wid, const char * label) {
     wid->func.leave_callback = leave_keyboard;
     wid->func.button_press_callback = button_pressed_keyboard;
     wid->func.button_release_callback = button_released_keyboard;
+    wid->func.double_click_callback = button_released_keyboard;
     wid->func.key_press_callback = key_press;
     wid->func.key_release_callback = key_release;
     wid->func.mem_free_callback = keyboard_mem_free;

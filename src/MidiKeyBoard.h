@@ -238,6 +238,7 @@ private:
     static void draw_board(void *w_, void* user_data) noexcept;
     static void draw_synth_ui(void *w_, void* user_data) noexcept;
     static void mk_draw_knob(void *w_, void* user_data) noexcept;
+    static void draw_button(void *w_, void* user_data) noexcept;
     static void set_play_label(void *w_, void* user_data) noexcept;
     static void win_mem_free(void *w_, void* user_data);
 
@@ -265,6 +266,10 @@ private:
                                 int x, int y, int width, int height);
     void get_port_entrys(Widget_t *parent, jack_port_t *my_port,
                                                 JackPortFlags type);
+    int remove_low_dash(char *str) noexcept;
+    void rounded_rectangle(cairo_t *cr,float x, float y, float width, float height);
+    void pattern_in(Widget_t *w, Color_state st, int height);
+    void pattern_out(Widget_t *w, int height);
     void find_next_beat_time(double *absoluteTime);
     void get_alsa_port_menu();
     void nsm_show_ui();

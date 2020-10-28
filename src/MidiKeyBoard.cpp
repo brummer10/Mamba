@@ -427,6 +427,144 @@ void XKeyBoard::draw_my_combobox_entrys(void *w_, void* user_data) noexcept{
     }
 }
 
+void XKeyBoard::rounded_rectangle(cairo_t *cr,float x, float y, float width, float height) {
+    cairo_new_path (cr);
+    cairo_move_to  (cr, x, (y + height)/2);
+    cairo_curve_to (cr, x ,y, x, y, (x + width)/2, y);
+    cairo_curve_to (cr, width, y, width, y, width, (y + height)/2);
+    cairo_curve_to (cr, width, height, width, height, (width + x)/2, height);
+    cairo_curve_to (cr, x, height, x, height, x, (y + height)/2);
+    cairo_close_path (cr);
+}
+
+void XKeyBoard::pattern_out(Widget_t *w, int height) {
+    cairo_pattern_t *pat = cairo_pattern_create_linear (0, -4, 0, height-4);
+    cairo_pattern_add_color_stop_rgba (pat, 0,  0.3, 0.3, 0.3, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 0.25,  0.2, 0.2, 0.2, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.15, 0.15, 0.15, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 0.75,  0.1, 0.1, 0.1, 1.0);
+    cairo_pattern_add_color_stop_rgba (pat, 1,  0.05, 0.05, 0.05, 1.0);
+    cairo_set_source(w->crb, pat);
+    cairo_pattern_destroy (pat);
+}
+
+void XKeyBoard::pattern_in(Widget_t *w, Color_state st, int height) {
+    Colors *c = get_color_scheme(w->app,st);
+    if (!c) return;
+    cairo_pattern_t *pat = cairo_pattern_create_linear (2, 2, 2, height);
+    cairo_pattern_add_color_stop_rgba(pat, 0.0, 0.0, 0.0, 0.0, 0.0);
+    cairo_pattern_add_color_stop_rgba(pat, 0.5, c->light[0],  c->light[1], c->light[2],  c->light[3]);
+    cairo_pattern_add_color_stop_rgba(pat, 1.0, 0.0, 0.0, 0.0, 0.0);
+    cairo_set_source(w->crb, pat);
+    cairo_pattern_destroy (pat);
+}
+
+int XKeyBoard::remove_low_dash(char *str)  noexcept{
+
+    char *src;
+    char *dst;
+    int i = 0;
+    int r = 0;
+    for (src = dst = str; *src != '\0'; src++) {
+        *dst = *src;
+        if (*dst != '_') {
+            dst++;
+        } else {
+            r = i;
+        }
+        i++;
+    }
+    *dst = '\0';
+    return r;
+}
+
+// static
+void XKeyBoard::draw_button(void *w_, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    if (!w) return;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    XWindowAttributes attrs;
+    XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
+    int width = attrs.width-2;
+    int height = attrs.height-2;
+    if (attrs.map_state != IsViewable) return;
+    if (!w->state && (int)w->adj_y->value) {
+        w->state = 3;
+    } else if (w->state == 3 && !(int)w->adj_y->value) {
+        w->state = 0;
+    }
+
+    xjmkb->rounded_rectangle(w->crb,2.0, 2.0, width, height);
+
+    if(w->state==0) {
+        cairo_set_line_width(w->crb, 1.0);
+        xjmkb->pattern_out(w, height);
+        cairo_fill_preserve(w->crb);
+        use_frame_color_scheme(w, PRELIGHT_);
+    } else if(w->state==1) {
+        xjmkb->pattern_out(w, height);
+        cairo_fill_preserve(w->crb);
+        cairo_set_line_width(w->crb, 1.5);
+        use_frame_color_scheme(w, PRELIGHT_);
+    } else if(w->state==2) {
+        xjmkb->pattern_in(w, SELECTED_, height);
+        cairo_fill_preserve(w->crb);
+        cairo_set_line_width(w->crb, 1.0);
+        use_frame_color_scheme(w, PRELIGHT_);
+    } else if(w->state==3) {
+        xjmkb->pattern_in(w, ACTIVE_, height);
+        cairo_fill_preserve(w->crb);
+        cairo_set_line_width(w->crb, 1.0);
+        use_frame_color_scheme(w, PRELIGHT_);
+    }
+    cairo_stroke(w->crb);
+
+    if(w->state==2) {
+        xjmkb->rounded_rectangle(w->crb,4.0, 4.0, width, height);
+        cairo_stroke(w->crb);
+        xjmkb->rounded_rectangle(w->crb,3.0, 3.0, width, height);
+        cairo_stroke(w->crb);
+    } else if (w->state==3) {
+        xjmkb->rounded_rectangle(w->crb,3.0, 3.0, width, height);
+        cairo_stroke(w->crb);
+    }
+
+    float offset = 0.0;
+    if(w->state==1 && ! (int)w->adj_y->value) {
+        offset = 1.0;
+    } else if(w->state==1) {
+        offset = 2.0;
+    } else if(w->state==2) {
+        offset = 2.0;
+    } else if(w->state==3) {
+        offset = 1.0;
+    }
+
+    cairo_text_extents_t extents;
+    use_text_color_scheme(w, get_color_state(w));
+    cairo_set_font_size (w->crb, w->app->normal_font/w->scale.ascale);
+
+    if (strstr(w->label, "_")) {
+        cairo_text_extents(w->crb, "--", &extents);
+        double underline = extents.width;
+        strncpy(w->input_label,w->label, sizeof(w->input_label)-1);
+        int pos = xjmkb->remove_low_dash(w->input_label);
+        int len = strlen(w->input_label);
+        cairo_text_extents(w->crb,w->input_label , &extents);
+        int set_line = (extents.width/len) * pos;
+        cairo_move_to (w->crb, (width-extents.width)*0.5 +offset, (height+extents.height)*0.5 +offset);
+        cairo_show_text(w->crb, w->input_label);
+        cairo_set_line_width(w->crb, 1.0);
+        cairo_move_to (w->crb, (width-extents.width)*0.5 +offset + set_line, (height+extents.height)*0.55 +offset);
+        cairo_line_to(w->crb,(width-extents.width)*0.5 +offset + set_line + underline, (height+extents.height)*0.55 +offset);
+        cairo_stroke(w->crb);
+    } else {
+        cairo_text_extents(w->crb,w->label , &extents);
+        cairo_move_to (w->crb, (width-extents.width)*0.5 +offset, (height+extents.height)*0.5 +offset);
+        cairo_show_text(w->crb, w->label);
+    }
+}
+
 // static
 void XKeyBoard::mk_draw_knob(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
@@ -547,6 +685,14 @@ void XKeyBoard::draw_board(void *w_, void* user_data) noexcept{
     int width = attrs.width;
     set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
     cairo_paint (w->crb);
+
+    cairo_pattern_t *pat = cairo_pattern_create_linear (0, 0, 0, 141);
+    cairo_pattern_add_color_stop_rgba(pat, 0.0, 0.0, 0.0, 0.0, 0.0);
+    cairo_pattern_add_color_stop_rgba(pat, 0.8, 0.0, 0.0, 0.0, 0.0);
+    cairo_pattern_add_color_stop_rgba(pat, 1.0, 0.0, 0.0, 0.0, 0.6);
+    cairo_set_source(w->crb, pat);
+    cairo_paint (w->crb);
+
     use_bg_color_scheme(w, NORMAL_);
     cairo_rectangle(w->crb,0,0,width,65);
     cairo_fill (w->crb);
@@ -564,6 +710,7 @@ void XKeyBoard::draw_board(void *w_, void* user_data) noexcept{
     cairo_rectangle(w->crb,0,63,width,2);
     cairo_fill_preserve (w->crb);
     cairo_stroke(w->crb);
+    cairo_pattern_destroy (pat);
 }
 
 Widget_t *XKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
@@ -581,6 +728,7 @@ Widget_t *XKeyBoard::add_keyboard_button(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height) {
     Widget_t *wid = add_toggle_button(parent,label, x, y, width, height);   
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    wid->func.expose_callback = draw_button;
     wid->func.key_press_callback = key_press;
     wid->func.key_release_callback = key_release;
     return wid;
