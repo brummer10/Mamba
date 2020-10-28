@@ -1422,6 +1422,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         std::string title = _("Fluidsynth - ");
         title += xjmkb->soundfontname;
         widget_set_title(xjmkb->synth_ui, title.c_str());
+        expose_widget(xjmkb->fs_instruments);
         const char **port_list = NULL;
         port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
         if (port_list) {
