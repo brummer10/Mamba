@@ -126,6 +126,7 @@ void XSynth::set_default_instruments() {
     int program = 0;
     for (unsigned int i = 0; i < 16; i++) {
         if (i >= instruments.size()) break;
+        if ((unsigned int)channel_instrument[i] > instruments.size()) continue;
         if (i == 9) continue;
         std::istringstream buf(instruments[channel_instrument[i]]);
         buf >> bank;
