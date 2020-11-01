@@ -1458,14 +1458,14 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         fp->filter = filter;
         fp->use_filter = 1;
         char *path = &xjmkb->soundfontpath[0];
-        fp_get_files(fp,path, 0);
+        fp_get_files(fp,path,0, 1);
         fprintf(stderr, " %s %i\n",path, fp->file_counter);
         for(unsigned int i = 0; i<fp->file_counter; i++) {
             fprintf(stderr, "%s\n", fp->file_names[i]);
         }
         fp_free(fp);
         free(fp);
-        */ 
+        */
     }
 }
 
@@ -2044,6 +2044,7 @@ void XKeyBoard::synth_ui_callback(void *w_, void* user_data) {
     if (w->flags & HAS_POINTER && !*(int*)user_data){
         XKeyBoard::get_instance(w)->show_synth_ui(0);
     }
+    adj_set_value(w->adj, 0.0);
 }
 
 //static 
@@ -2223,13 +2224,10 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_release_callback = key_release;
 
     // reverb
-    tmp = add_toggle_button(synth_ui, _("On"), 20,  150, 60, 30);
-    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp = add_keyboard_button(synth_ui, _("On"), 20,  150, 60, 30);
     tmp->func.adj_callback = set_on_off_label;
     tmp->func.value_changed_callback = reverb_on_callback;
     adj_set_value(tmp->adj,(float)xsynth->reverb_on);
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
 
     tmp = add_label(synth_ui,_("Reverb"),15,50,80,20);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -2270,13 +2268,10 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_toggle_button(synth_ui, _("On"), 290,  150, 60, 30);
-    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp = add_keyboard_button(synth_ui, _("On"), 290,  150, 60, 30);
     tmp->func.adj_callback = set_on_off_label;
     tmp->func.value_changed_callback = chorus_on_callback;
     adj_set_value(tmp->adj, (float)xsynth->chorus_on);
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
 
     tmp = add_keyboard_knob(synth_ui, _("voices"), 290, 70, 65, 75);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 99.0, 1.0, CL_CONTINUOS);
@@ -2323,11 +2318,8 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_release_callback = key_release;
 
     // general
-    tmp = add_button(synth_ui, _("Close"), 490, 150, 60, 30);
-    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp = add_keyboard_button(synth_ui, _("Close"), 490, 150, 60, 30);
     tmp->func.value_changed_callback = synth_ui_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
 }
 
 /******************* Exit handlers ********************/

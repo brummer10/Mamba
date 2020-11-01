@@ -300,12 +300,14 @@ public:
     Widget_t *wid;
     Widget_t *fs[3];
     Widget_t *fs_instruments;
+    Widget_t *fs_soundfont;
     int visible;
     int volume;
 
     void init_ui(Xputty *app);
     void init_synth_ui(Widget_t *win);
     void rebuild_instrument_list();
+    void rebuild_soundfont_list();
     void show_ui(int present);
     void show_synth_ui(int present);
     void read_config();
