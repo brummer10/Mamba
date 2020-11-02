@@ -43,6 +43,8 @@ If you don't give the usual file extension Mamba will add the extension .midi be
 
 ### Fluidsynth
 
+![Fluidsynth-settings](https://github.com/brummer10/Mamba/raw/master/Fluidsynth-settings.png)
+
 When you load a Sound-font via the Menu -> "Fluidsynth" -> "Load Sound-font" Mamba will start the Fluidsynth engine 
 and do the needed connections so that you could just play along. Menu -> "Fluidsynth" -> "Settings" will pop-up
 a new Window were you could select the Instrument for the channel and do settings for Fluisynth Reverb and Chorus.
