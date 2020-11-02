@@ -1447,6 +1447,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         xjmkb->fs[0]->state = 0;
         xjmkb->fs[1]->state = 0;
         xjmkb->fs[2]->state = 0;
+        xjmkb->rebuild_soundfont_list();
         /*
         // get all soundfonts from choosen directory
         FilePicker *fp = (FilePicker*)malloc(sizeof(FilePicker));
@@ -2183,6 +2184,46 @@ void XKeyBoard::rebuild_instrument_list() {
         combobox_set_active_entry(fs_instruments, i);
 }
 
+//static
+void XKeyBoard::soundfont_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    if (!strstr(xjmkb->soundfontname.data(), w->label)) {
+        std::string sf = xjmkb->soundfontpath;
+        sf +="/";
+        sf +=w->label;
+        const char*sf_load = sf.data();
+        xjmkb->synth_load_response(w, (void*)&sf_load);
+    }
+}
+
+void XKeyBoard::rebuild_soundfont_list() {
+    if(fs_soundfont) {
+        combobox_delete_entrys(fs_soundfont);
+    }
+    int active = 0;
+    // get all soundfonts from choosen directory
+    FilePicker *fp = (FilePicker*)malloc(sizeof(FilePicker));
+    fp_init(fp, soundfontpath.c_str());
+    std::string f = ".sf";
+    // filter will be free by FilePicker!!
+    char *filter = (char*)malloc(sizeof(char) * (f.length() + 1));
+    strcpy(filter, f.c_str());
+    fp->filter = filter;
+    fp->use_filter = 1;
+    char *path = &soundfontpath[0];
+    fp_get_files(fp,path,0, 1);
+    for(unsigned int i = 0; i<fp->file_counter; i++) {
+        combobox_add_entry(fs_soundfont, fp->file_names[i]);
+        if (strstr(soundfontname.data(), fp->file_names[i]))
+            active = i;
+    }
+    fp_free(fp);
+    free(fp);
+    combobox_set_active_entry(fs_soundfont, active);
+}
+
 void XKeyBoard::show_synth_ui(int present) {
     if(present) {
         widget_show_all(synth_ui);
@@ -2220,6 +2261,16 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     fs_instruments->func.key_press_callback = key_press;
     fs_instruments->func.key_release_callback = key_release;
     Widget_t *tmp = fs_instruments->childlist->childs[0];
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    fs_soundfont = add_combobox(synth_ui, _("Soundfonts"), 290, 10, 260, 30);
+    fs_soundfont->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    fs_soundfont->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    fs_soundfont->func.value_changed_callback = soundfont_callback;
+    fs_soundfont->func.key_press_callback = key_press;
+    fs_soundfont->func.key_release_callback = key_release;
+    tmp = fs_soundfont->childlist->childs[0];
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
@@ -2310,7 +2361,7 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_hslider(synth_ui, _("Channel Pressure"), 300, 10, 260, 30);
+    tmp = add_hslider(synth_ui, _("Channel Pressure"), 80, 150, 210, 30);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = channel_pressure_callback;
@@ -2497,6 +2548,7 @@ int main (int argc, char *argv[]) {
             xjmkb.fs[1]->state = 0;
             xjmkb.fs[2]->state = 0;
             xjmkb.rebuild_instrument_list();
+            xjmkb.rebuild_soundfont_list();
         }
         
         if (argc > 1) {

@@ -259,6 +259,7 @@ private:
     static void set_on_off_label(void *w_, void* user_data) noexcept;
     static void channel_pressure_callback(void *w_, void* user_data);
     static void instrument_callback(void *w_, void* user_data);
+    static void soundfont_callback(void *w_, void* user_data);
 
     Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
