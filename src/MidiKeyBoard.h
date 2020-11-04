@@ -224,6 +224,7 @@ private:
     static void view_channels_callback(void *w_, void* user_data) noexcept;
     static void animate_midi_keyboard(void *w_);
     static void dialog_save_response(void *w_, void* user_data);
+    static void dnd_load_response(void *w_, void* user_data);
 
     static void make_connection_menu(void *w_, void* button, void* user_data);
     static void connection_in_callback(void *w_, void* user_data);

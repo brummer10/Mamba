@@ -746,6 +746,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     win->scale.gravity = NORTHEAST;
     win->parent_struct = this;
     win->func.expose_callback = draw_board;
+    win->func.dnd_notify_callback = dnd_load_response;
     win->func.configure_notify_callback = win_configure_callback;
     win->func.mem_free_callback = win_mem_free;
     win->func.map_notify_callback = map_callback;
@@ -1305,10 +1306,30 @@ void XKeyBoard::get_all_notes_off(Widget_t *w, const int *value) noexcept{
 }
 
 // static
+void XKeyBoard::dnd_load_response(void *w_, void* user_data) {
+    if(user_data !=NULL) {
+        char* dndfile = NULL;
+        bool midi_done = false;
+        bool sf2_done = false;
+        dndfile = strtok(*(char**)user_data, "\r\n");
+        while (dndfile != NULL) {
+            if (strstr(dndfile, ".mid") && !midi_done) {
+                dialog_load_response(w_, (void*)&dndfile);
+                midi_done = true;
+            } else if (strstr(dndfile, ".sf") && !sf2_done) {
+                synth_load_response(w_, (void*)&dndfile);
+                sf2_done = true;
+            }
+            dndfile = strtok(NULL, "\r\n");
+        }
+    }
+}
+
+// static
 void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     if(user_data !=NULL) {
-         
+
 #ifdef __XDG_MIME_H__
         if(!strstr(xdg_mime_get_mime_type_from_file_name(*(const char**)user_data), "midi")) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
@@ -1317,6 +1338,7 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
             return;
         }
 #endif
+        float play = adj_get_value(xjmkb->play->adj);
         adj_set_value(xjmkb->play->adj,0.0);
         adj_set_value(xjmkb->record->adj,0.0);
         if (!xjmkb->load.load_from_file(&xjmkb->xjack->rec.play[0], &xjmkb->song_bpm, *(const char**)user_data)) {
@@ -1337,6 +1359,7 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
             snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
             xjmkb->time_line->label = xjmkb->time_line->input_label;
             expose_widget(xjmkb->time_line);
+            adj_set_value(xjmkb->play->adj, play);
         }
     }
 }
@@ -1395,6 +1418,11 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
 void XKeyBoard::synth_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     if(user_data !=NULL) {
+        float play = adj_get_value(xjmkb->play->adj);
+        adj_set_value(xjmkb->play->adj,0.0);
+        if ((int)play &&  xjmkb->xsynth->synth_is_active()) {
+            xjmkb->xsynth->unload_synth();
+        }
          
         if( access(*(const char**)user_data, F_OK ) == -1 ) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
@@ -1448,6 +1476,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         xjmkb->fs[1]->state = 0;
         xjmkb->fs[2]->state = 0;
         xjmkb->rebuild_soundfont_list();
+        adj_set_value(xjmkb->play->adj,play);
         /*
         // get all soundfonts from choosen directory
         FilePicker *fp = (FilePicker*)malloc(sizeof(FilePicker));
@@ -1649,7 +1678,18 @@ void XKeyBoard::pitchwheel_callback(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    adj_set_value(w->adj,64);
+    XButtonEvent *xbutton = (XButtonEvent*)button;
+    if (xbutton->button == Button4) {
+        float value = min(w->adj->max_value,max(w->adj->min_value, 
+                                w->adj->value + (w->adj->step * 10)));
+        adj_set_value(w->adj,value);
+    } else if (xbutton->button == Button5) {
+        float value = min(w->adj->max_value,max(w->adj->min_value, 
+                                w->adj->value + (w->adj->step * -10)));
+        adj_set_value(w->adj,value);
+    } else {
+        adj_set_value(w->adj,64);
+    }
     int value = (int)adj_get_value(w->adj);
     unsigned int change = (unsigned int)(128 * value);
     unsigned int low = change & 0x7f;  // Low 7 bits
@@ -2253,6 +2293,7 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     synth_ui->parent_struct = this;
     synth_ui->func.key_press_callback = key_press;
     synth_ui->func.key_release_callback = key_release;
+    synth_ui->func.dnd_notify_callback = dnd_load_response;
 
     fs_instruments = add_combobox(synth_ui, _("Instruments"), 20, 10, 260, 30);
     fs_instruments->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
