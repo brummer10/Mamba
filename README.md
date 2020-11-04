@@ -33,9 +33,9 @@ You could record the connected input device or play the Keyboard itself.
 
 ### MIDI File player
 
-You could select a MIDI file with the File Selector. It will be loaded in the play buffer of the first channel,
-regardless how much channels it use. You could use then channel 2 - 16 to record your own playing into it.
-To play along with it you could use any channel.
+You could select a MIDI file with the File Selector, or just drag'n drop it from your Filemanager on the Keyboard.
+It will be loaded in the play buffer of the first channel, regardless how much channels it use. 
+You could use then channel 2 - 16 to record your own playing into it. To play along with it you could use any channel.
 A loaded file will become the Master channel for the looper.
 
 To save your work just go to Menu -> "File" -> "Save MIDI file as", select the path and enter a file name.
@@ -45,9 +45,9 @@ If you don't give the usual file extension Mamba will add the extension .midi be
 
 ![Fluidsynth-settings](https://github.com/brummer10/Mamba/raw/master/Fluidsynth-settings.png)
 
-When you load a Sound-font via the Menu -> "Fluidsynth" -> "Load Sound-font" Mamba will start the Fluidsynth engine 
-and do the needed connections so that you could just play along. Menu -> "Fluidsynth" -> "Settings" will pop-up
-a new Window were you could select the Instrument for the channel and do settings for Fluisynth Reverb and Chorus.
+You could load a Sound-font via the Menu -> "Fluidsynth" -> "Load Sound-font", or drag'n drop it from your Filemanager on the Keyboard.
+Mamba will start the Fluidsynth engine and do the needed connections so that you could just play along.
+Menu -> "Fluidsynth" -> "Settings" will pop-up a new Window were you could select the Instrument for the channel and do settings for Fluisynth Reverb and Chorus.
 All your Settings will be saved on exit, so on next start you could just play along.
 
 
