@@ -190,6 +190,7 @@ private:
     int run_one_more;
     int lchannels;
     bool need_save;
+    bool pitch_scroll;
 
     static void get_note(Widget_t *w, const int *key, const bool on_off) noexcept;
     static void get_all_notes_off(Widget_t *w, const int *value) noexcept;
@@ -215,6 +216,7 @@ private:
     static void pitchwheel_callback(void *w_, void* user_data) noexcept;
     static void balance_callback(void *w_, void* user_data) noexcept;
     static void pitchwheel_release_callback(void *w_, void* button, void* user_data) noexcept;
+    static void pitchwheel_press_callback(void *w_, void* button, void* user_data) noexcept;
     static void sustain_callback(void *w_, void* user_data) noexcept;
     static void sostenuto_callback(void *w_, void* user_data) noexcept;
     static void record_callback(void *w_, void* user_data);

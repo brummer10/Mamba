@@ -122,6 +122,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     lchannels = 0;
     run_one_more = 0;
     need_save = false;
+    pitch_scroll = false;
     filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
@@ -952,6 +953,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     w[0]->data = PITCHBEND;
     w[0]->func.value_changed_callback = pitchwheel_callback;
     w[0]->func.button_release_callback = pitchwheel_release_callback;
+    w[0]->func.button_press_callback = pitchwheel_press_callback;
 
     w[9] = add_keyboard_knob(win, _("Balance"), 65, 65, 60, 75);
     w[9]->data = BALANCE;
@@ -1676,17 +1678,30 @@ void XKeyBoard::pitchwheel_callback(void *w_, void* user_data) noexcept{
 }
 
 // static
-void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_data) noexcept{
+void XKeyBoard::pitchwheel_press_callback(void *w_, void* button, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XButtonEvent *xbutton = (XButtonEvent*)button;
-    if (xbutton->button == Button4) {
+    if (xbutton->button == Button2) {
+        XKeyBoard::get_instance(w)->pitch_scroll = true;
+    }
+}
+
+// static
+void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    XButtonEvent *xbutton = (XButtonEvent*)button;
+    if (xbutton->button == Button4 && xjmkb->pitch_scroll) {
         float value = min(w->adj->max_value,max(w->adj->min_value, 
                                 w->adj->value + (w->adj->step * 10)));
         adj_set_value(w->adj,value);
-    } else if (xbutton->button == Button5) {
+    } else if (xbutton->button == Button5 && xjmkb->pitch_scroll) {
         float value = min(w->adj->max_value,max(w->adj->min_value, 
                                 w->adj->value + (w->adj->step * -10)));
         adj_set_value(w->adj,value);
+    } else if (xbutton->button == Button2) {
+        xjmkb->pitch_scroll = false;
+        adj_set_value(w->adj,64);
     } else {
         adj_set_value(w->adj,64);
     }
