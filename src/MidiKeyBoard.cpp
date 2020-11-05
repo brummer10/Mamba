@@ -743,6 +743,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     widget_set_icon_from_png(win,icon,LDVAR(midikeyboard_png));
     std::string tittle = client_name + _(" - Virtual Midi Keyboard");
     widget_set_title(win, tittle.c_str());
+    widget_set_dnd_aware(win);
     win->flags |= HAS_MEM | NO_AUTOREPEAT;
     win->scale.gravity = NORTHEAST;
     win->parent_struct = this;
@@ -1421,7 +1422,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     if(user_data !=NULL) {
         float play = adj_get_value(xjmkb->play->adj);
-        adj_set_value(xjmkb->play->adj,0.0);
+        //adj_set_value(xjmkb->play->adj,0.0);
         if ((int)play &&  xjmkb->xsynth->synth_is_active()) {
             xjmkb->xsynth->unload_synth();
         }
@@ -1478,26 +1479,6 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         xjmkb->fs[1]->state = 0;
         xjmkb->fs[2]->state = 0;
         xjmkb->rebuild_soundfont_list();
-        adj_set_value(xjmkb->play->adj,play);
-        /*
-        // get all soundfonts from choosen directory
-        FilePicker *fp = (FilePicker*)malloc(sizeof(FilePicker));
-        fp_init(fp, xjmkb->soundfontpath.c_str());
-        std::string f = ".sf";
-        // filter will be free by FilePicker!!
-        char *filter = (char*)malloc(sizeof(char) * (f.length() + 1));
-        strcpy(filter, f.c_str());
-        fp->filter = filter;
-        fp->use_filter = 1;
-        char *path = &xjmkb->soundfontpath[0];
-        fp_get_files(fp,path,0, 1);
-        fprintf(stderr, " %s %i\n",path, fp->file_counter);
-        for(unsigned int i = 0; i<fp->file_counter; i++) {
-            fprintf(stderr, "%s\n", fp->file_names[i]);
-        }
-        fp_free(fp);
-        free(fp);
-        */
     }
 }
 
@@ -2300,6 +2281,7 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     std::string title = _("Fluidsynth - ");
     title += soundfontname;
     widget_set_title(synth_ui, title.c_str());
+    widget_set_dnd_aware(synth_ui);
     synth_ui->flags &= ~USE_TRANSPARENCY;
     synth_ui->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     synth_ui->func.expose_callback = draw_synth_ui;
