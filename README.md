@@ -12,7 +12,16 @@ Mamba comes with some predefined key-maps, qwertz, qwerty, azerty(fr) and azerty
 with the included Key-map Editor as well. Beside the computer keyboard and mouse, Mamba supports jack MIDI in and
 ALSA (seq) MIDI in. Output goes to jack MIDI out. Every channel use it's own Colour to display the played Notes per channel.
 
-### 16 Channel Live MIDI Looper: 
+The MIDI-CC controllers on GUI could be controlled by the mouse or the keyboard. With the mouse you could use the mouse-wheel,
+or, press the left mouse button and move the mouse up/down. A special case is the Pitch-wheel control, to use it with the
+mouse-wheel, you must press the mouse-wheel while moving it. This is because of the spring back to default value behave of
+the Pitch-wheel. So, when you release the mouse-wheel press, the Pitch-wheel controller will spring back to default value '64'.
+
+To use the keyboard to controll the MIDI-CC controllers on GUI you could use the up/down key's on your PC-keeyboard.
+To select a controller it must be under the mouse pointer. When using the PC-keyboard to control the Pich-wheel, it wouldn't
+spring back to default.
+
+### 16 Channel Live MIDI Looper/Recorder: 
 
 To record a loop, press "Play" and then to start recording press "Record".
 To stop recording press record again. Playback will start immediately.
