@@ -25,7 +25,7 @@
 #include <unistd.h>
 
 static const char *notes[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
-static const char *octaves[] = {"0","1","2","3","4","5","6","7","8","9", "10"};
+static const char *octaves[] = {"-1","0","1","2","3","4","5","6","7","8","9", "10"};
 
 typedef struct {
     int active;
@@ -121,15 +121,15 @@ void draw_custom_keymap(void *w_, void* user_data) {
         cairo_text_extents(w->crb, s, &extents);
         cairo_move_to (w->crb, 10, (i*5));
         cairo_show_text(w->crb, s);
-        cairo_move_to (w->crb, 150, (i*5));
-        cairo_show_text(w->crb, notes[n]);
         cairo_move_to (w->crb, 180, (i*5));
+        cairo_show_text(w->crb, notes[n]);
+        cairo_move_to (w->crb, 205, (i*5));
         cairo_show_text(w->crb, octaves[o]);
         if (customkeys->keys[a]) {
-            cairo_move_to (w->crb, 50, (i*5));
+            cairo_move_to (w->crb, 70, (i*5));
             cairo_show_text(w->crb, XKeysymToString(customkeys->keys[a]));
         }
-        cairo_rectangle(w->crb,40,(i*5)-20,100,25);
+        cairo_rectangle(w->crb,60,(i*5)-20,100,25);
         cairo_stroke(w->crb);
         i +=5;
         a++;
