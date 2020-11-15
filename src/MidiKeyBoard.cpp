@@ -684,6 +684,7 @@ void XKeyBoard::draw_board(void *w_, void* user_data) noexcept{
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
     int width = attrs.width;
+    widget_set_scale(w);
     set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
     cairo_paint (w->crb);
 
@@ -712,6 +713,7 @@ void XKeyBoard::draw_board(void *w_, void* user_data) noexcept{
     cairo_fill_preserve (w->crb);
     cairo_stroke(w->crb);
     cairo_pattern_destroy (pat);
+    widget_reset_scale(w);
 }
 
 Widget_t *XKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
@@ -993,12 +995,10 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     w[7] = add_keyboard_button(win, _("Sustain"), 550, 70, 75, 30);
     w[7]->data = SUSTAIN;
-    w[7]->scale.gravity = ASPECT;
     w[7]->func.value_changed_callback = sustain_callback;
 
     w[8] = add_keyboard_button(win, _("Sostenuto"), 550, 105, 75, 30);
     w[8]->data = SOSTENUTO;
-    w[8]->scale.gravity = ASPECT;
     w[8]->func.value_changed_callback = sostenuto_callback;
 
     record = add_keyboard_button(win, _("_Record"), 635, 70, 55, 30);
@@ -1012,7 +1012,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     wid = create_widget(app, win, 0, 145, 700, 120);
     wid->flags &= ~USE_TRANSPARENCY;
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    wid->scale.gravity = NORTHEAST;
+    wid->scale.gravity = SOUTHCENTER;
     add_midi_keyboard(wid, keymap_file.c_str(), 0, 0, 700, 120);
 
     MidiKeyboard *keys = (MidiKeyboard*)wid->parent_struct;
