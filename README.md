@@ -9,8 +9,9 @@ Virtual MIDI Keyboard and MIDI file player/recorder for Jack Audio Connection Ki
 ### Virtual MIDI Keyboard
 
 Mamba comes with some predefined key-maps, qwertz, qwerty, azerty(fr) and azerty(be), but you could define your own
-with the included Key-map Editor as well. Beside the computer keyboard and mouse, Mamba supports jack MIDI in and
-ALSA (seq) MIDI in. Output goes to jack MIDI out. Every channel use it's own Colour to display the played Notes per channel.
+with the included Key-map Editor as well. Beside the computer keyboard and mouse, Mamba supports jack<interconnect>ALSA MIDI in and
+out. Every channel use it's own Colour to display the played Notes per channel.
+Jack and ALSA connections could be mannaged within the connection menu.
 
 The MIDI-CC controllers on GUI could be controlled by the mouse or the keyboard. With the mouse you could use the mouse-wheel,
 or, press the left mouse button and move the mouse up/down. A special case is the Pitch-wheel control, to use it with the
@@ -63,7 +64,7 @@ All your Settings will be saved on exit, so on next start you could just play al
 ## Features
 
 - Virtual MIDI Keyboard for [Jack Audio Connection Kit](https://jackaudio.org/)
-- Including [ALSA](https://www.alsa-project.org/wiki/Main_Page) MIDI in support
+- Including [ALSA](https://www.alsa-project.org/wiki/Main_Page) MIDI support
 - Including [NSM](https://linuxaudio.github.io/new-session-manager/) support
 - Including [gettext](https://www.gnu.org/software/gettext/) localization support
 - Including [fluidsynth](https://github.com/FluidSynth/fluidsynth) support
