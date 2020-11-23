@@ -25,6 +25,7 @@
 #include <jack/midiport.h>
 
 #include "Mamba.h"
+#include "XAlsa.h"
 
 
 #pragma once
@@ -73,6 +74,7 @@ class XJack : public sigc::trackable {
 private:
     mamba::MidiMessenger *mmessage;
     MidiClockToBpm mp;
+    xalsa::XAlsa *xalsa;
     timespec ts1;
     jack_nframes_t event_count;
     jack_nframes_t stop;
@@ -102,7 +104,7 @@ private:
     static int jack_process(jack_nframes_t nframes, void *arg);
 
 public:
-    XJack(mamba::MidiMessenger *mmessage);
+    XJack(mamba::MidiMessenger *mmessage, xalsa::XAlsa *xalsa);
     ~XJack();
     std::atomic<bool> transport_state_changed;
     std::atomic<int> transport_set;

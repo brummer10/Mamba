@@ -821,6 +821,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     inputs = menu_add_submenu(connection,_("Jack input"));
     outputs = menu_add_submenu(connection,_("Jack output"));
     alsa_inputs = menu_add_submenu(connection,_("ALSA input"));
+    alsa_outputs = menu_add_submenu(connection,_("ALSA output"));
     connection->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     connection->func.key_press_callback = key_press;
     connection->func.key_release_callback = key_release;
@@ -828,6 +829,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     inputs->func.value_changed_callback = connection_in_callback;
     outputs->func.value_changed_callback = connection_out_callback;
     alsa_inputs->func.value_changed_callback = alsa_connection_callback;
+    alsa_outputs->func.value_changed_callback = alsa_oconnection_callback;
 
     synth = menubar_add_menu(menubar,_("Fl_uidsynth"));
     menu_add_entry(synth,_("Load Soun_dFont"));
@@ -1195,8 +1197,9 @@ void XKeyBoard::get_port_entrys(Widget_t *parent, jack_port_t *my_port, JackPort
 } 
 
 void XKeyBoard::get_alsa_port_menu() {
-    xalsa->xalsa_get_ports(&alsa_ports);
-    xalsa->xalsa_get_connections(&alsa_connections);
+    xalsa->xalsa_get_ports(&alsa_ports,&alsa_oports);
+    xalsa->xalsa_get_iconnections(&alsa_connections);
+    xalsa->xalsa_get_oconnections(&alsa_oconnections);
 
     Widget_t *menu = alsa_inputs->childlist->childs[0];
     Widget_t *view_port = menu->childlist->childs[0];
@@ -1209,6 +1212,24 @@ void XKeyBoard::get_alsa_port_menu() {
     for(std::vector<std::string>::const_iterator i = alsa_ports.begin(); i != alsa_ports.end(); ++i) {
         Widget_t *entry = menu_add_check_entry(alsa_inputs,(*i).c_str());
         for(std::vector<std::string>::const_iterator j = alsa_connections.begin(); j != alsa_connections.end(); ++j) {
+            if ((*i).find((*j)) != std::string::npos) {
+                adj_set_value(entry->adj,1.0);
+            } else {
+                adj_set_value(entry->adj,0.0);
+            }
+        }
+    }
+    menu = alsa_outputs->childlist->childs[0];
+    view_port = menu->childlist->childs[0];
+    
+    i = view_port->childlist->elem;
+    for(;i>-1;i--) {
+        menu_remove_item(menu,view_port->childlist->childs[i]);
+    }
+
+    for(std::vector<std::string>::const_iterator i = alsa_oports.begin(); i != alsa_oports.end(); ++i) {
+        Widget_t *entry = menu_add_check_entry(alsa_outputs,(*i).c_str());
+        for(std::vector<std::string>::const_iterator j = alsa_oconnections.begin(); j != alsa_oconnections.end(); ++j) {
             if ((*i).find((*j)) != std::string::npos) {
                 adj_set_value(entry->adj,1.0);
             } else {
@@ -1275,6 +1296,26 @@ void XKeyBoard::alsa_connection_callback(void *w_, void* user_data) {
         XKeyBoard::get_instance(w)->xalsa->xalsa_connect(client, port);
     } else {
         XKeyBoard::get_instance(w)->xalsa->xalsa_disconnect(client, port);
+    }
+}
+
+// static
+void XKeyBoard::alsa_oconnection_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *menu = w->childlist->childs[0];
+    Widget_t *view_port =  menu->childlist->childs[0];
+    int i = (int)adj_get_value(w->adj);
+    Widget_t *entry = view_port->childlist->childs[i];
+    int client = -1;
+    int port = -1;
+    std::istringstream buf(entry->label);
+        buf >> client;
+        buf >> port;
+    if (client == -1 || port == -1) return;
+    if (adj_get_value(entry->adj)) {
+        XKeyBoard::get_instance(w)->xalsa->xalsa_oconnect(client, port);
+    } else {
+        XKeyBoard::get_instance(w)->xalsa->xalsa_odisconnect(client, port);
     }
 }
 
@@ -2545,8 +2586,8 @@ int main (int argc, char *argv[]) {
     mamba::MidiMessenger mmessage;
     nsmhandler::NsmSignalHandler nsmsig;
     midikeyboard::AnimatedKeyBoard  animidi;
-    xjack::XJack xjack(&mmessage);
     xalsa::XAlsa xalsa(&mmessage);
+    xjack::XJack xjack(&mmessage, &xalsa);
     xsynth::XSynth xsynth;
     midikeyboard::XKeyBoard xjmkb(&xjack, &xalsa, &xsynth, &mmessage, nsmsig, xsig, &animidi);
     nsmhandler::NsmHandler nsmh(&nsmsig);
@@ -2559,7 +2600,8 @@ int main (int argc, char *argv[]) {
     
     xjmkb.init_ui(&app);
     if (xalsa.xalsa_init("Mamba", "input") >= 0) {
-        xalsa.xalsa_start((MidiKeyboard*)xjmkb.wid->parent_struct);
+        xalsa.xalsa_start(xjmkb.wid->parent_struct);
+        xalsa.xalsa_start_out();
     } else {
         fprintf(stderr, _("Couldn't open a alsa port, is the alsa sequencer running?\n"));
     }

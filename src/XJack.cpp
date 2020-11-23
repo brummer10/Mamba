@@ -83,10 +83,11 @@ bool MidiClockToBpm::time_to_bpm(double time, unsigned int* bpm_) {
  ** send all incomming midi events to XKeyBoard
  */
 
-XJack::XJack(mamba::MidiMessenger *mmessage_)
+XJack::XJack(mamba::MidiMessenger *mmessage_, xalsa::XAlsa *xalsa_)
     : sigc::trackable(),
      mmessage(mmessage_),
      mp(),
+     xalsa(xalsa_),
      event_count(0),
      stop(0),
      deltaTime(0),
@@ -265,6 +266,10 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
                         ch = false;
                     }
                 }
+                if (xalsa->is_running()) {
+                    xalsa->xamessage.send_midi_cc(midi_send[0], midi_send[1], midi_send[2], 3, true);
+                    xalsa->cv_out.notify_one();
+                }
                 if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
                     if (ev.buffer[2] > 0) // velocity 0 treaded as Note Off
                         std::async(std::launch::async, trigger_get_midi_in, (int(ev.buffer[0]&0x0f)), ev.buffer[1], true);
@@ -289,6 +294,10 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
             unsigned char* midi_send = jack_midi_event_reserve(buf, n, mmessage->size(i));
             if (midi_send) {
                 mmessage->fill(midi_send, i);
+                if (xalsa->is_running()) {
+                    xalsa->xamessage.send_midi_cc(midi_send[0], midi_send[1], midi_send[2], 3, true);
+                    xalsa->cv_out.notify_one();
+                }
                 if (record) record_midi(midi_send, n, mmessage->size(i));
             }
             i = mmessage->next(i);

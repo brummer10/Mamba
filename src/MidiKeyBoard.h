@@ -166,6 +166,7 @@ private:
     Widget_t *inputs;
     Widget_t *outputs;
     Widget_t *alsa_inputs;
+    Widget_t *alsa_outputs;
     Widget_t *bpm;
     Widget_t *songbpm;
     Widget_t *time_line;
@@ -232,6 +233,7 @@ private:
     static void connection_in_callback(void *w_, void* user_data);
     static void connection_out_callback(void *w_, void* user_data);
     static void alsa_connection_callback(void *w_, void* user_data);
+    static void alsa_oconnection_callback(void *w_, void* user_data);
     static void key_press(void *w_, void *key_, void *user_data);
     static void key_release(void *w_, void *key_, void *user_data);
     static void win_configure_callback(void *w_, void* user_data);
@@ -298,6 +300,8 @@ public:
     std::string soundfontname;
     std::vector<std::string> alsa_ports;
     std::vector<std::string> alsa_connections;
+    std::vector<std::string> alsa_oports;
+    std::vector<std::string> alsa_oconnections;
 
     bool has_config;
     Widget_t *win;
