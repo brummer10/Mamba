@@ -9,7 +9,7 @@ Virtual MIDI Keyboard and MIDI file player/recorder for Jack Audio Connection Ki
 ### Virtual MIDI Keyboard
 
 Mamba comes with some predefined key-maps, qwertz, qwerty, azerty(fr) and azerty(be), but you could define your own
-with the included Key-map Editor as well. Beside the computer keyboard and mouse, Mamba supports jack<interconnect>ALSA MIDI in and
+with the included Key-map Editor as well. Beside the computer keyboard and mouse, Mamba supports jack-interconnect-ALSA MIDI in and
 out. Every channel use it's own Colour to display the played Notes per channel.
 Jack and ALSA connections could be mannaged within the connection menu.
 
