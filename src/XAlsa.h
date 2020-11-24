@@ -38,7 +38,7 @@ namespace xalsa {
 /****************************************************************
  ** class MidiMessenger
  **
- ** create, collect and send all midi events to jack_midi out buffer
+ ** collect all midi events from jack_midi and send to alsa midi out buffer
  */
 
 class XAlsaMidiMessenger {

@@ -351,6 +351,9 @@ inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
         if (record)
             record_midi(midi_send, i, in_event.size);
 
+        xalsa->xamessage.send_midi_cc(midi_send[0], midi_send[1], midi_send[2], 3, true);
+        xalsa->cv_out.notify_one();
+
         if ((in_event.buffer[0] & 0xf0) == 0x90) {   // Note On
             std::async(std::launch::async, xjack->trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], true);
         } else if ((in_event.buffer[0] & 0xf0) == 0x80) {   // Note Off
