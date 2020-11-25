@@ -56,7 +56,7 @@ void XAlsaMidiMessenger::fill(uint8_t *event, int i) noexcept {
     send_cc[i].store(false, std::memory_order_release);
 }
 
-bool XAlsaMidiMessenger::send_midi_cc(uint8_t *midi_get, uint8_t _num) noexcept {
+bool XAlsaMidiMessenger::send_midi_cc(const uint8_t *midi_get, uint8_t _num) noexcept {
     for(int i = 0; i < max_midi_cc_cnt; i++) {
         if (send_cc[i].load(std::memory_order_acquire)) {
             if (cc_num[i] == midi_get[0] && pg_num[i] == midi_get[1] &&
@@ -78,14 +78,14 @@ bool XAlsaMidiMessenger::send_midi_cc(uint8_t *midi_get, uint8_t _num) noexcept 
  ** class XAlsa
  **
  ** forward alsa midi to jack midi
- ** 
+ ** forward jack midi to alsa midi
  */
 
 XAlsa::XAlsa(mamba::MidiMessenger *mmessage_) 
     :mmessage(mmessage_),
+    xamessage(),
     _execute(false),
-    _execute_out(false),
-    xamessage() {
+    _execute_out(false) {
     sequencer = -1;
     in_port = -1;
     out_port = -1;
@@ -253,7 +253,7 @@ void XAlsa::xalsa_stop() {
     }
 }
 
-void XAlsa::xalsa_output_notify(uint8_t *midi_get, uint8_t num) {
+void XAlsa::xalsa_output_notify(const uint8_t *midi_get, uint8_t num) noexcept {
     if (is_running()) {
         if (xamessage.send_midi_cc(midi_get, num))
             cv_out.notify_one();
