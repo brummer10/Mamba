@@ -90,6 +90,7 @@ private:
     unsigned int pos;
     unsigned int posPlay[16];
     int NotOn;
+    int priority;
 
     inline int find_pos_for_playtime() noexcept;
     inline int get_max_time_loop() noexcept;

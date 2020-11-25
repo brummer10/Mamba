@@ -19,6 +19,7 @@
  */
 
 #include "XJack.h"
+#include <jack/thread.h>
 
 namespace xjack {
 
@@ -123,6 +124,7 @@ XJack::XJack(mamba::MidiMessenger *mmessage_, xalsa::XAlsa *xalsa_)
         stPlay = 0;
         stStart = 0;
         rcStart = 0;
+        priority = -1;
         for ( int i = 0; i < 16; i++) posPlay[i] = 0;
         for ( int i = 0; i < 16; i++) startPlay[i] = 0;
         for ( int i = 0; i < 16; i++) stopPlay[i] = 0;
@@ -159,6 +161,10 @@ int XJack::init_jack() {
         fprintf (stderr, "jack isn't running with realtime priority\n");
     } else {
         fprintf (stderr, "jack running with realtime priority\n");
+        priority = jack_client_real_time_priority(client);
+        if (priority > 2) {
+            xalsa->xalsa_set_priority(priority);
+        }
     }
     return 1;
 }

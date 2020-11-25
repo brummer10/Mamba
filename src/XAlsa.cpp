@@ -120,6 +120,13 @@ int XAlsa::xalsa_init(const char *client, const char *port) {
     return sequencer;
 }
 
+void XAlsa::xalsa_set_priority(int priority) {
+    sched_param sch;
+    sch.sched_priority = priority/2;
+    pthread_setschedparam(_thd_out.native_handle(), SCHED_FIFO, &sch);
+    pthread_setschedparam(_thd.native_handle(), SCHED_FIFO, &sch);
+}
+
 void XAlsa::xalsa_get_ports(std::vector<std::string> *iports, std::vector<std::string> *oports) {
     if (sequencer < 0) return;
     iports->clear();

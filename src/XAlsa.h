@@ -120,6 +120,8 @@ public:
     void xalsa_start_out();
     // push mdi message from jack into 'queue' and inform output thread that work is to do
     void xalsa_output_notify(const uint8_t *midi_get, uint8_t num) noexcept;
+    // set the priority for the I/O threads
+    void xalsa_set_priority(int priority);
     // check if the sequencer is running
     bool is_running() const noexcept;
 };
