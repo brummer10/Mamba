@@ -96,7 +96,7 @@ private:
     inline void record_midi(unsigned char* midi_send, unsigned int n, int i) noexcept;
     inline void play_midi(void *buf, unsigned int n);
     inline void process_midi_out(void *buf, jack_nframes_t nframes);
-    inline void process_midi_in(void* buf, void* out_buf, void *arg);
+    inline void process_midi_in(void* buf, void* out_buf);
     static void jack_shutdown (void *arg);
     static int jack_xrun_callback(void *arg);
     static int jack_srate_callback(jack_nframes_t samplerate, void* arg);

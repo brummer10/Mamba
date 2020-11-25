@@ -266,10 +266,7 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
                         ch = false;
                     }
                 }
-                if (xalsa->is_running()) {
-                    xalsa->xamessage.send_midi_cc(midi_send[0], midi_send[1], midi_send[2], 3, true);
-                    xalsa->cv_out.notify_one();
-                }
+                xalsa->xalsa_output_notify(midi_send, ev.num);
                 if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
                     if (ev.buffer[2] > 0) // velocity 0 treaded as Note Off
                         std::async(std::launch::async, trigger_get_midi_in, (int(ev.buffer[0]&0x0f)), ev.buffer[1], true);
@@ -294,10 +291,7 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
             unsigned char* midi_send = jack_midi_event_reserve(buf, n, mmessage->size(i));
             if (midi_send) {
                 mmessage->fill(midi_send, i);
-                if (xalsa->is_running()) {
-                    xalsa->xamessage.send_midi_cc(midi_send[0], midi_send[1], midi_send[2], 3, true);
-                    xalsa->cv_out.notify_one();
-                }
+                xalsa->xalsa_output_notify(midi_send, mmessage->size(i));
                 if (record) record_midi(midi_send, n, mmessage->size(i));
             }
             i = mmessage->next(i);
@@ -308,35 +302,34 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
 }
 
 // jack process callback for the midi input
-inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
-    XJack *xjack = (XJack*)arg;
-    if (xjack->record && xjack->fresh_take) {
-        xjack->start = jack_last_frame_time(xjack->client);
-        xjack->absoluteStart = jack_last_frame_time(xjack->client);
-        xjack->absoluteRecordStart = jack_last_frame_time(xjack->client);
-        xjack->rcStart = jack_last_frame_time(xjack->client);
-        xjack->fresh_take = false;
+inline void XJack::process_midi_in(void* buf, void* out_buf) {
+    if (record && fresh_take) {
+        start = jack_last_frame_time(client);
+        absoluteStart = jack_last_frame_time(client);
+        absoluteRecordStart = jack_last_frame_time(client);
+        rcStart = jack_last_frame_time(client);
+        fresh_take = false;
         NotOn = 0;
-        int b = 0xB0 | xjack->mmessage->channel;
-        int p = 0xC0 | xjack->mmessage->channel;
-        const mamba::MidiEvent evb = {{(unsigned char)b, 32, (unsigned char)xjack->bank}, 3, 0, 0};
-        xjack->st->push_back(evb);
-        const mamba::MidiEvent evp = {{(unsigned char)p, (unsigned char)xjack->program, 0}, 2, 0, 0};
-        xjack->st->push_back(evp);
+        int b = 0xB0 | mmessage->channel;
+        int p = 0xC0 | mmessage->channel;
+        const mamba::MidiEvent evb = {{(unsigned char)b, 32, (unsigned char)bank}, 3, 0, 0};
+        st->push_back(evb);
+        const mamba::MidiEvent evp = {{(unsigned char)p, (unsigned char)program, 0}, 2, 0, 0};
+        st->push_back(evp);
 
-        if (!freewheel && xjack->play && (get_max_time_loop() > -1)) {
-            xjack->start = xjack->startPlay[xjack->mmessage->channel];
-            xjack->absoluteStart = xjack->startPlay[xjack->mmessage->channel];
+        if (!freewheel && play && (get_max_time_loop() > -1)) {
+            start = startPlay[mmessage->channel];
+            absoluteStart = startPlay[mmessage->channel];
         }
-    } else if (xjack->record_finished && !freewheel && (get_max_time_loop() > -1)) {
-        xjack->record_finished = 0;
-        if (xjack->rec.is_sorted.load(std::memory_order_acquire)) {
-            xjack->posPlay[xjack->mmessage->channel] = xjack->find_pos_for_playtime();
-            xjack->rec.is_sorted.store(false, std::memory_order_release);
+    } else if (record_finished && !freewheel && (get_max_time_loop() > -1)) {
+        record_finished = 0;
+        if (rec.is_sorted.load(std::memory_order_acquire)) {
+            posPlay[mmessage->channel] = find_pos_for_playtime();
+            rec.is_sorted.store(false, std::memory_order_release);
         } else {
-            xjack->posPlay[xjack->mmessage->channel] = xjack->posPlay[get_max_time_loop()];
+            posPlay[mmessage->channel] = posPlay[get_max_time_loop()];
         }
-        xjack->stStart = jack_last_frame_time(xjack->client);
+        stStart = jack_last_frame_time(client);
     }
     jack_midi_event_t in_event;
     event_count = jack_midi_get_event_count(buf);
@@ -350,21 +343,18 @@ inline void XJack::process_midi_in(void* buf, void* out_buf, void *arg) {
             midi_send[2] = in_event.buffer[2];
         if (record)
             record_midi(midi_send, i, in_event.size);
-
-        xalsa->xamessage.send_midi_cc(midi_send[0], midi_send[1], midi_send[2], 3, true);
-        xalsa->cv_out.notify_one();
-
+        xalsa->xalsa_output_notify(midi_send, in_event.size);
         if ((in_event.buffer[0] & 0xf0) == 0x90) {   // Note On
-            std::async(std::launch::async, xjack->trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], true);
+            std::async(std::launch::async, trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], true);
         } else if ((in_event.buffer[0] & 0xf0) == 0x80) {   // Note Off
-            std::async(std::launch::async, xjack->trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], false);
+            std::async(std::launch::async, trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], false);
         } else if ((in_event.buffer[0] ) == 0xf8) {   // midi beat clock
-            clock_gettime(CLOCK_MONOTONIC, &xjack->ts1);
-            double time0 = (ts1.tv_sec*1000000000.0)+(xjack->ts1.tv_nsec)+
-                    (1000000000.0/(double)(xjack->SampleRate/(double)in_event.time));
-            if (mp.time_to_bpm(time0, &xjack->bpm)) {
-                xjack->bpm_changed.store(true, std::memory_order_release);
-                xjack->bpm_set.store((int)xjack->bpm, std::memory_order_release);
+            clock_gettime(CLOCK_MONOTONIC, &ts1);
+            double time0 = (ts1.tv_sec*1000000000.0)+(ts1.tv_nsec)+
+                    (1000000000.0/(double)(SampleRate/(double)in_event.time));
+            if (mp.time_to_bpm(time0, &bpm)) {
+                bpm_changed.store(true, std::memory_order_release);
+                bpm_set.store((int)bpm, std::memory_order_release);
             }
         }
     }
@@ -425,7 +415,7 @@ int XJack::jack_process(jack_nframes_t nframes, void *arg) {
     void *in = jack_port_get_buffer (xjack->in_port, nframes);
     void *out = jack_port_get_buffer (xjack->out_port, nframes);
     jack_midi_clear_buffer(out);
-    xjack->process_midi_in(in, out, arg);
+    xjack->process_midi_in(in, out);
     xjack->process_midi_out(out,nframes);
     return 0;
 }

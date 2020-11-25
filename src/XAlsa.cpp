@@ -56,17 +56,16 @@ void XAlsaMidiMessenger::fill(uint8_t *event, int i) noexcept {
     send_cc[i].store(false, std::memory_order_release);
 }
 
-bool XAlsaMidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept {
-    if (!have_channel && channel < 16) _cc |=channel;
+bool XAlsaMidiMessenger::send_midi_cc(uint8_t *midi_get, uint8_t _num) noexcept {
     for(int i = 0; i < max_midi_cc_cnt; i++) {
         if (send_cc[i].load(std::memory_order_acquire)) {
-            if (cc_num[i] == _cc && pg_num[i] == _pg &&
-                bg_num[i] == _bgn && me_num[i] == _num)
+            if (cc_num[i] == midi_get[0] && pg_num[i] == midi_get[1] &&
+                bg_num[i] == midi_get[2] && me_num[i] == _num)
                 return true;
         } else if (!send_cc[i].load(std::memory_order_acquire)) {
-            cc_num[i] = _cc;
-            pg_num[i] = _pg;
-            bg_num[i] = _bgn;
+            cc_num[i] = midi_get[0];
+            pg_num[i] = midi_get[1];
+            bg_num[i] = midi_get[2];
             me_num[i] = _num;
             send_cc[i].store(true, std::memory_order_release);
             return true;
@@ -147,7 +146,8 @@ void XAlsa::xalsa_get_ports(std::vector<std::string> *iports, std::vector<std::s
                     snd_seq_client_info_get_name(cinfo),
                     snd_seq_port_info_get_name(pinfo));
                 iports->push_back(port);
-            } else if ((snd_seq_port_info_get_capability(pinfo) & (SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE)) &&
+            }
+            if ((snd_seq_port_info_get_capability(pinfo) & (SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE)) &&
                                  ((snd_seq_port_info_get_capability(pinfo) & SND_SEQ_PORT_CAP_NO_EXPORT) == 0) &&
                                          (snd_seq_port_info_get_type(pinfo) & SND_SEQ_PORT_TYPE_MIDI_GENERIC)) {
                 snprintf(port,256,"%3d %d %s:%s",
@@ -253,6 +253,13 @@ void XAlsa::xalsa_stop() {
     }
 }
 
+void XAlsa::xalsa_output_notify(uint8_t *midi_get, uint8_t num) {
+    if (is_running()) {
+        if (xamessage.send_midi_cc(midi_get, num))
+            cv_out.notify_one();
+    }
+}
+
 void XAlsa::xalsa_start_out() {
     if( _execute_out.load(std::memory_order_acquire) ) {
         xalsa_stop();
@@ -280,7 +287,19 @@ void XAlsa::xalsa_start_out() {
                     } else if (num == 0x80) {
                         snd_seq_ev_set_noteoff(&ev, channel, event[1], event[2]);
                     } else if (num == 0xB0) {
-                        snd_seq_ev_set_controller(&ev, channel, event[1], event[2]);
+                        if (event[1] == 120 || event[1] == 123) {
+                            // send ALL_NOTES_OFF and ALL_SOUND_OFF to all channels
+                            for(int i = 0; i<16;i++) {
+                                snd_seq_ev_clear(&ev);
+                                snd_seq_ev_set_subs(&ev);
+                                snd_seq_ev_set_direct(&ev);
+                                snd_seq_ev_set_controller(&ev, i, event[1], event[2]);
+                                snd_seq_event_output(seq_handle, &ev);
+                                snd_seq_drain_output(seq_handle);
+                            }
+                        } else {
+                            snd_seq_ev_set_controller(&ev, channel, event[1], event[2]);
+                        }
                     } else if (num == 0xC0) {
                         snd_seq_ev_set_pgmchange(&ev, channel, event[1]);
                     } else if (num == 0xE0) {

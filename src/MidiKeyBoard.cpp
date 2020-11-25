@@ -1214,9 +1214,7 @@ void XKeyBoard::get_alsa_port_menu() {
         for(std::vector<std::string>::const_iterator j = alsa_connections.begin(); j != alsa_connections.end(); ++j) {
             if ((*i).find((*j)) != std::string::npos) {
                 adj_set_value(entry->adj,1.0);
-            } else {
-                adj_set_value(entry->adj,0.0);
-            }
+            } 
         }
     }
     menu = alsa_outputs->childlist->childs[0];
@@ -1232,9 +1230,7 @@ void XKeyBoard::get_alsa_port_menu() {
         for(std::vector<std::string>::const_iterator j = alsa_oconnections.begin(); j != alsa_oconnections.end(); ++j) {
             if ((*i).find((*j)) != std::string::npos) {
                 adj_set_value(entry->adj,1.0);
-            } else {
-                adj_set_value(entry->adj,0.0);
-            }
+            } 
         }
     }
 }
