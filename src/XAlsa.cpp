@@ -81,8 +81,10 @@ bool XAlsaMidiMessenger::send_midi_cc(const uint8_t *midi_get, uint8_t _num) noe
  ** forward jack midi to alsa midi
  */
 
-XAlsa::XAlsa(mamba::MidiMessenger *mmessage_) 
-    :mmessage(mmessage_),
+XAlsa::XAlsa(std::function<void(
+        int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept> 
+        send_to_jack_) 
+    :send_to_jack(send_to_jack_),
     xamessage(),
     _execute(false),
     _execute_out(false) {
@@ -338,23 +340,23 @@ void XAlsa::xalsa_start(void *keys_) {
             snd_seq_event_t *ev = NULL;
             snd_seq_event_input(seq_handle, &ev);
             if (ev->type == SND_SEQ_EVENT_NOTEON) {
-                mmessage->send_midi_cc(0x90 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
+                send_to_jack(0x90 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
                 if (ev->data.note.velocity)
                     set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, true);
                 else
                     set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, false);
             } else if (ev->type == SND_SEQ_EVENT_NOTEOFF) {
-                mmessage->send_midi_cc(0x80 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
+                send_to_jack(0x80 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
                 set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, false);
             } else if(ev->type == SND_SEQ_EVENT_CONTROLLER) {
-                mmessage->send_midi_cc(0xB0 | ev->data.control.channel, ev->data.control.param, ev->data.control.value, 3, true);
+                send_to_jack(0xB0 | ev->data.control.channel, ev->data.control.param, ev->data.control.value, 3, true);
             } else if(ev->type == SND_SEQ_EVENT_PGMCHANGE) {
-                mmessage->send_midi_cc( 0xC0| ev->data.control.channel, ev->data.control.value, 0, 2, true);
+                send_to_jack( 0xC0| ev->data.control.channel, ev->data.control.value, 0, 2, true);
             } else if(ev->type == SND_SEQ_EVENT_PITCHBEND) {
                 unsigned int change = (unsigned int)(ev->data.control.value);
                 unsigned int low = change & 0x7f;  // Low 7 bits
                 unsigned int high = (change >> 7) & 0x7f;  // High 7 bits
-                mmessage->send_midi_cc(0xE0| ev->data.control.channel,  low, high, 3, true);
+                send_to_jack(0xE0| ev->data.control.channel,  low, high, 3, true);
             }
             snd_seq_free_event(ev);
         } 

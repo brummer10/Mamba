@@ -84,11 +84,14 @@ bool MidiClockToBpm::time_to_bpm(double time, unsigned int* bpm_) {
  ** send all incomming midi events to XKeyBoard
  */
 
-XJack::XJack(mamba::MidiMessenger *mmessage_, xalsa::XAlsa *xalsa_)
+XJack::XJack(mamba::MidiMessenger *mmessage_,
+        std::function<void(const uint8_t*,uint8_t) noexcept>  send_to_alsa_,
+        std::function<void(int)>  set_alsa_priority_)
     : sigc::trackable(),
      mmessage(mmessage_),
      mp(),
-     xalsa(xalsa_),
+     send_to_alsa(send_to_alsa_),
+     set_alsa_priority(set_alsa_priority_),
      event_count(0),
      stop(0),
      deltaTime(0),
@@ -163,7 +166,7 @@ int XJack::init_jack() {
         fprintf (stderr, "jack running with realtime priority\n");
         priority = jack_client_real_time_priority(client);
         if (priority > 2) {
-            xalsa->xalsa_set_priority(priority);
+            set_alsa_priority(priority);
         }
     }
     return 1;
@@ -272,7 +275,7 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
                         ch = false;
                     }
                 }
-                xalsa->xalsa_output_notify(midi_send, ev.num);
+                send_to_alsa(midi_send, ev.num);
                 if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
                     if (ev.buffer[2] > 0) // velocity 0 treaded as Note Off
                         std::async(std::launch::async, trigger_get_midi_in, (int(ev.buffer[0]&0x0f)), ev.buffer[1], true);
@@ -297,7 +300,7 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
             unsigned char* midi_send = jack_midi_event_reserve(buf, n, mmessage->size(i));
             if (midi_send) {
                 mmessage->fill(midi_send, i);
-                xalsa->xalsa_output_notify(midi_send, mmessage->size(i));
+                send_to_alsa(midi_send, mmessage->size(i));
                 if (record) record_midi(midi_send, n, mmessage->size(i));
             }
             i = mmessage->next(i);
@@ -349,7 +352,7 @@ inline void XJack::process_midi_in(void* buf, void* out_buf) {
             midi_send[2] = in_event.buffer[2];
         if (record)
             record_midi(midi_send, i, in_event.size);
-        xalsa->xalsa_output_notify(midi_send, in_event.size);
+        send_to_alsa(midi_send, in_event.size);
         if ((in_event.buffer[0] & 0xf0) == 0x90) {   // Note On
             std::async(std::launch::async, trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], true);
         } else if ((in_event.buffer[0] & 0xf0) == 0x80) {   // Note Off

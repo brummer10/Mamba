@@ -20,12 +20,12 @@
 
 #include <sigc++/sigc++.h>
 #include <future>
+#include <functional>
 
 #include <jack/jack.h>
 #include <jack/midiport.h>
 
 #include "Mamba.h"
-#include "XAlsa.h"
 
 
 #pragma once
@@ -74,7 +74,8 @@ class XJack : public sigc::trackable {
 private:
     mamba::MidiMessenger *mmessage;
     MidiClockToBpm mp;
-    xalsa::XAlsa *xalsa;
+    std::function<void(const uint8_t*,uint8_t) noexcept> send_to_alsa;
+    std::function<void(int)> set_alsa_priority;
     timespec ts1;
     jack_nframes_t event_count;
     jack_nframes_t stop;
@@ -105,7 +106,9 @@ private:
     static int jack_process(jack_nframes_t nframes, void *arg);
 
 public:
-    XJack(mamba::MidiMessenger *mmessage, xalsa::XAlsa *xalsa);
+    XJack(mamba::MidiMessenger *mmessage,
+        std::function<void(const uint8_t*,uint8_t) noexcept> send_to_alsa,
+        std::function<void(int)> set_alsa_priority);
     ~XJack();
     std::atomic<bool> transport_state_changed;
     std::atomic<int> transport_set;

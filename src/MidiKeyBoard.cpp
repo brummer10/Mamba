@@ -1470,6 +1470,12 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
             return;
         }
+        if (strstr(*(const char**)user_data, ".sfz")) {
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            _("Couldn't load file in sfz format, sorry"),NULL);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            return;
+        }
         if(xjmkb->fs_instruments) {
             combobox_delete_entrys(xjmkb->fs_instruments);
         }
@@ -2582,8 +2588,15 @@ int main (int argc, char *argv[]) {
     mamba::MidiMessenger mmessage;
     nsmhandler::NsmSignalHandler nsmsig;
     midikeyboard::AnimatedKeyBoard  animidi;
-    xalsa::XAlsa xalsa(&mmessage);
-    xjack::XJack xjack(&mmessage, &xalsa);
+
+    xalsa::XAlsa xalsa([&mmessage]
+        (int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept
+        {mmessage.send_midi_cc( _cc, _pg, _bgn, _num, have_channel);});
+
+    xjack::XJack xjack(&mmessage,
+        [&xalsa] (const uint8_t* m ,uint8_t n ) noexcept {xalsa.xalsa_output_notify(m,n);},
+        [&xalsa] (int p ) {xalsa.xalsa_set_priority(p);});
+
     xsynth::XSynth xsynth;
     midikeyboard::XKeyBoard xjmkb(&xjack, &xalsa, &xsynth, &mmessage, nsmsig, xsig, &animidi);
     nsmhandler::NsmHandler nsmh(&nsmsig);

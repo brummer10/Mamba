@@ -22,10 +22,10 @@
 #include <vector>
 #include <thread>
 #include <condition_variable>
+#include <functional>
 
 #include <alsa/asoundlib.h>
 
-#include "Mamba.h"
 
 #pragma once
 
@@ -67,8 +67,10 @@ public:
 
 class XAlsa {
 private:
-    // the midi message 'queue' for jack midi output
-    mamba::MidiMessenger *mmessage;
+    // send midi message to the 'queue' for jack midi output
+    std::function<void(
+        int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept>
+        send_to_jack;
     // the midi message 'queue' for alsa midi output
     XAlsaMidiMessenger xamessage;
     // the sequencer
@@ -93,7 +95,9 @@ private:
     std::mutex m;
 
 public:
-    XAlsa(mamba::MidiMessenger *mmessage_);
+    XAlsa(std::function<void(
+        int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept>
+        send_to_jack);
     ~XAlsa();
     // get all available ports for alsa midi in/output
     void xalsa_get_ports(std::vector<std::string> *ports,
