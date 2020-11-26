@@ -2608,9 +2608,10 @@ int main (int argc, char *argv[]) {
     main_init(&app);
     
     xjmkb.init_ui(&app);
-    if (xalsa.xalsa_init("Mamba", "input") >= 0) {
-        xalsa.xalsa_start(xjmkb.wid->parent_struct);
-        xalsa.xalsa_start_out();
+    if (xalsa.xalsa_init("Mamba", "input", "output") >= 0) {
+        MidiKeyboard *keys = (MidiKeyboard*)xjmkb.wid->parent_struct;
+        xalsa.xalsa_start([keys] (int channel, int key, bool set)
+            {set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
     } else {
         fprintf(stderr, _("Couldn't open a alsa port, is the alsa sequencer running?\n"));
     }

@@ -20,7 +20,6 @@
 
 
 #include "XAlsa.h"
-#include "xkeyboard.h"
 
 namespace xalsa {
 
@@ -105,14 +104,14 @@ XAlsa::~XAlsa() {
         snd_seq_close(seq_handle);
 }
 
-int XAlsa::xalsa_init(const char *client, const char *port) {
+int XAlsa::xalsa_init(const char *client_name, const char *input, const char *output) {
     sequencer = snd_seq_open(&seq_handle, "default", SND_SEQ_OPEN_DUPLEX, 0);
     if (sequencer < 0) return sequencer;
-    snd_seq_set_client_name(seq_handle, client);
-    out_port = snd_seq_create_simple_port(seq_handle, "output",
+    snd_seq_set_client_name(seq_handle, client_name);
+    out_port = snd_seq_create_simple_port(seq_handle, output,
                       SND_SEQ_PORT_CAP_READ|SND_SEQ_PORT_CAP_SUBS_READ,
                       SND_SEQ_PORT_TYPE_APPLICATION);
-    in_port = snd_seq_create_simple_port(seq_handle, port,
+    in_port = snd_seq_create_simple_port(seq_handle, input,
                       SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE,
                       SND_SEQ_PORT_TYPE_APPLICATION);
     if (in_port < 0) {
@@ -262,6 +261,11 @@ void XAlsa::xalsa_stop() {
     }
 }
 
+void XAlsa::xalsa_start(std::function<void(int,int,bool)> set_key) {
+    xalsa_start_input(set_key);
+    xalsa_start_output();
+}
+
 void XAlsa::xalsa_output_notify(const uint8_t *midi_get, uint8_t num) noexcept {
     if (is_running()) {
         if (xamessage.send_midi_cc(midi_get, num))
@@ -269,7 +273,7 @@ void XAlsa::xalsa_output_notify(const uint8_t *midi_get, uint8_t num) noexcept {
     }
 }
 
-void XAlsa::xalsa_start_out() {
+void XAlsa::xalsa_start_output() {
     if( _execute_out.load(std::memory_order_acquire) ) {
         xalsa_stop();
     };
@@ -325,13 +329,12 @@ void XAlsa::xalsa_start_out() {
     });
 }            
 
-void XAlsa::xalsa_start(void *keys_) {
+void XAlsa::xalsa_start_input(std::function<void(int,int,bool)> set_key) {
     if( _execute.load(std::memory_order_acquire) ) {
         xalsa_stop();
     };
     _execute.store(true, std::memory_order_release);
-    _thd = std::thread([this, keys_]() {
-        MidiKeyboard *keys = (MidiKeyboard*)keys_;
+    _thd = std::thread([this, set_key]() {
         while (_execute.load(std::memory_order_acquire)) {
             if (sequencer < 0) {
                 _execute.store(false, std::memory_order_release);
@@ -342,12 +345,12 @@ void XAlsa::xalsa_start(void *keys_) {
             if (ev->type == SND_SEQ_EVENT_NOTEON) {
                 send_to_jack(0x90 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
                 if (ev->data.note.velocity)
-                    set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, true);
+                    set_key(ev->data.control.channel, ev->data.note.note, true);
                 else
-                    set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, false);
+                    set_key(ev->data.control.channel, ev->data.note.note, false);
             } else if (ev->type == SND_SEQ_EVENT_NOTEOFF) {
                 send_to_jack(0x80 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
-                set_key_in_matrix(keys->in_key_matrix[ev->data.control.channel], ev->data.note.note, false);
+                set_key(ev->data.control.channel, ev->data.note.note, false);
             } else if(ev->type == SND_SEQ_EVENT_CONTROLLER) {
                 send_to_jack(0xB0 | ev->data.control.channel, ev->data.control.param, ev->data.control.value, 3, true);
             } else if(ev->type == SND_SEQ_EVENT_PGMCHANGE) {

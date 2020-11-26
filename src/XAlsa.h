@@ -93,6 +93,10 @@ private:
     std::thread _thd_out;
     // the mutex for the lock in the midi output loop
     std::mutex m;
+    // start the thread for midi input handling
+    void xalsa_start_input(std::function<void(int,int,bool)> set_key);
+    // start the port for midi output handling
+    void xalsa_start_output();
 
 public:
     XAlsa(std::function<void(
@@ -114,14 +118,12 @@ public:
     void xalsa_oconnect(int client, int port);
     // disconnect the output port from 'port'
     void xalsa_odisconnect(int client, int port);
+    // init the sequencer and create ports
+    int  xalsa_init(const char *client_name, const char *input, const char *output);
+    // start the threads for alsa midi handling
+    void xalsa_start(std::function<void(int,int,bool)> set_key);
     // stop the threads for alsa midi handling
     void xalsa_stop();
-    // init the sequencer and create ports
-    int  xalsa_init(const char *client, const char *port);
-    // start the thread for midi input handling
-    void xalsa_start(void *keys);
-    // start the port for midi output handling
-    void xalsa_start_out();
     // push mdi message from jack into 'queue' and inform output thread that work is to do
     void xalsa_output_notify(const uint8_t *midi_get, uint8_t num) noexcept;
     // set the priority for the I/O threads
