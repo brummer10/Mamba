@@ -52,10 +52,10 @@ private:
 public:
     XAlsaMidiMessenger();
     int channel;
-    bool send_midi_cc(const uint8_t *midi_get, uint8_t _num) noexcept;
+    bool send_midi_cc(const uint8_t *midi_get, const uint8_t _num) noexcept;
     int next(int i = -1) const noexcept;
-    inline int size(int i)  const noexcept { return me_num[i]; }
-    void fill(uint8_t *midi_send, int i) noexcept;
+    inline uint8_t size(const int i)  const noexcept { return me_num[i]; }
+    void fill(uint8_t *midi_send, const int i) noexcept;
 };
 
 /****************************************************************

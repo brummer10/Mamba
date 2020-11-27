@@ -57,7 +57,8 @@ void MidiMessenger::fill(unsigned char *midi_send, int i) noexcept {
     send_cc[i].store(false, std::memory_order_release);
 }
 
-bool MidiMessenger::send_midi_cc(int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept {
+bool MidiMessenger::send_midi_cc(uint8_t _cc, const uint8_t _pg, const uint8_t _bgn,
+                                const uint8_t _num, const bool have_channel) noexcept {
     if (!have_channel && channel < 16) _cc |=channel;
     for(int i = 0; i < max_midi_cc_cnt; i++) {
         if (send_cc[i].load(std::memory_order_acquire)) {

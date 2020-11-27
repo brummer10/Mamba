@@ -46,7 +46,7 @@ int XAlsaMidiMessenger::next(int i) const noexcept {
     return -1;
 }
 
-void XAlsaMidiMessenger::fill(uint8_t *event, int i) noexcept {
+void XAlsaMidiMessenger::fill(uint8_t *event, const int i) noexcept {
     if (size(i) == 3) {
         event[2] =  bg_num[i]; // velocity
     }
@@ -55,7 +55,8 @@ void XAlsaMidiMessenger::fill(uint8_t *event, int i) noexcept {
     send_cc[i].store(false, std::memory_order_release);
 }
 
-bool XAlsaMidiMessenger::send_midi_cc(const uint8_t *midi_get, uint8_t _num) noexcept {
+bool XAlsaMidiMessenger::send_midi_cc(const uint8_t *midi_get,
+                                    const uint8_t _num) noexcept {
     for(int i = 0; i < max_midi_cc_cnt; i++) {
         if (send_cc[i].load(std::memory_order_acquire)) {
             if (cc_num[i] == midi_get[0] && pg_num[i] == midi_get[1] &&

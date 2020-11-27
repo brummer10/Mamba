@@ -62,17 +62,18 @@ class MidiMessenger {
 private:
     static const int max_midi_cc_cnt = 25;
     std::atomic<bool> send_cc[max_midi_cc_cnt];
-    int cc_num[max_midi_cc_cnt];
-    int pg_num[max_midi_cc_cnt];
-    int bg_num[max_midi_cc_cnt];
-    int me_num[max_midi_cc_cnt];
+    uint8_t cc_num[max_midi_cc_cnt];
+    uint8_t pg_num[max_midi_cc_cnt];
+    uint8_t bg_num[max_midi_cc_cnt];
+    uint8_t me_num[max_midi_cc_cnt];
 public:
     MidiMessenger();
     int channel;
-    bool send_midi_cc(int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept;
+    bool send_midi_cc(uint8_t _cc, const uint8_t _pg, const uint8_t _bgn,
+                    const uint8_t _num, const bool have_channel) noexcept;
     int next(int i = -1) const noexcept;
-    inline int size(int i)  const noexcept { return me_num[i]; }
-    void fill(unsigned char *midi_send, int i) noexcept;
+    inline uint8_t size(const int i)  const noexcept { return me_num[i]; }
+    void fill(unsigned char *midi_send, const int i) noexcept;
 };
 
 
