@@ -193,6 +193,7 @@ private:
     bool need_save;
     bool pitch_scroll;
 
+    std::string remove_sub (std::string a, std::string b);
     static void get_note(Widget_t *w, const int *key, const bool on_off) noexcept;
     static void get_all_notes_off(Widget_t *w, const int *value) noexcept;
 

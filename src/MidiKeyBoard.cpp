@@ -164,6 +164,13 @@ XKeyBoard* XKeyBoard::get_instance(void *w_) {
     return (XKeyBoard*) win->parent_struct;
 }
 
+std::string XKeyBoard::remove_sub(std::string a, std::string b) {
+    std::string::size_type fpos = a.find(b);
+    if (fpos != std::string::npos )
+        a.erase(a.begin() + fpos, a.begin() + fpos + b.length());
+    return (a);
+}
+
 // GUI stuff starts here
 void XKeyBoard::set_config(const char *name, const char *client_id, bool op_gui) {
     client_name = client_id;
@@ -200,13 +207,13 @@ void XKeyBoard::read_config() {
             else if (key.compare("[keylayout]") == 0) keylayout = std::stoi(value);
             else if (key.compare("[mchannel]") == 0) mchannel = std::stoi(value);
             else if (key.compare("[velocity]") == 0) velocity = std::stoi(value);
-            else if (key.compare("[filepath]") == 0) filepath = value;
+            else if (key.compare("[filepath]") == 0) filepath = remove_sub(line, "[filepath] ");
             else if (key.compare("[octave]") == 0) octave = std::stoi(value);
             else if (key.compare("[volume]") == 0) volume = std::stoi(value);
             else if (key.compare("[freewheel]") == 0) freewheel = std::stoi(value);
             else if (key.compare("[lchannels]") == 0) lchannels = std::stoi(value);
-            else if (key.compare("[soundfontpath]") == 0) soundfontpath = value;
-            else if (key.compare("[soundfont]") == 0) soundfont = value;
+            else if (key.compare("[soundfontpath]") == 0) soundfontpath = remove_sub(line, "[soundfontpath] ");
+            else if (key.compare("[soundfont]") == 0) soundfont = remove_sub(line, "[soundfont] ");
             else if (key.compare("[reverb_on]") == 0) xsynth->reverb_on = std::stoi(value);
             else if (key.compare("[reverb_level]") == 0) xsynth->reverb_level = std::stof(value);
             else if (key.compare("[reverb_width]") == 0) xsynth->reverb_width = std::stof(value);
