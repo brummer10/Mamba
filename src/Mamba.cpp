@@ -117,6 +117,10 @@ bool MidiLoad::load_from_file(std::vector<MidiEvent> *play, int *song_bpm, const
                 continue;
             }
         }
+        // filter out 0xFF system reset message
+        if ((smf_event->midi_buffer[0] == 0xff)) {
+            continue;
+        }
         ev = {{smf_event->midi_buffer[0], smf_event->midi_buffer[1], smf_event->midi_buffer[2]},
                                         smf_event->midi_buffer_length, smf_event->time_seconds - deltaTime,
                                                                         smf_event->time_seconds};
