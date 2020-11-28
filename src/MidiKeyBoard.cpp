@@ -788,6 +788,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     filemenu = menubar_add_menu(menubar,_("_File"));
     menu_add_entry(filemenu,_("_Load MIDI"));
     menu_add_entry(filemenu,_("Add MIDI"));
+    menu_add_entry(filemenu,_("Remove last MIDI"));
     menu_add_entry(filemenu,_("_Save MIDI as"));
     menu_add_entry(filemenu,_("_Quit"));
     filemenu->func.value_changed_callback = file_callback;
@@ -1492,12 +1493,25 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
         break;
         case(2):
         {
+            float play = adj_get_value(xjmkb->play->adj);
+            adj_set_value(xjmkb->play->adj,0.0);
+            adj_set_value(xjmkb->record->adj,0.0);
+            xjmkb->load.remove_last_file(&xjmkb->xjack->rec.play[0]);
+            snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
+            xjmkb->time_line->label = xjmkb->time_line->input_label;
+            expose_widget(xjmkb->time_line);
+            if ((int)xjmkb->xjack->get_max_loop_time())
+                adj_set_value(xjmkb->play->adj, play);
+        }
+        break;
+        case(3):
+        {
             Widget_t *dia = save_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
             XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
             xjmkb->win->func.dialog_callback = dialog_save_response;
         }
         break;
-        case(3):
+        case(4):
             quit(xjmkb->win);
         break;
         default:

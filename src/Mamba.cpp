@@ -140,13 +140,21 @@ bool MidiLoad::load_file(std::vector<MidiEvent> *play, int *song_bpm, const char
 bool MidiLoad::load_from_file(std::vector<MidiEvent> *play, int *song_bpm, const char* file_name) {
     play->clear();
     absoluteTime = 0.0;
+    timestamps.push_back(play[0].end());
     return load_file(play, song_bpm, file_name);
 }
 
 bool MidiLoad::add_from_file(std::vector<MidiEvent> *play, int *song_bpm, const char* file_name) {
     const mamba::MidiEvent ev = play[0][play->size()-1];
     absoluteTime = ev.absoluteTime;
+    timestamps.push_back(play[0].end());
     return load_file(play, song_bpm, file_name);
+}
+
+void MidiLoad::remove_last_file(std::vector<MidiEvent> *play) {
+    if (!(timestamps.size()>0)) return;
+    play[0].erase(timestamps[timestamps.size()-1]+1,play[0].end());
+    timestamps.erase(timestamps.end()-1);
 }
 
 /****************************************************************

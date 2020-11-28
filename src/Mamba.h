@@ -93,6 +93,7 @@ private:
     void reset_smf();
     double deltaTime;
     double absoluteTime;
+    std::vector<std::vector<MidiEvent>::const_iterator> timestamps;
     bool load_file(std::vector<MidiEvent> *play, int *song_bpm, const char* file_name);
 
 public:
@@ -100,6 +101,7 @@ public:
     ~MidiLoad();
     bool load_from_file(std::vector<MidiEvent> *play, int *song_bpm, const char* file_name);
     bool add_from_file(std::vector<MidiEvent> *play, int *song_bpm, const char* file_name);
+    void remove_last_file(std::vector<MidiEvent> *play);
 };
 
 
