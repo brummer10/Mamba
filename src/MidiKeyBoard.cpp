@@ -787,6 +787,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     filemenu = menubar_add_menu(menubar,_("_File"));
     menu_add_entry(filemenu,_("_Load MIDI"));
+    menu_add_entry(filemenu,_("Add MIDI"));
     menu_add_entry(filemenu,_("_Save MIDI as"));
     menu_add_entry(filemenu,_("_Quit"));
     filemenu->func.value_changed_callback = file_callback;
@@ -1412,6 +1413,42 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
 }
 
 // static
+void XKeyBoard::dialog_add_response(void *w_, void* user_data) {
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
+    if(user_data !=NULL) {
+
+#ifdef __XDG_MIME_H__
+        if(!strstr(xdg_mime_get_mime_type_from_file_name(*(const char**)user_data), "midi")) {
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            _("Couldn't load file, is that a MIDI file?"),NULL);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            return;
+        }
+#endif
+        float play = adj_get_value(xjmkb->play->adj);
+        adj_set_value(xjmkb->play->adj,0.0);
+        adj_set_value(xjmkb->record->adj,0.0);
+        if (!xjmkb->load.add_from_file(&xjmkb->xjack->rec.play[0], &xjmkb->song_bpm, *(const char**)user_data)) {
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            _("Couldn't load file, is that a MIDI file?"),NULL);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+        } else {
+            xjmkb->filepath = dirname(*(char**)user_data);
+            std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard") + " - " + "Multifile";
+            widget_set_title(xjmkb->win, tittle.c_str());
+            adj_set_value(xjmkb->bpm->adj, xjmkb->song_bpm);
+            snprintf(xjmkb->songbpm->input_label, 31,_("File BPM: %d"),  (int) xjmkb->song_bpm);
+            xjmkb->songbpm->label = xjmkb->songbpm->input_label;
+            expose_widget(xjmkb->songbpm);
+            snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
+            xjmkb->time_line->label = xjmkb->time_line->input_label;
+            expose_widget(xjmkb->time_line);
+            adj_set_value(xjmkb->play->adj, play);
+        }
+    }
+}
+
+// static
 void XKeyBoard::dialog_save_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     if(user_data !=NULL) {
@@ -1448,12 +1485,19 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
         break;
         case(1):
         {
+            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            xjmkb->win->func.dialog_callback = dialog_add_response;
+        }
+        break;
+        case(2):
+        {
             Widget_t *dia = save_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
             XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
             xjmkb->win->func.dialog_callback = dialog_save_response;
         }
         break;
-        case(2):
+        case(3):
             quit(xjmkb->win);
         break;
         default:

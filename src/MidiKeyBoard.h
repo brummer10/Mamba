@@ -324,6 +324,7 @@ public:
     void set_config(const char *name, const char *client_id, bool op_gui);
 
     static void dialog_load_response(void *w_, void* user_data);
+    static void dialog_add_response(void *w_, void* user_data);
     static void synth_load_response(void *w_, void* user_data);
     static XKeyBoard* get_instance(void *w_);
 };

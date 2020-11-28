@@ -92,11 +92,14 @@ private:
     MidiEvent ev;
     void reset_smf();
     double deltaTime;
+    double absoluteTime;
+    bool load_file(std::vector<MidiEvent> *play, int *song_bpm, const char* file_name);
 
 public:
      MidiLoad();
     ~MidiLoad();
     bool load_from_file(std::vector<MidiEvent> *play, int *song_bpm, const char* file_name);
+    bool add_from_file(std::vector<MidiEvent> *play, int *song_bpm, const char* file_name);
 };
 
 
