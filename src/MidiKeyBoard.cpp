@@ -788,13 +788,17 @@ void XKeyBoard::init_ui(Xputty *app) {
     filemenu = menubar_add_menu(menubar,_("_File"));
     menu_add_entry(filemenu,_("_Load MIDI"));
     menu_add_entry(filemenu,_("Add MIDI"));
-    menu_add_entry(filemenu,_("Remove last MIDI"));
+    file_remove_menu = menu_add_submenu(filemenu, _("Remove MIDI"));
+    //menu_add_entry(filemenu,_("Remove last MIDI"));
     menu_add_entry(filemenu,_("_Save MIDI as"));
     menu_add_entry(filemenu,_("_Quit"));
     filemenu->func.value_changed_callback = file_callback;
     filemenu->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     filemenu->func.key_press_callback = key_press;
     filemenu->func.key_release_callback = key_release;
+    file_remove_menu->func.key_press_callback = key_press;
+    file_remove_menu->func.key_release_callback = key_release;
+    file_remove_menu->func.value_changed_callback = file_remove_callback;
 
     mapping = menubar_add_menu(menubar,_("_Mapping"));
     keymap = menu_add_submenu(mapping,_("Keyboard"));
@@ -1397,8 +1401,11 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
         } else {
             for(int i = 1;i<16;i++)
                 xjmkb->xjack->rec.play[i].clear();
+            xjmkb->file_names.clear();
             std::string file(basename(*(char**)user_data));
+            xjmkb->file_names.push_back(file);
             xjmkb->filepath = dirname(*(char**)user_data);
+            xjmkb->build_remove_menu();
             std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard") + " - " + file;
             widget_set_title(xjmkb->win, tittle.c_str());
             adj_set_value(xjmkb->bpm->adj, xjmkb->song_bpm);
@@ -1434,7 +1441,10 @@ void XKeyBoard::dialog_add_response(void *w_, void* user_data) {
             _("Couldn't load file, is that a MIDI file?"),NULL);
             XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
         } else {
+            std::string file(basename(*(char**)user_data));
+            xjmkb->file_names.push_back(file);
             xjmkb->filepath = dirname(*(char**)user_data);
+            xjmkb->build_remove_menu();
             std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard") + " - " + "Multifile";
             widget_set_title(xjmkb->win, tittle.c_str());
             adj_set_value(xjmkb->bpm->adj, xjmkb->song_bpm);
@@ -1471,6 +1481,44 @@ void XKeyBoard::dialog_save_response(void *w_, void* user_data) {
     }
 }
 
+void XKeyBoard::rebuld_remove_menu(void *w_, void* button, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    xjmkb->build_remove_menu();
+}
+
+void XKeyBoard::build_remove_menu() {
+    Widget_t *menu = file_remove_menu->childlist->childs[0];
+    Widget_t *view_port =  menu->childlist->childs[0];
+    int i = view_port->childlist->elem-1;
+    for(;i>-1;i--) {
+        menu_remove_item(menu,view_port->childlist->childs[i]);
+    }
+
+    for(std::vector<std::string>::const_iterator i = file_names.begin(); i != file_names.end(); ++i) {
+        Widget_t *entry = menu_add_entry(file_remove_menu,(*i).c_str());
+        entry->func.button_release_callback = rebuld_remove_menu;
+    }
+}
+
+//static
+void XKeyBoard::file_remove_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    int value = (int)adj_get_value(w->adj);
+    xjmkb->file_names.erase(xjmkb->file_names.begin()+value);
+    
+    float play = adj_get_value(xjmkb->play->adj);
+    adj_set_value(xjmkb->play->adj,0.0);
+    adj_set_value(xjmkb->record->adj,0.0);
+    xjmkb->load.remove_file(&xjmkb->xjack->rec.play[0], value);
+    snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
+    xjmkb->time_line->label = xjmkb->time_line->input_label;
+    expose_widget(xjmkb->time_line);
+    if ((int)xjmkb->xjack->get_max_loop_time())
+        adj_set_value(xjmkb->play->adj, play);    
+}
+
 //static
 void XKeyBoard::file_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
@@ -1493,15 +1541,6 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
         break;
         case(2):
         {
-            float play = adj_get_value(xjmkb->play->adj);
-            adj_set_value(xjmkb->play->adj,0.0);
-            adj_set_value(xjmkb->record->adj,0.0);
-            xjmkb->load.remove_last_file(&xjmkb->xjack->rec.play[0]);
-            snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
-            xjmkb->time_line->label = xjmkb->time_line->input_label;
-            expose_widget(xjmkb->time_line);
-            if ((int)xjmkb->xjack->get_max_loop_time())
-                adj_set_value(xjmkb->play->adj, play);
         }
         break;
         case(3):
@@ -1927,6 +1966,9 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
             xjmkb->xjack->rec.play[i].clear();
         for (int i = 0; i<16;i++) 
             clear_key_matrix(keys->in_key_matrix[i]);
+        xjmkb->file_names.clear();
+        xjmkb->build_remove_menu();
+        xjmkb->load.positions.clear();
         std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard");
         widget_set_title(xjmkb->win, tittle.c_str());
         adj_set_value(xjmkb->bpm->adj,120.0);
@@ -1941,6 +1983,11 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
         expose_widget(xjmkb->time_line);
         xjmkb->need_save = true;
     } else if ((int)adj_get_value(w->adj) == 3) {
+        if (xjmkb->xjack->rec.channel == 0) {
+            xjmkb->file_names.clear();
+            xjmkb->build_remove_menu();
+            xjmkb->load.positions.clear();
+        }
         xjmkb->xjack->rec.play[xjmkb->xjack->rec.channel].clear();
         clear_key_matrix(keys->in_key_matrix[xjmkb->xjack->rec.channel]);
         xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->xjack->rec.channel, 123, 0, 3, true);

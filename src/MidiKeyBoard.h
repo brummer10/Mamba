@@ -173,6 +173,7 @@ private:
     Widget_t *synth;
     Widget_t *synth_ui;
     Widget_t *menubar;
+    Widget_t *file_remove_menu;
     Pixmap *icon;
 
     int main_x;
@@ -199,6 +200,8 @@ private:
 
     static void info_callback(void *w_, void* user_data);
     static void file_callback(void *w_, void* user_data);
+    static void file_remove_callback(void *w_, void* user_data);
+    static void rebuld_remove_menu(void *w_, void* button, void* user_data);
     static void channel_callback(void *w_, void* user_data) noexcept;
     static void bank_callback(void *w_, void* user_data) noexcept;
     static void program_callback(void *w_, void* user_data);
@@ -285,6 +288,7 @@ private:
     void exit_handle (int sig);
     void quit_by_jack();
     void get_midi_in(int c, int n, bool on);
+    void build_remove_menu();
 public:
     XKeyBoard(xjack::XJack *xjack, xalsa::XAlsa *xalsa, xsynth::XSynth *xsynth,
         mamba::MidiMessenger *mmessage, nsmhandler::NsmSignalHandler& nsmsig,
@@ -303,6 +307,7 @@ public:
     std::vector<std::string> alsa_connections;
     std::vector<std::string> alsa_oports;
     std::vector<std::string> alsa_oconnections;
+    std::vector<std::string> file_names;
 
     bool has_config;
     Widget_t *win;
