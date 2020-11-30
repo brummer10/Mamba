@@ -1470,8 +1470,8 @@ void XKeyBoard::dialog_add_response(void *w_, void* user_data) {
             return;
         }
 #endif
-        float play = adj_get_value(xjmkb->play->adj);
-        adj_set_value(xjmkb->play->adj,0.0);
+        //float play = adj_get_value(xjmkb->play->adj);
+        //adj_set_value(xjmkb->play->adj,0.0);
         adj_set_value(xjmkb->record->adj,0.0);
         if (!xjmkb->load.add_from_file(&xjmkb->xjack->rec.play[0], &xjmkb->song_bpm, *(const char**)user_data)) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
@@ -1492,7 +1492,7 @@ void XKeyBoard::dialog_add_response(void *w_, void* user_data) {
             snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
             xjmkb->time_line->label = xjmkb->time_line->input_label;
             expose_widget(xjmkb->time_line);
-            adj_set_value(xjmkb->play->adj, play);
+            //adj_set_value(xjmkb->play->adj, play);
         }
     }
 }
@@ -1548,15 +1548,15 @@ void XKeyBoard::file_remove_callback(void *w_, void* user_data) {
     int value = (int)adj_get_value(w->adj);
     xjmkb->file_names.erase(xjmkb->file_names.begin()+value);
     
-    float play = adj_get_value(xjmkb->play->adj);
-    adj_set_value(xjmkb->play->adj,0.0);
+    //float play = adj_get_value(xjmkb->play->adj);
+    //adj_set_value(xjmkb->play->adj,0.0);
     adj_set_value(xjmkb->record->adj,0.0);
     xjmkb->load.remove_file(&xjmkb->xjack->rec.play[0], value);
     snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
     xjmkb->time_line->label = xjmkb->time_line->input_label;
     expose_widget(xjmkb->time_line);
-    if ((int)xjmkb->xjack->get_max_loop_time())
-        adj_set_value(xjmkb->play->adj, play);    
+    //if ((int)xjmkb->xjack->get_max_loop_time())
+    //    adj_set_value(xjmkb->play->adj, play);    
 }
 
 void XKeyBoard::build_recent_menu() {
