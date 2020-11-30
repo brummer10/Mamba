@@ -36,6 +36,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <queue>
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
@@ -174,6 +175,8 @@ private:
     Widget_t *synth_ui;
     Widget_t *menubar;
     Widget_t *file_remove_menu;
+    Widget_t *load_midi;
+    Widget_t *add_midi;
     Pixmap *icon;
 
     int main_x;
@@ -200,6 +203,8 @@ private:
 
     static void info_callback(void *w_, void* user_data);
     static void file_callback(void *w_, void* user_data);
+    static void load_midi_callback(void *w_, void* user_data);
+    static void add_midi_callback(void *w_, void* user_data);
     static void file_remove_callback(void *w_, void* user_data);
     static void rebuld_remove_menu(void *w_, void* button, void* user_data);
     static void channel_callback(void *w_, void* user_data) noexcept;
@@ -288,7 +293,9 @@ private:
     void exit_handle (int sig);
     void quit_by_jack();
     void get_midi_in(int c, int n, bool on);
+    void recent_file_manager(const char* file_);
     void build_remove_menu();
+    void build_recent_menu();
 public:
     XKeyBoard(xjack::XJack *xjack, xalsa::XAlsa *xalsa, xsynth::XSynth *xsynth,
         mamba::MidiMessenger *mmessage, nsmhandler::NsmSignalHandler& nsmsig,
@@ -308,6 +315,7 @@ public:
     std::vector<std::string> alsa_oports;
     std::vector<std::string> alsa_oconnections;
     std::vector<std::string> file_names;
+    std::vector<std::string> recent_files;
 
     bool has_config;
     Widget_t *win;

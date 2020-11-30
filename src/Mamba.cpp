@@ -152,8 +152,12 @@ bool MidiLoad::load_from_file(std::vector<MidiEvent> *play, int *song_bpm, const
 
 bool MidiLoad::add_from_file(std::vector<MidiEvent> *play, int *song_bpm, const char* file_name) {
     if (!positions.size()) positions.push_back(0);
-    const mamba::MidiEvent ev = play[0][play->size()-1];
-    absoluteTime = ev.absoluteTime;
+    if (play->size()) {
+        const mamba::MidiEvent ev = play[0][play->size()-1];
+        absoluteTime = ev.absoluteTime;
+    } else {
+        absoluteTime = 0.0;
+    }
     return load_file(play, song_bpm, file_name);
 }
 

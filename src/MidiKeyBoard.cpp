@@ -231,7 +231,7 @@ void XKeyBoard::read_config() {
                     buf >> value;
                 }
                 xsynth->channel_instrument[15] = std::stoi(value);
-            }
+            } else if (key.compare("[recent_files]") == 0) recent_files.push_back(remove_sub(line, "[recent_files] "));
             key.clear();
             value.clear();
         }
@@ -305,6 +305,9 @@ void XKeyBoard::save_config() {
              outfile << " " << xsynth->channel_instrument[i];
          }
          outfile << std::endl;
+         for (auto i : recent_files) {
+             outfile << "[recent_files] "  << i << std::endl;
+         }
          outfile.close();
     }
     if (need_save ) {
@@ -786,8 +789,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     menubar->func.key_release_callback = key_release;
 
     filemenu = menubar_add_menu(menubar,_("_File"));
-    menu_add_entry(filemenu,_("_Load MIDI"));
-    menu_add_entry(filemenu,_("Add MIDI"));
+    load_midi = menu_add_submenu(filemenu, _("_Load MIDI"));
+    menu_add_entry(load_midi,_("_Load New"));
+    add_midi = menu_add_submenu(filemenu, _("Add MIDI"));
+    menu_add_entry(add_midi,_("Add New"));
     file_remove_menu = menu_add_submenu(filemenu, _("Remove MIDI"));
     //menu_add_entry(filemenu,_("Remove last MIDI"));
     menu_add_entry(filemenu,_("_Save MIDI as"));
@@ -796,6 +801,12 @@ void XKeyBoard::init_ui(Xputty *app) {
     filemenu->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     filemenu->func.key_press_callback = key_press;
     filemenu->func.key_release_callback = key_release;
+    load_midi->func.key_press_callback = key_press;
+    load_midi->func.key_release_callback = key_release;
+    load_midi->func.value_changed_callback = load_midi_callback;
+    add_midi->func.key_press_callback = key_press;
+    add_midi->func.key_release_callback = key_release;
+    add_midi->func.value_changed_callback = add_midi_callback;
     file_remove_menu->func.key_press_callback = key_press;
     file_remove_menu->func.key_release_callback = key_release;
     file_remove_menu->func.value_changed_callback = file_remove_callback;
@@ -1053,6 +1064,9 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     // set window to saved size
     XResizeWindow (win->app->dpy, win->widget, main_w, main_h);
+
+    // build the recent files menu
+    build_recent_menu();
 
     init_synth_ui(win);
     // start the timeout thread for keyboard animation
@@ -1378,6 +1392,20 @@ void XKeyBoard::dnd_load_response(void *w_, void* user_data) {
     }
 }
 
+void XKeyBoard::recent_file_manager(const char* file_) {
+    bool add = true;
+    for (auto i : recent_files) {
+        if (strcmp(i.data(),file_) == 0) {
+            add = false;
+        }
+    }
+    if (add) {
+        recent_files.push_back(file_);
+        if (recent_files.size()>10) recent_files.erase(recent_files.begin());
+        build_recent_menu();
+    }
+}
+
 // static
 void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
@@ -1399,10 +1427,11 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
             _("Couldn't load file, is that a MIDI file?"),NULL);
             XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
         } else {
+            xjmkb->recent_file_manager(*(char**)user_data);
+            std::string file(basename(*(char**)user_data));
             for(int i = 1;i<16;i++)
                 xjmkb->xjack->rec.play[i].clear();
             xjmkb->file_names.clear();
-            std::string file(basename(*(char**)user_data));
             xjmkb->file_names.push_back(file);
             xjmkb->filepath = dirname(*(char**)user_data);
             xjmkb->build_remove_menu();
@@ -1441,6 +1470,7 @@ void XKeyBoard::dialog_add_response(void *w_, void* user_data) {
             _("Couldn't load file, is that a MIDI file?"),NULL);
             XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
         } else {
+            xjmkb->recent_file_manager(*(char**)user_data);
             std::string file(basename(*(char**)user_data));
             xjmkb->file_names.push_back(file);
             xjmkb->filepath = dirname(*(char**)user_data);
@@ -1482,6 +1512,8 @@ void XKeyBoard::dialog_save_response(void *w_, void* user_data) {
 }
 
 void XKeyBoard::rebuld_remove_menu(void *w_, void* button, void* user_data) {
+    XButtonEvent *xbutton = (XButtonEvent*)button;
+    if (xbutton->button == Button4 || xbutton->button == Button5) return;
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->build_remove_menu();
@@ -1519,6 +1551,62 @@ void XKeyBoard::file_remove_callback(void *w_, void* user_data) {
         adj_set_value(xjmkb->play->adj, play);    
 }
 
+void XKeyBoard::build_recent_menu() {
+    Widget_t *menu = load_midi->childlist->childs[0];
+    Widget_t *view_port =  menu->childlist->childs[0];
+    int i = view_port->childlist->elem-1;
+    for(;i>-1;i--) {
+        menu_remove_item(menu,view_port->childlist->childs[i]);
+    }
+    menu_add_entry(load_midi,_("_Load New"));
+
+    menu = add_midi->childlist->childs[0];
+    view_port =  menu->childlist->childs[0];
+    i = view_port->childlist->elem-1;
+    for(;i>-1;i--) {
+        menu_remove_item(menu,view_port->childlist->childs[i]);
+    }
+    menu_add_entry(add_midi,_("Add New"));
+
+    for(std::vector<std::string>::const_iterator i = recent_files.begin(); i != recent_files.end(); ++i) {
+        const char *cstr = basename((char*)(*i).c_str());
+        menu_add_entry(load_midi,cstr);
+        menu_add_entry(add_midi,cstr);
+    }
+}
+
+//static
+void XKeyBoard::load_midi_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    int value = (int)adj_get_value(w->adj);
+    if (value == 0) {
+        Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
+        XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+        xjmkb->win->func.dialog_callback = dialog_load_response;
+    } else {
+        std::string recent = xjmkb->recent_files[value-1];
+        char *cstr = &recent[0];
+        dialog_load_response(w, (void*)&cstr);
+    }
+}
+
+//static
+void XKeyBoard::add_midi_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    int value = (int)adj_get_value(w->adj);
+    if (value == 0) {
+        Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
+        XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+        xjmkb->win->func.dialog_callback = dialog_add_response;
+    } else {
+        std::string recent = xjmkb->recent_files[value-1];
+        char *cstr = &recent[0];
+        dialog_add_response(w, (void*)&cstr);
+    }
+}
+
 //static
 void XKeyBoard::file_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
@@ -1526,18 +1614,8 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
     int value = (int)adj_get_value(w->adj);
     switch (value) {
         case(0):
-        {
-            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
-            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
-            xjmkb->win->func.dialog_callback = dialog_load_response;
-        }
         break;
         case(1):
-        {
-            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
-            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
-            xjmkb->win->func.dialog_callback = dialog_add_response;
-        }
         break;
         case(2):
         {
