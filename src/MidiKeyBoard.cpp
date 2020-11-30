@@ -232,6 +232,7 @@ void XKeyBoard::read_config() {
                 }
                 xsynth->channel_instrument[15] = std::stoi(value);
             } else if (key.compare("[recent_files]") == 0) recent_files.push_back(remove_sub(line, "[recent_files] "));
+            else if (key.compare("[recent_sfonts]") == 0) recent_sfonts.push_back(remove_sub(line, "[recent_sfonts] "));
             key.clear();
             value.clear();
         }
@@ -307,6 +308,9 @@ void XKeyBoard::save_config() {
          outfile << std::endl;
          for (auto i : recent_files) {
              outfile << "[recent_files] "  << i << std::endl;
+         }
+         for (auto i : recent_sfonts) {
+             outfile << "[recent_sfonts] "  << i << std::endl;
          }
          outfile.close();
     }
@@ -856,7 +860,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     alsa_outputs->func.value_changed_callback = alsa_oconnection_callback;
 
     synth = menubar_add_menu(menubar,_("Fl_uidsynth"));
-    menu_add_entry(synth,_("Load Soun_dFont"));
+    sfont_menu = menu_add_submenu(synth,_("Load Soun_dFont"));
+    menu_add_entry(sfont_menu,_("Loa_d New"));
     fs[0] = menu_add_entry(synth,_("Fluidsy_nth Settings"));
     fs[0]->state = 4;
     fs[1] = menu_add_entry(synth,_("Fluids_ynth Panic"));
@@ -867,6 +872,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     synth->func.key_press_callback = key_press;
     synth->func.key_release_callback = key_release;
     synth->func.value_changed_callback = synth_callback;
+    sfont_menu->func.value_changed_callback = sfont_callback;
 
     looper = menubar_add_menu(menubar,_("Looper"));
     view_channels = menu_add_submenu(looper,_("Show"));
@@ -1067,6 +1073,8 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     // build the recent files menu
     build_recent_menu();
+    // build the recent sfont menu
+    build_sfont_menu();
 
     init_synth_ui(win);
     // start the timeout thread for keyboard animation
@@ -1636,6 +1644,35 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
     }
 }
 
+void XKeyBoard::build_sfont_menu() {
+    Widget_t *menu = sfont_menu->childlist->childs[0];
+    Widget_t *view_port =  menu->childlist->childs[0];
+    int i = view_port->childlist->elem-1;
+    for(;i>-1;i--) {
+        menu_remove_item(menu,view_port->childlist->childs[i]);
+    }
+    menu_add_entry(sfont_menu,_("Loa_d New"));
+
+    for(std::vector<std::string>::const_iterator i = recent_sfonts.begin(); i != recent_sfonts.end(); ++i) {
+        const char *cstr = basename((char*)(*i).c_str());
+        menu_add_entry(sfont_menu,cstr);
+    }
+}
+
+void XKeyBoard::recent_sfont_manager(const char* file_) {
+    bool add = true;
+    for (auto i : recent_sfonts) {
+        if (strcmp(i.data(),file_) == 0) {
+            add = false;
+        }
+    }
+    if (add) {
+        recent_sfonts.push_back(file_);
+        if (recent_sfonts.size()>10) recent_sfonts.erase(recent_sfonts.begin());
+        build_sfont_menu();
+    }
+}
+
 // static
 void XKeyBoard::synth_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
@@ -1671,6 +1708,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
             return;
         }
+        xjmkb->recent_sfont_manager(*(const char**)user_data);
         xjmkb->rebuild_instrument_list();
         xjmkb->soundfont =  *(const char**)user_data;
         xjmkb->soundfontname =  basename(*(char**)user_data);
@@ -1679,6 +1717,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         title += xjmkb->soundfontname;
         widget_set_title(xjmkb->synth_ui, title.c_str());
         expose_widget(xjmkb->fs_instruments);
+        expose_widget(xjmkb->fs_soundfont);
         const char **port_list = NULL;
         port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
         if (port_list) {
@@ -1708,6 +1747,22 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
 }
 
 //static
+void XKeyBoard::sfont_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    int value = (int)adj_get_value(w->adj);
+    if (value == 0) {
+        Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->soundfontpath.c_str(), ".sf");
+        XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+        xjmkb->win->func.dialog_callback = synth_load_response;
+    } else {
+        std::string recent = xjmkb->recent_sfonts[value-1];
+        char *cstr = &recent[0];
+        synth_load_response(w, (void*)&cstr);
+    }
+}
+
+//static
 void XKeyBoard::synth_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
@@ -1715,9 +1770,6 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
     switch (value) {
         case(0):
         {
-            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->soundfontpath.c_str(), ".sf");
-            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
-            xjmkb->win->func.dialog_callback = synth_load_response;
         }
         break;
         case(1):
