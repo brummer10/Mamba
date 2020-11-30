@@ -110,7 +110,7 @@ ifneq ("$(wildcard ./$(BUILD_DIR))","")
 	mkdir -p $(DESTDIR)$(DESKAPPS_DIR)
 	cp $(NAME).desktop $(DESTDIR)$(DESKAPPS_DIR)
 	mkdir -p $(DESTDIR)$(PIXMAPS_DIR)
-	cp $(NAME).png $(DESTDIR)$(PIXMAPS_DIR)
+	cp $(NAME).svg $(DESTDIR)$(PIXMAPS_DIR)
 	@if [ ${LANGW} -gt 1 ]; then \
 		for lang in $(LANGS) ; \
 		do \
@@ -134,6 +134,7 @@ endif
 uninstall :
 	@rm -rf $(DESTDIR)$(BIN_DIR)/$(EXEC_NAME)
 	@rm -rf $(DESTDIR)$(DESKAPPS_DIR)/$(NAME).desktop
+	@rm -rf $(DESTDIR)$(PIXMAPS_DIR)/$(NAME).svg
 	@rm -rf $(DESTDIR)$(PIXMAPS_DIR)/$(NAME).png
 	@rm -rf $(addprefix $(SHARE_DIR)/, $(MSGOBJS))
 	@echo ". ." $(BLUE)", done"$(NONE)
