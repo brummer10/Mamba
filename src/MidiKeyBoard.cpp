@@ -1519,7 +1519,8 @@ void XKeyBoard::dialog_save_response(void *w_, void* user_data) {
     }
 }
 
-void XKeyBoard::rebuld_remove_menu(void *w_, void* button, void* user_data) {
+//static
+void XKeyBoard::rebuild_remove_menu(void *w_, void* button, void* user_data) {
     XButtonEvent *xbutton = (XButtonEvent*)button;
     if (xbutton->button == Button4 || xbutton->button == Button5) return;
     Widget_t *w = (Widget_t*)w_;
@@ -1537,7 +1538,7 @@ void XKeyBoard::build_remove_menu() {
 
     for(std::vector<std::string>::const_iterator i = file_names.begin(); i != file_names.end(); ++i) {
         Widget_t *entry = menu_add_entry(file_remove_menu,(*i).c_str());
-        entry->func.button_release_callback = rebuld_remove_menu;
+        entry->func.button_release_callback = rebuild_remove_menu;
     }
 }
 
@@ -1594,7 +1595,7 @@ void XKeyBoard::load_midi_callback(void *w_, void* user_data) {
         xjmkb->win->func.dialog_callback = dialog_load_response;
     } else {
         std::string recent = xjmkb->recent_files[value-1];
-        char *cstr = &recent[0];
+        const char *cstr = &recent[0];
         dialog_load_response(w, (void*)&cstr);
     }
 }
@@ -1610,7 +1611,7 @@ void XKeyBoard::add_midi_callback(void *w_, void* user_data) {
         xjmkb->win->func.dialog_callback = dialog_add_response;
     } else {
         std::string recent = xjmkb->recent_files[value-1];
-        char *cstr = &recent[0];
+        const char *cstr = &recent[0];
         dialog_add_response(w, (void*)&cstr);
     }
 }
@@ -1626,8 +1627,6 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
         case(1):
         break;
         case(2):
-        {
-        }
         break;
         case(3):
         {
@@ -1655,7 +1654,10 @@ void XKeyBoard::build_sfont_menu() {
 
     for(std::vector<std::string>::const_iterator i = recent_sfonts.begin(); i != recent_sfonts.end(); ++i) {
         const char *cstr = basename((char*)(*i).c_str());
-        menu_add_entry(sfont_menu,cstr);
+        Widget_t *entry = menu_add_radio_entry(sfont_menu,cstr);
+        if (strcmp(soundfont.data(),(*i).c_str()) == 0) {
+            radio_item_set_active(entry);
+        }
     }
 }
 
@@ -1743,6 +1745,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         xjmkb->fs[1]->state = 0;
         xjmkb->fs[2]->state = 0;
         xjmkb->rebuild_soundfont_list();
+        xjmkb->build_sfont_menu();
     }
 }
 
@@ -1757,7 +1760,7 @@ void XKeyBoard::sfont_callback(void *w_, void* user_data) {
         xjmkb->win->func.dialog_callback = synth_load_response;
     } else {
         std::string recent = xjmkb->recent_sfonts[value-1];
-        char *cstr = &recent[0];
+        const char *cstr = &recent[0];
         synth_load_response(w, (void*)&cstr);
     }
 }
@@ -1790,6 +1793,7 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
             xjmkb->fs[0]->state = 4;
             xjmkb->fs[1]->state = 4;
             xjmkb->fs[2]->state = 4;
+            xjmkb->build_sfont_menu();
         }
         break;
         default:

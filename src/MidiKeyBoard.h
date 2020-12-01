@@ -178,7 +178,20 @@ private:
     Widget_t *load_midi;
     Widget_t *add_midi;
     Widget_t *sfont_menu;
+    Widget_t *fs_instruments;
+    Widget_t *fs_soundfont;
     Pixmap *icon;
+
+    std::string filepath;
+    std::string soundfontpath;
+    std::string soundfontname;
+    std::vector<std::string> alsa_ports;
+    std::vector<std::string> alsa_connections;
+    std::vector<std::string> alsa_oports;
+    std::vector<std::string> alsa_oconnections;
+    std::vector<std::string> file_names;
+    std::vector<std::string> recent_files;
+    std::vector<std::string> recent_sfonts;
 
     int main_x;
     int main_y;
@@ -207,8 +220,9 @@ private:
     static void load_midi_callback(void *w_, void* user_data);
     static void add_midi_callback(void *w_, void* user_data);
     static void sfont_callback(void *w_, void* user_data);
+    static void dialog_add_response(void *w_, void* user_data);
     static void file_remove_callback(void *w_, void* user_data);
-    static void rebuld_remove_menu(void *w_, void* button, void* user_data);
+    static void rebuild_remove_menu(void *w_, void* button, void* user_data);
     static void channel_callback(void *w_, void* user_data) noexcept;
     static void bank_callback(void *w_, void* user_data) noexcept;
     static void program_callback(void *w_, void* user_data);
@@ -310,24 +324,12 @@ public:
     std::string config_file;
     std::string keymap_file;
     std::string path;
-    std::string filepath;
-    std::string soundfontpath;
     std::string soundfont;
-    std::string soundfontname;
-    std::vector<std::string> alsa_ports;
-    std::vector<std::string> alsa_connections;
-    std::vector<std::string> alsa_oports;
-    std::vector<std::string> alsa_oconnections;
-    std::vector<std::string> file_names;
-    std::vector<std::string> recent_files;
-    std::vector<std::string> recent_sfonts;
 
     bool has_config;
     Widget_t *win;
     Widget_t *wid;
     Widget_t *fs[3];
-    Widget_t *fs_instruments;
-    Widget_t *fs_soundfont;
     int visible;
     int volume;
 
@@ -342,7 +344,6 @@ public:
     void set_config(const char *name, const char *client_id, bool op_gui);
 
     static void dialog_load_response(void *w_, void* user_data);
-    static void dialog_add_response(void *w_, void* user_data);
     static void synth_load_response(void *w_, void* user_data);
     static XKeyBoard* get_instance(void *w_);
 };
