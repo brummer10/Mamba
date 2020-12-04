@@ -2341,6 +2341,51 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                 xjmkb->xsynth->panic();
             }
             break;
+            case (XK_0):
+            {
+                MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+                adj_set_value(xjmkb->octavemap->adj,0.0);
+                keys->octave = 0;
+                xjmkb->octave = 0;
+                expose_widget(xjmkb->wid);
+            }
+            break;
+            case (XK_1):
+            {
+                MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+                adj_set_value(xjmkb->octavemap->adj,1.0);
+                keys->octave = 12;
+                xjmkb->octave = 12;
+                expose_widget(xjmkb->wid);
+            }
+            break;
+            case (XK_2):
+            {
+                MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+                adj_set_value(xjmkb->octavemap->adj,2.0);
+                keys->octave = 24;
+                xjmkb->octave = 24;
+                expose_widget(xjmkb->wid);
+            }
+            break;
+            case (XK_3):
+            {
+                MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+                adj_set_value(xjmkb->octavemap->adj,3.0);
+                keys->octave = 36;
+                xjmkb->octave = 36;
+                expose_widget(xjmkb->wid);
+            }
+            break;
+            case (XK_4):
+            {
+                MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+                adj_set_value(xjmkb->octavemap->adj,4.0);
+                keys->octave = 48;
+                xjmkb->octave = 48;
+                expose_widget(xjmkb->wid);
+            }
+            break;
             default:
             break;
         }
