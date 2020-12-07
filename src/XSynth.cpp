@@ -61,6 +61,10 @@ XSynth::~XSynth() {
 };
 
 void XSynth::setup(unsigned int SampleRate) {
+#if FLUIDSYNTH_VERSION_MAJOR > 1
+    const char* driver[] = { "jack", NULL };
+    fluid_audio_driver_register(driver);
+#endif
     settings = new_fluid_settings();
     fluid_settings_setnum(settings, "synth.sample-rate", SampleRate);
     fluid_settings_setstr(settings, "audio.driver", "jack");

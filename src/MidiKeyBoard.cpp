@@ -123,6 +123,9 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     run_one_more = 0;
     need_save = false;
     pitch_scroll = false;
+    view_has_changed = false;
+    view_controls = 1;
+    view_program = 1;
     filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
@@ -204,6 +207,8 @@ void XKeyBoard::read_config() {
             else if (key.compare("[main_w]") == 0) main_w = std::stoi(value);
             else if (key.compare("[main_h]") == 0) main_h = std::stoi(value);
             else if (key.compare("[visible]") == 0) visible = std::stoi(value);
+            else if (key.compare("[hide_controlls]") == 0) view_controls = std::stoi(value);
+            else if (key.compare("[hide_proc]") == 0) view_program = std::stoi(value);
             else if (key.compare("[keylayout]") == 0) keylayout = std::stoi(value);
             else if (key.compare("[mchannel]") == 0) mchannel = std::stoi(value);
             else if (key.compare("[velocity]") == 0) velocity = std::stoi(value);
@@ -280,6 +285,8 @@ void XKeyBoard::save_config() {
          outfile << "[main_w] " << main_w << std::endl;
          outfile << "[main_h] " << main_h << std::endl;
          outfile << "[visible] " << visible << std::endl;
+         outfile << "[hide_controlls] " << view_controls << std::endl;
+         outfile << "[hide_proc] " << view_program << std::endl;
          outfile << "[keylayout] " << keylayout << std::endl;
          outfile << "[mchannel] " << mchannel << std::endl;
          outfile << "[velocity] " << velocity << std::endl;
@@ -329,6 +336,11 @@ void XKeyBoard::save_config() {
     }
     if(nsmsig.nsm_session_control)
         XUnlockDisplay(win->app->dpy);
+}
+
+// temporary disable adj_callback
+inline void dummy_callback(void *w_, void* user_data) {
+
 }
 
 void XKeyBoard::nsm_show_ui() {
@@ -695,14 +707,25 @@ void XKeyBoard::mk_draw_knob(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::draw_board(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
     int width = attrs.width;
     widget_set_scale(w);
     set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
     cairo_paint (w->crb);
+    int h = 0;
+    int h2 = 141;
+    int h3 = 23;
+    int h4 = 65;
+    if (!xjmkb->view_program) {
+        h = -64;
+        h2 = 105;
+        h3 = 24;
+        h4 = 24;
+    }
 
-    cairo_pattern_t *pat = cairo_pattern_create_linear (0, 0, 0, 141);
+    cairo_pattern_t *pat = cairo_pattern_create_linear (0, h, 0, h2);
     cairo_pattern_add_color_stop_rgba(pat, 0.0, 0.0, 0.0, 0.0, 0.0);
     cairo_pattern_add_color_stop_rgba(pat, 0.8, 0.0, 0.0, 0.0, 0.0);
     cairo_pattern_add_color_stop_rgba(pat, 1.0, 0.0, 0.0, 0.0, 0.6);
@@ -710,22 +733,28 @@ void XKeyBoard::draw_board(void *w_, void* user_data) noexcept{
     cairo_paint (w->crb);
 
     use_bg_color_scheme(w, NORMAL_);
-    cairo_rectangle(w->crb,0,0,width,65);
+    cairo_rectangle(w->crb,0,0,width,h4);
     cairo_fill (w->crb);
 
     use_fg_color_scheme(w, SELECTED_);
-    cairo_rectangle(w->crb,0,142,width,2);
+    if (xjmkb->view_controls) {
+        cairo_rectangle(w->crb,0,142,width,2);
+    } else {
+        cairo_rectangle(w->crb,0,65,width,2);
+    }
     cairo_fill_preserve (w->crb);
     use_bg_color_scheme(w, ACTIVE_);
     cairo_set_line_width(w->crb, 1.0);
     cairo_stroke(w->crb);
-    cairo_rectangle(w->crb,0,23,width,2);
+    cairo_rectangle(w->crb,0,h3,width,2);
     cairo_fill(w->crb);
     
 
-    cairo_rectangle(w->crb,0,63,width,2);
-    cairo_fill_preserve (w->crb);
-    cairo_stroke(w->crb);
+    if (xjmkb->view_program) {
+        cairo_rectangle(w->crb,0,63,width,2);
+        cairo_fill_preserve (w->crb);
+        cairo_stroke(w->crb);
+    }
     cairo_pattern_destroy (pat);
     widget_reset_scale(w);
 }
@@ -787,6 +816,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     XSetWMNormalHints(win->app->dpy, win->widget, win_size_hints);
     XFree(win_size_hints);
 
+    // menu
     menubar = add_menubar(win,"",0, 0, 700, 20);
     menubar->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     menubar->func.key_press_callback = key_press;
@@ -798,7 +828,6 @@ void XKeyBoard::init_ui(Xputty *app) {
     add_midi = menu_add_submenu(filemenu, _("Add MIDI"));
     menu_add_entry(add_midi,_("Add New"));
     file_remove_menu = menu_add_submenu(filemenu, _("Remove MIDI"));
-    //menu_add_entry(filemenu,_("Remove last MIDI"));
     menu_add_entry(filemenu,_("_Save MIDI as"));
     menu_add_entry(filemenu,_("_Quit"));
     filemenu->func.value_changed_callback = file_callback;
@@ -814,6 +843,17 @@ void XKeyBoard::init_ui(Xputty *app) {
     file_remove_menu->func.key_press_callback = key_press;
     file_remove_menu->func.key_release_callback = key_release;
     file_remove_menu->func.value_changed_callback = file_remove_callback;
+
+    view_menu = menubar_add_menu(menubar,_("_View"));
+    view_menu->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    view_menu->func.key_press_callback = key_press;
+    view_menu->func.key_release_callback = key_release;
+    view_proc = menu_add_check_entry(view_menu, _("Channel/Bank/Instrument"));
+    view_controller = menu_add_check_entry(view_menu, _("Controls"));
+    adj_set_value(view_proc->adj, 1.0);
+    adj_set_value(view_controller->adj, 1.0);
+    view_controller->func.value_changed_callback = view_callback;
+    view_proc->func.value_changed_callback = view_callback;
 
     mapping = menubar_add_menu(menubar,_("_Mapping"));
     keymap = menu_add_submenu(mapping,_("Keyboard"));
@@ -900,11 +940,18 @@ void XKeyBoard::init_ui(Xputty *app) {
     info->func.key_release_callback = key_release;
     info->func.value_changed_callback = info_callback;
 
-    Widget_t *tmp = add_label(win,_("Channel:"),10,30,60,20);
+    // top box
+    proc_box = create_widget(win->app, win, 0, 20, 700, 45);
+    proc_box->flags |= NO_AUTOREPEAT;
+    proc_box->scale.gravity = NORTHEAST;
+    proc_box->func.key_press_callback = key_press;
+    proc_box->func.key_release_callback = key_release;
+
+    Widget_t *tmp = add_label(proc_box,_("Channel:"),10,10,60,20);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    channel =  add_combobox(win, _("Channel"), 70, 30, 60, 30);
+    channel =  add_combobox(proc_box, _("Channel"), 70, 10, 60, 30);
     channel->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     channel->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     channel->scale.gravity = ASPECT;
@@ -922,11 +969,11 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,_("Bank:"),130,30,60,20);
+    tmp = add_label(proc_box,_("Bank:"),130,10,60,20);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    bank =  add_combobox(win, _("Bank"), 190, 30, 60, 30);
+    bank =  add_combobox(proc_box, _("Bank"), 190, 10, 60, 30);
     bank->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bank->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bank->scale.gravity = ASPECT;
@@ -940,11 +987,11 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,_("Program:"),250,30,80,20);
+    tmp = add_label(proc_box,_("Program:"),250,10,80,20);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    program =  add_combobox(win, _("Program"), 330, 30, 60, 30);
+    program =  add_combobox(proc_box, _("Program"), 330, 10, 60, 30);
     program->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     program->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     program->scale.gravity = ASPECT;
@@ -958,11 +1005,11 @@ void XKeyBoard::init_ui(Xputty *app) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_label(win,_("BPM:"),390,30,60,20);
+    tmp = add_label(proc_box,_("BPM:"),390,10,60,20);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    bpm = add_valuedisplay(win, _("BPM"), 450, 30, 60, 30);
+    bpm = add_valuedisplay(proc_box, _("BPM"), 450, 10, 60, 30);
     bpm->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bpm->scale.gravity = ASPECT;
     set_adjustment(bpm->adj,120.0, mbpm, 24.0, 360.0, 1.0, CL_CONTINUOS);
@@ -970,78 +1017,89 @@ void XKeyBoard::init_ui(Xputty *app) {
     bpm->func.key_press_callback = key_press;
     bpm->func.key_release_callback = key_release;
 
-    songbpm = add_label(win,_("File BPM:"),510,30,100,20);
+    songbpm = add_label(proc_box,_("File BPM:"),510,10,100,20);
     songbpm->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     snprintf(songbpm->input_label, 31,_("File BPM: %d"),  (int) song_bpm);
     songbpm->label = songbpm->input_label;
     songbpm->func.key_press_callback = key_press;
     songbpm->func.key_release_callback = key_release;
 
-    time_line = add_label(win,_("--"),610,30,100,20);
+    time_line = add_label(proc_box,_("--"),610,10,100,20);
     time_line->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     snprintf(time_line->input_label, 31,"%.2f sec", xjack->get_max_loop_time());
     time_line->label = time_line->input_label;
     time_line->func.key_press_callback = key_press;
     time_line->func.key_release_callback = key_release;
 
-    w[0] = add_keyboard_knob(win, _("PitchBend"), 5, 65, 60, 75);
+    // middle box
+    int bpos = 65;
+    if (!view_program) bpos -= 40;
+    knob_box = create_widget(win->app, win, 0, bpos, 700, 77);
+    knob_box->flags |= NO_AUTOREPEAT;
+    knob_box->scale.gravity = NORTHEAST;
+    knob_box->func.key_press_callback = key_press;
+    knob_box->func.key_release_callback = key_release;
+    
+    w[0] = add_keyboard_knob(knob_box, _("PitchBend"), 5, 0, 60, 75);
     w[0]->data = PITCHBEND;
     w[0]->func.value_changed_callback = pitchwheel_callback;
     w[0]->func.button_release_callback = pitchwheel_release_callback;
     w[0]->func.button_press_callback = pitchwheel_press_callback;
 
-    w[9] = add_keyboard_knob(win, _("Balance"), 65, 65, 60, 75);
+    w[9] = add_keyboard_knob(knob_box, _("Balance"), 65, 0, 60, 75);
     w[9]->data = BALANCE;
     w[9]->func.value_changed_callback = balance_callback;
 
-    w[1] = add_keyboard_knob(win, _("ModWheel"), 125, 65, 60, 75);
+    w[1] = add_keyboard_knob(knob_box, _("ModWheel"), 125, 0, 60, 75);
     w[1]->data = MODULATION;
     set_adjustment(w[1]->adj, 0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[1]->func.value_changed_callback = modwheel_callback;
 
-    w[2] = add_keyboard_knob(win, _("Detune"), 185, 65, 60, 75);
+    w[2] = add_keyboard_knob(knob_box, _("Detune"), 185, 0, 60, 75);
     w[2]->data = CELESTE;
     w[2]->func.value_changed_callback = detune_callback;
 
-    w[10] = add_keyboard_knob(win, _("Expression"), 245, 65, 60, 75);
+    w[10] = add_keyboard_knob(knob_box, _("Expression"), 245, 0, 60, 75);
     w[10]->data = EXPRESSION;
     set_adjustment(w[10]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[10]->func.value_changed_callback = expression_callback;
 
-    w[3] = add_keyboard_knob(win, _("Attack"), 305, 65, 60, 75);
+    w[3] = add_keyboard_knob(knob_box, _("Attack"), 305, 0, 60, 75);
     w[3]->data = ATTACK_TIME;
     w[3]->func.value_changed_callback = attack_callback;
 
-    w[4] = add_keyboard_knob(win, _("Release"), 365, 65, 60, 75);
+    w[4] = add_keyboard_knob(knob_box, _("Release"), 365, 0, 60, 75);
     w[4]->data = RELEASE_TIME;
     w[4]->func.value_changed_callback = release_callback;
 
-    w[5] = add_keyboard_knob(win, _("Volume"), 425, 65, 60, 75);
+    w[5] = add_keyboard_knob(knob_box, _("Volume"), 425, 0, 60, 75);
     w[5]->data = VOLUME;
     w[5]->func.value_changed_callback = volume_callback;
 
-    w[6] = add_keyboard_knob(win, _("Velocity"), 485, 65, 60, 75);
+    w[6] = add_keyboard_knob(knob_box, _("Velocity"), 485, 0, 60, 75);
     w[6]->data = VELOCITY;
     set_adjustment(w[6]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[6]->func.value_changed_callback = velocity_callback;
 
-    w[7] = add_keyboard_button(win, _("Sustain"), 550, 70, 75, 30);
+    w[7] = add_keyboard_button(knob_box, _("Sustain"), 550, 5, 75, 30);
     w[7]->data = SUSTAIN;
     w[7]->func.value_changed_callback = sustain_callback;
 
-    w[8] = add_keyboard_button(win, _("Sostenuto"), 550, 105, 75, 30);
+    w[8] = add_keyboard_button(knob_box, _("Sostenuto"), 550, 45, 75, 30);
     w[8]->data = SOSTENUTO;
     w[8]->func.value_changed_callback = sostenuto_callback;
 
-    record = add_keyboard_button(win, _("_Record"), 635, 70, 55, 30);
+    record = add_keyboard_button(knob_box, _("_Record"), 635, 5, 55, 30);
     record->func.value_changed_callback = record_callback;
 
-    play = add_keyboard_button(win, _("_Play"), 635, 105, 55, 30);
+    play = add_keyboard_button(knob_box, _("_Play"), 635, 45, 55, 30);
     play->func.adj_callback = set_play_label;
     play->func.value_changed_callback = play_callback;
 
     // open a widget for the keyboard layout
-    wid = create_widget(app, win, 0, 145, 700, 120);
+    int wpos = view_controls ? 145 : 67;
+    if (!view_program) wpos -= 40;
+    wid = create_widget(app, win, 0, wpos, 700, 120);
     wid->flags &= ~USE_TRANSPARENCY;
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     wid->scale.gravity = SOUTHCENTER;
@@ -1079,11 +1137,6 @@ void XKeyBoard::init_ui(Xputty *app) {
     init_synth_ui(win);
     // start the timeout thread for keyboard animation
     animidi->start(30, std::bind(animate_midi_keyboard,(void*)wid));
-}
-
-// temporary disable adj_callback from play button to redraw it from animate thread
-void dummy_callback(void *w_, void* user_data) {
-
 }
 
 // static
@@ -1170,6 +1223,18 @@ void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
     if (attrs.map_state != IsViewable) return;
     int width = attrs.width;
     int height = attrs.height;
+    if (xjmkb->view_has_changed) {
+        int h = 145;
+        int h2 = 65;
+        if (xjmkb->view_program<1.0) h -= 40;
+        if (xjmkb->view_controls<1.0) h -= 77;
+        if (xjmkb->view_controls) {
+            if (xjmkb->view_program<1.0) h2 -= 40;
+            XMoveWindow(xjmkb->win->app->dpy,xjmkb->knob_box->widget, 0, h2);
+        }
+        XMoveWindow(xjmkb->win->app->dpy,xjmkb->wid->widget, 0, h);
+        xjmkb->view_has_changed = false;
+    }
 
     Window parent;
     Window root;
@@ -1196,6 +1261,45 @@ void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
     int y = xjmkb->main_y-226;
     if (xjmkb->main_y < 230) y = xjmkb->main_y + xjmkb->main_h+21;
     XMoveWindow(xjmkb->win->app->dpy,xjmkb->synth_ui->widget, xjmkb->main_x, y);
+}
+
+//static
+void XKeyBoard::view_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    xjmkb->view_controls = (int)adj_get_value(xjmkb->view_controller->adj);
+    xjmkb->view_program = (int)adj_get_value(xjmkb->view_proc->adj);
+    xjmkb->view_has_changed = true;
+    
+    int h = 265;
+    if (xjmkb->view_controls<1.0) {
+        h -= 77;
+        widget_hide(xjmkb->knob_box);
+    } else {
+        widget_show_all(xjmkb->knob_box);
+    }
+    if (xjmkb->view_program<1.0) {
+        h -= 40;
+        widget_hide(xjmkb->proc_box);
+    } else {
+        widget_show_all(xjmkb->proc_box);
+    }
+    
+    xjmkb->win->scale.init_height = h;
+    XSizeHints* win_size_hints;
+    win_size_hints = XAllocSizeHints();
+    win_size_hints->flags =  PMinSize|PBaseSize|PMaxSize|PWinGravity|PResizeInc;
+    win_size_hints->min_width = 700;
+    win_size_hints->min_height = h;
+    win_size_hints->base_width = 700;
+    win_size_hints->base_height = h;
+    win_size_hints->max_width = 1875;
+    win_size_hints->max_height = h+1; //need to be 1 more then min to avoid flicker in the UI!!
+    win_size_hints->width_inc = 25;
+    win_size_hints->height_inc = 10;
+    win_size_hints->win_gravity = CenterGravity;
+    XSetWMNormalHints(xjmkb->win->app->dpy, xjmkb->win->widget, win_size_hints);
+    XFree(win_size_hints);
 }
 
 void XKeyBoard::get_port_entrys(Widget_t *parent, jack_port_t *my_port, JackPortFlags type) {
@@ -1356,6 +1460,15 @@ void XKeyBoard::map_callback(void *w_, void* user_data) {
     xjmkb->visible = 1;
     if(!xjmkb->nsmsig.nsm_session_control)
         make_connection_menu(xjmkb->connection, NULL, NULL);
+    xevfunc store = xjmkb->view_proc->func.value_changed_callback;
+    xjmkb->view_proc->func.value_changed_callback = dummy_callback;
+    adj_set_value(xjmkb->view_proc->adj, (float)xjmkb->view_program);
+    xjmkb->view_proc->func.value_changed_callback = store;
+    store = xjmkb->view_controller->func.value_changed_callback;
+    xjmkb->view_controller->func.value_changed_callback = dummy_callback;
+    adj_set_value(xjmkb->view_controller->adj, (float)xjmkb->view_controls);
+    xjmkb->view_controller->func.value_changed_callback = store;
+    view_callback(xjmkb->view_controller,NULL);
 }
 
 // static

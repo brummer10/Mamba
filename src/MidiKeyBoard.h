@@ -180,6 +180,11 @@ private:
     Widget_t *sfont_menu;
     Widget_t *fs_instruments;
     Widget_t *fs_soundfont;
+    Widget_t *knob_box;
+    Widget_t *proc_box;
+    Widget_t *view_menu;
+    Widget_t *view_controller;
+    Widget_t *view_proc;
     Pixmap *icon;
 
     std::string filepath;
@@ -210,6 +215,9 @@ private:
     int lchannels;
     bool need_save;
     bool pitch_scroll;
+    bool view_has_changed;
+    int view_controls;
+    int view_program;
 
     std::string remove_sub (std::string a, std::string b);
     static void get_note(Widget_t *w, const int *key, const bool on_off) noexcept;
@@ -217,6 +225,7 @@ private:
 
     static void info_callback(void *w_, void* user_data);
     static void file_callback(void *w_, void* user_data);
+    static void view_callback(void *w_, void* user_data);
     static void load_midi_callback(void *w_, void* user_data);
     static void add_midi_callback(void *w_, void* user_data);
     static void sfont_callback(void *w_, void* user_data);
