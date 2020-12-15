@@ -124,8 +124,11 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     need_save = false;
     pitch_scroll = false;
     view_has_changed = false;
+    key_size_changed = false;
     view_controls = 1;
     view_program = 1;
+    width_inc = 25;
+    key_size = 0;
     filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
@@ -209,6 +212,7 @@ void XKeyBoard::read_config() {
             else if (key.compare("[visible]") == 0) visible = std::stoi(value);
             else if (key.compare("[hide_controlls]") == 0) view_controls = std::stoi(value);
             else if (key.compare("[hide_proc]") == 0) view_program = std::stoi(value);
+            else if (key.compare("[key_size]") == 0) key_size = std::stoi(value);
             else if (key.compare("[keylayout]") == 0) keylayout = std::stoi(value);
             else if (key.compare("[mchannel]") == 0) mchannel = std::stoi(value);
             else if (key.compare("[velocity]") == 0) velocity = std::stoi(value);
@@ -287,6 +291,7 @@ void XKeyBoard::save_config() {
          outfile << "[visible] " << visible << std::endl;
          outfile << "[hide_controlls] " << view_controls << std::endl;
          outfile << "[hide_proc] " << view_program << std::endl;
+         outfile << "[key_size] " << key_size << std::endl;
          outfile << "[keylayout] " << keylayout << std::endl;
          outfile << "[mchannel] " << mchannel << std::endl;
          outfile << "[velocity] " << velocity << std::endl;
@@ -716,13 +721,13 @@ void XKeyBoard::draw_board(void *w_, void* user_data) noexcept{
     cairo_paint (w->crb);
     int h = 0;
     int h2 = 141;
-    int h3 = 23;
-    int h4 = 65;
+    double h3 = 23.0;
+    double h4 = 65.0;
     if (!xjmkb->view_program) {
         h = -64;
         h2 = 105;
-        h3 = 24;
-        h4 = 24;
+        h3 = 24.0 * w->scale.cscale_y;
+        h4 = 24.0 * w->scale.cscale_y;
     }
 
     cairo_pattern_t *pat = cairo_pattern_create_linear (0, h, 0, h2);
@@ -737,10 +742,14 @@ void XKeyBoard::draw_board(void *w_, void* user_data) noexcept{
     cairo_fill (w->crb);
 
     use_fg_color_scheme(w, SELECTED_);
-    if (xjmkb->view_controls) {
+    if (xjmkb->view_controls && xjmkb->view_program) {
         cairo_rectangle(w->crb,0,142,width,2);
-    } else {
+    } else if (xjmkb->view_controls) {
+        cairo_rectangle(w->crb,0,103,width,2);
+    } else if (xjmkb->view_program) {
         cairo_rectangle(w->crb,0,65,width,2);
+    } else {
+        cairo_rectangle(w->crb,0,26.0 * w->scale.cscale_y,width,2);
     }
     cairo_fill_preserve (w->crb);
     use_bg_color_scheme(w, ACTIVE_);
@@ -810,7 +819,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     win_size_hints->base_height = 265;
     win_size_hints->max_width = 1875;
     win_size_hints->max_height = 266; //need to be 1 more then min to avoid flicker in the UI!!
-    win_size_hints->width_inc = 25;
+    win_size_hints->width_inc = width_inc;
     win_size_hints->height_inc = 10;
     win_size_hints->win_gravity = CenterGravity;
     XSetWMNormalHints(win->app->dpy, win->widget, win_size_hints);
@@ -850,10 +859,15 @@ void XKeyBoard::init_ui(Xputty *app) {
     view_menu->func.key_release_callback = key_release;
     view_proc = menu_add_check_entry(view_menu, _("Channel/Bank/Instrument"));
     view_controller = menu_add_check_entry(view_menu, _("Controls"));
+    key_size_menu = menu_add_submenu(view_menu,_("Keysize"));
+    menu_add_radio_entry(key_size_menu,_("Normal"));
+    menu_add_radio_entry(key_size_menu,_("Small"));
+    
     adj_set_value(view_proc->adj, 1.0);
     adj_set_value(view_controller->adj, 1.0);
     view_controller->func.value_changed_callback = view_callback;
     view_proc->func.value_changed_callback = view_callback;
+    key_size_menu->func.value_changed_callback = key_size_callback;
 
     mapping = menubar_add_menu(menubar,_("_Mapping"));
     keymap = menu_add_submenu(mapping,_("Keyboard"));
@@ -1102,7 +1116,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     wid = create_widget(app, win, 0, wpos, 700, 120);
     wid->flags &= ~USE_TRANSPARENCY;
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    wid->scale.gravity = SOUTHCENTER;
+    wid->scale.gravity = NORTHWEST;
     add_midi_keyboard(wid, keymap_file.c_str(), 0, 0, 700, 120);
 
     MidiKeyboard *keys = (MidiKeyboard*)wid->parent_struct;
@@ -1232,7 +1246,11 @@ void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
             if (xjmkb->view_program<1.0) h2 -= 40;
             XMoveWindow(xjmkb->win->app->dpy,xjmkb->knob_box->widget, 0, h2);
         }
-        XMoveWindow(xjmkb->win->app->dpy,xjmkb->wid->widget, 0, h);
+        if (!xjmkb->key_size_changed) {
+            xjmkb->wid->scale.init_y = h;
+            XMoveWindow(xjmkb->win->app->dpy,xjmkb->wid->widget, 0, h);
+        }
+        xjmkb->key_size_changed = false;
         xjmkb->view_has_changed = false;
     }
 
@@ -1272,17 +1290,23 @@ void XKeyBoard::view_callback(void *w_, void* user_data) {
     xjmkb->view_has_changed = true;
     
     int h = 265;
+    int h1 = 265;
     if (xjmkb->view_controls<1.0) {
         h -= 77;
+        h1 -= 77;
         widget_hide(xjmkb->knob_box);
     } else {
         widget_show_all(xjmkb->knob_box);
     }
     if (xjmkb->view_program<1.0) {
         h -= 40;
+        h1 -= 40;
         widget_hide(xjmkb->proc_box);
     } else {
         widget_show_all(xjmkb->proc_box);
+    }
+    if ((xjmkb->view_program<1.0) && (xjmkb->view_controls<1.0)) {
+        h1 -= 40;
     }
     
     xjmkb->win->scale.init_height = h;
@@ -1290,17 +1314,41 @@ void XKeyBoard::view_callback(void *w_, void* user_data) {
     win_size_hints = XAllocSizeHints();
     win_size_hints->flags =  PMinSize|PBaseSize|PMaxSize|PWinGravity|PResizeInc;
     win_size_hints->min_width = 700;
-    win_size_hints->min_height = h;
+    win_size_hints->min_height = h1;
     win_size_hints->base_width = 700;
     win_size_hints->base_height = h;
     win_size_hints->max_width = 1875;
     win_size_hints->max_height = h+1; //need to be 1 more then min to avoid flicker in the UI!!
-    win_size_hints->width_inc = 25;
+    win_size_hints->width_inc = xjmkb->width_inc;
     win_size_hints->height_inc = 10;
     win_size_hints->win_gravity = CenterGravity;
     XSetWMNormalHints(xjmkb->win->app->dpy, xjmkb->win->widget, win_size_hints);
     XFree(win_size_hints);
 }
+
+//static
+void XKeyBoard::key_size_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    xjmkb->key_size = (int)adj_get_value(w->adj);
+    static bool first_set = true;
+    if (xjmkb->key_size == 0) {
+        keys->key_size = 24;
+        keys->key_offset = 15;
+        xjmkb->width_inc = 25;
+    } else if (xjmkb->key_size == 1) {
+        keys->key_size = 18;
+        keys->key_offset = 12;
+        xjmkb->width_inc = 19;
+    }
+    if (!first_set) {
+        xjmkb->key_size_changed = true;
+        view_callback(xjmkb->view_controller,NULL);
+    }
+    first_set = false;
+}
+
 
 void XKeyBoard::get_port_entrys(Widget_t *parent, jack_port_t *my_port, JackPortFlags type) {
     Widget_t *menu = parent->childlist->childs[0];
@@ -1468,6 +1516,7 @@ void XKeyBoard::map_callback(void *w_, void* user_data) {
     xjmkb->view_controller->func.value_changed_callback = dummy_callback;
     adj_set_value(xjmkb->view_controller->adj, (float)xjmkb->view_controls);
     xjmkb->view_controller->func.value_changed_callback = store;
+    adj_set_value(xjmkb->key_size_menu->adj, xjmkb->key_size);
     view_callback(xjmkb->view_controller,NULL);
 }
 

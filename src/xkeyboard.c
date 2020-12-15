@@ -21,6 +21,14 @@
 #include "xkeyboard.h"
 #include <unistd.h>
 
+//long major_chords[12][3] = {{12,13,14,15,16,17,18,19,20,21,22,23},{12,16,19},{13,17,20},{14,18,21},{15,19,22},{16,20,23},{17,21,24},
+//                            {18,22,25},{19,23,26},{20,24,27},{21,25,28},{22,26,29},{23,27,30}};
+
+void add_major_chords(long inkey, long *outkey[3]) {
+    (*outkey[0]) = inkey;
+    (*outkey[1]) = inkey + 4;
+    (*outkey[2]) = inkey + 7;
+}
 
 void keysym_azerty_to_midi_key(long inkey, float *midi_key) {
     /* these keys are common to all types of azerty keyboards */
@@ -280,9 +288,85 @@ void custom_to_midi_key(long custom_keys[128], long inkey, float *midi_key) {
     }
 }
 
+void add_major_chord(unsigned long *key_matrix, int inkey, bool set) {
+    unsigned long *use_matrix = &key_matrix[0];
+    int key = inkey + 4;
+    
+    if(key>94) {
+        use_matrix = &key_matrix[3];
+        key -=94;
+    } else if(key>62) {
+        use_matrix = &key_matrix[2];
+        key -=62;
+    } else if(key>31) {
+        use_matrix = &key_matrix[1];
+        key -= 31;
+    }
+    if (set) {
+        (*use_matrix) |= (1 << key);
+    }else {
+        (*use_matrix) &= (~(1 << key));
+    }
+
+    key = inkey + 7;
+    if(key>94) {
+        use_matrix = &key_matrix[3];
+        key -=94;
+    } else if(key>62) {
+        use_matrix = &key_matrix[2];
+        key -=62;
+    } else if(key>31) {
+        use_matrix = &key_matrix[1];
+        key -= 31;
+    }
+    if (set) {
+        (*use_matrix) |= (1 << key);
+    }else {
+        (*use_matrix) &= (~(1 << key));
+    }
+}
+
+void add_minor_chord(unsigned long *key_matrix, int inkey, bool set) {
+    unsigned long *use_matrix = &key_matrix[0];
+    int key = inkey + 3;
+    
+    if(key>94) {
+        use_matrix = &key_matrix[3];
+        key -=94;
+    } else if(key>62) {
+        use_matrix = &key_matrix[2];
+        key -=62;
+    } else if(key>31) {
+        use_matrix = &key_matrix[1];
+        key -= 31;
+    }
+    if (set) {
+        (*use_matrix) |= (1 << key);
+    }else {
+        (*use_matrix) &= (~(1 << key));
+    }
+
+    key = inkey + 7;
+    if(key>94) {
+        use_matrix = &key_matrix[3];
+        key -=94;
+    } else if(key>62) {
+        use_matrix = &key_matrix[2];
+        key -=62;
+    } else if(key>31) {
+        use_matrix = &key_matrix[1];
+        key -= 31;
+    }
+    if (set) {
+        (*use_matrix) |= (1 << key);
+    }else {
+        (*use_matrix) &= (~(1 << key));
+    }
+}
+
 void set_key_in_matrix(unsigned long *key_matrix, int key, bool set) {
     unsigned long *use_matrix = &key_matrix[0];
-    
+
     if(key>94) {
         use_matrix = &key_matrix[3];
         key -=94;
@@ -385,11 +469,15 @@ static void draw_keyboard(void *w_, void* user_data) {
     int i = 0;
     int k = 0;
     int ik = -1;
-    cairo_set_font_size (w->crb, w->app->normal_font);
+    int octave_ofset = keys->key_size/6;
+    if (keys->key_size<24)
+        cairo_set_font_size (w->crb, w->app->small_font);
+    else
+        cairo_set_font_size (w->crb, w->app->normal_font);
 
     for(;i<width_t;i++) {
         ik = is_key_in_in_matrix(keys, k+keys->octave);
-        cairo_rectangle(w->crb,i,0,25,height_t);
+        cairo_rectangle(w->crb,i,0,keys->key_size+1,height_t);
         if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
             //use_base_color_scheme(w, ACTIVE_);
             use_matrix_color(w, keys->channel);
@@ -410,47 +498,47 @@ static void draw_keyboard(void *w_, void* user_data) {
         cairo_stroke(w->crb);
 
         if(k+keys->octave == 0) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C-1");
         } else if(k+keys->octave == 12) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C0");
         } else if(k+keys->octave == 24) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C1");
         } else if(k+keys->octave == 36) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C2");
         } else if(k+keys->octave == 48) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C3");
         } else if(k+keys->octave == 60) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C4");
         } else if(k+keys->octave == 72) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C5");
         } else if(k+keys->octave == 84) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C6");
         } else if(k+keys->octave == 96) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C7");
         } else if(k+keys->octave == 108) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C8");
         } else if(k+keys->octave == 120) {
-            cairo_move_to (w->crb, i+4, height_t*0.9);
+            cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C9");
         }
@@ -468,7 +556,7 @@ static void draw_keyboard(void *w_, void* user_data) {
         }
 
         if (k>127) break;
-        i+=24;
+        i+=keys->key_size;
         space++;
         set++;
         k++;
@@ -489,7 +577,7 @@ static void draw_keyboard(void *w_, void* user_data) {
         if (space!=3) {
             ik = is_key_in_in_matrix(keys, k+keys->octave);
             cairo_set_line_width(w->crb, 1.0);
-            cairo_rectangle(w->crb,i+15,0,20,height_t*0.59);
+            cairo_rectangle(w->crb,i+keys->key_offset,0,keys->key_size-4,height_t*0.59);
             if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
                 //use_base_color_scheme(w, ACTIVE_);
                 use_matrix_color(w, keys->channel);
@@ -527,7 +615,7 @@ static void draw_keyboard(void *w_, void* user_data) {
 
         }
 
-        i+=24;
+        i+=keys->key_size;
         k++;
         if(k>127)break;
     }
@@ -563,7 +651,7 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
         int i = 0;
         for(;i<width;i++) {
             if (space!=3) {
-                if(xmotion->x > i+15 && xmotion->x < i+35) {
+                if(xmotion->x > i+keys->key_offset && xmotion->x < i+keys->key_size+keys->key_offset-3) {
                     keys->prelight_key = set_key+keys->octave;
                     if(xmotion->state & Button1Mask) {
                         if (keys->active_key != keys->prelight_key) {
@@ -598,7 +686,7 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
                     set = 0;
                 }
             }
-            i+=24;
+            i+=keys->key_size;
             set_key++;
         }        
     }
@@ -610,7 +698,7 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
         int k = 0;
 
         for(;i<width;i++) {
-            if(xmotion->x > i && xmotion->x < i+25) {
+            if(xmotion->x > i && xmotion->x < i+keys->key_size) {
                 keys->prelight_key = k+keys->octave;
                 if(xmotion->state & Button1Mask) {
                     if (keys->active_key != keys->prelight_key) {
@@ -645,7 +733,7 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
                 }
             }
 
-            i+=24;
+            i+=keys->key_size;
             space++;
             set++;
             k++;
@@ -841,6 +929,8 @@ void add_keyboard(Widget_t *wid, const char * label) {
     keys->octave = 12*2;
     keys->layout = 0;
     keys->channel = 0;
+    keys->key_size = 24;
+    keys->key_offset = 15;
     memset(keys->custom_keys, 0, 128*sizeof(long));
     int j = 0;
     for(;j<4;j++) {

@@ -185,6 +185,7 @@ private:
     Widget_t *view_menu;
     Widget_t *view_controller;
     Widget_t *view_proc;
+    Widget_t *key_size_menu;
     Pixmap *icon;
 
     std::string filepath;
@@ -216,8 +217,11 @@ private:
     bool need_save;
     bool pitch_scroll;
     bool view_has_changed;
+    bool key_size_changed;
+    int key_size;
     int view_controls;
     int view_program;
+    int width_inc;
 
     std::string remove_sub (std::string a, std::string b);
     static void get_note(Widget_t *w, const int *key, const bool on_off) noexcept;
@@ -226,6 +230,7 @@ private:
     static void info_callback(void *w_, void* user_data);
     static void file_callback(void *w_, void* user_data);
     static void view_callback(void *w_, void* user_data);
+    static void key_size_callback(void *w_, void* user_data);
     static void load_midi_callback(void *w_, void* user_data);
     static void add_midi_callback(void *w_, void* user_data);
     static void sfont_callback(void *w_, void* user_data);
