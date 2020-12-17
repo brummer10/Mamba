@@ -279,7 +279,9 @@ private:
     static void unmap_callback(void *w_, void* user_data) noexcept;
     static void map_callback(void *w_, void* user_data);
     static void draw_my_combobox_entrys(void *w_, void* user_data) noexcept;
-    static void draw_board(void *w_, void* user_data) noexcept;
+    static void draw_menubar(void *w_, void* user_data) noexcept;
+    static void draw_topbox(void *w_, void* user_data) noexcept;
+    static void draw_middlebox(void *w_, void* user_data) noexcept;
     static void draw_synth_ui(void *w_, void* user_data) noexcept;
     static void mk_draw_knob(void *w_, void* user_data) noexcept;
     static void draw_button(void *w_, void* user_data) noexcept;

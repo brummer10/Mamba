@@ -45,7 +45,7 @@
 	CXXFLAGS += -O2 -D_FORTIFY_SOURCE=2 -Wall -fstack-protector -funroll-loops -ffast-math -fomit-frame-pointer \
 	-fstrength-reduce -fschedule-insns $(SSE_CFLAGS)
 	DEBUG_CXXFLAGS += -g -D DEBUG
-	LDFLAGS += -Wl,-z,noexecstack -I./ -I../libxputty/libxputty/include/ \
+	LDFLAGS += -Wl,-z,noexecstack -Wl,--no-undefined -I./ -I../libxputty/libxputty/include/ \
 	`pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo smf fluidsynth` -lm -pthread -lasound \
 	-DVERSION=\"$(VER)\"
 	# invoke build files
