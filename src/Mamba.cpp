@@ -332,7 +332,7 @@ void MidiRecord::start() {
 
             // push recorded vector to play vector
             for (unsigned int i=0; i<st->size(); i++) 
-                play[channel].push_back((*st)[i]); 
+                play[channel].push_back((*st)[i]);
             st->clear();
 
             // sort vector ascending to absolute time in loop

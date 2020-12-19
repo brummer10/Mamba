@@ -849,6 +849,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     view_proc = menu_add_check_entry(view_menu, _("Channel/Bank/Instrument"));
     view_controller = menu_add_check_entry(view_menu, _("Controls"));
     key_size_menu = menu_add_submenu(view_menu,_("Keysize"));
+    menu_add_radio_entry(key_size_menu,_("Big"));
     menu_add_radio_entry(key_size_menu,_("Normal"));
     menu_add_radio_entry(key_size_menu,_("Small"));
     
@@ -1299,6 +1300,8 @@ void XKeyBoard::view_callback(void *w_, void* user_data) {
         widget_show_all(xjmkb->proc_box);
     }
     if (xjmkb->key_size == 1) {
+        h1 -= 20;
+    } else if (xjmkb->key_size == 2) {
         h1 -= 40;
     }
     
@@ -1306,9 +1309,9 @@ void XKeyBoard::view_callback(void *w_, void* user_data) {
     XSizeHints* win_size_hints;
     win_size_hints = XAllocSizeHints();
     win_size_hints->flags =  PMinSize|PBaseSize|PMaxSize|PWinGravity|PResizeInc;
-    win_size_hints->min_width = 700;
+    win_size_hints->min_width = 28*xjmkb->width_inc;
     win_size_hints->min_height = h1;
-    win_size_hints->base_width = 700;
+    win_size_hints->base_width = 28*xjmkb->width_inc;
     win_size_hints->base_height = h1;
     win_size_hints->max_width = 1875;
     win_size_hints->max_height = h1+1; //need to be 1 more then min to avoid flicker in the UI!!
@@ -1331,6 +1334,10 @@ void XKeyBoard::key_size_callback(void *w_, void* user_data) {
         keys->key_offset = 15;
         xjmkb->width_inc = 25;
     } else if (xjmkb->key_size == 1) {
+        keys->key_size = 21;
+        keys->key_offset = 13;
+        xjmkb->width_inc = 22;
+    } else if (xjmkb->key_size == 2) {
         keys->key_size = 18;
         keys->key_offset = 12;
         xjmkb->width_inc = 19;

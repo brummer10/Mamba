@@ -28,7 +28,7 @@
 	NAME = Mamba
 	EXEC_NAME  = $(shell echo $(NAME) | tr A-Z a-z)
 	BUILD_DIR = build
-	VER = 1.9
+	VER = 2.0
 
 	LIB_DIR := ../libxputty/libxputty/
 	HEADER_DIR := $(LIB_DIR)include/
