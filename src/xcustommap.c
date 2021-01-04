@@ -31,7 +31,7 @@ typedef struct {
     int active;
     int pre_active;
     int changed;
-    long keys[128];
+    long multikeys[128][2];
     Widget_t *keyboard;
 } CustomKeymap;
 
@@ -42,7 +42,7 @@ void draw_custom_window(void *w_, void* user_data) {
 
     cairo_pattern_t* pat;
 
-    pat = cairo_pattern_create_linear (20.0, 20, 280, 340);
+    pat = cairo_pattern_create_linear (20.0, 20, 380, 330);
     cairo_pattern_add_color_stop_rgba (pat, 0,  0.25, 0.25, 0.25, 1.0);
     cairo_pattern_add_color_stop_rgba (pat, 0.25,  0.2, 0.2, 0.2, 1.0);
     cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.15, 0.15, 0.15, 1.0);
@@ -50,12 +50,12 @@ void draw_custom_window(void *w_, void* user_data) {
     cairo_pattern_add_color_stop_rgba (pat, 1,  0.05, 0.05, 0.05, 1.0);
 
     cairo_set_source (w->crb, pat);
-    cairo_rectangle(w->crb, 20.0, 20.0,260,315-w->scale.scale_y);
+    cairo_rectangle(w->crb, 20.0, 20.0,360,405-w->scale.scale_y);
     cairo_set_line_width(w->crb,2);
     cairo_stroke(w->crb);
     cairo_pattern_destroy (pat);
     pat = NULL;
-    pat = cairo_pattern_create_linear (20, 20, 400, 460);
+    pat = cairo_pattern_create_linear (20, 20, 500, 550);
     cairo_pattern_add_color_stop_rgba (pat, 1,  0.25, 0.25, 0.25, 1.0);
     cairo_pattern_add_color_stop_rgba (pat, 0.75,  0.2, 0.2, 0.2, 1.0);
     cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.15, 0.15, 0.15, 1.0);
@@ -63,7 +63,7 @@ void draw_custom_window(void *w_, void* user_data) {
     cairo_pattern_add_color_stop_rgba (pat, 0,  0.05, 0.05, 0.05, 1.0);
 
     cairo_set_source (w->crb, pat);
-    cairo_rectangle(w->crb, 26.0, 26.0,248,303-w->scale.scale_y);
+    cairo_rectangle(w->crb, 26.0, 26.0,348,393-w->scale.scale_y);
     cairo_stroke(w->crb);
     cairo_pattern_destroy (pat);
     pat = NULL;
@@ -121,15 +121,23 @@ void draw_custom_keymap(void *w_, void* user_data) {
         cairo_text_extents(w->crb, s, &extents);
         cairo_move_to (w->crb, 10, (i*5));
         cairo_show_text(w->crb, s);
-        cairo_move_to (w->crb, 180, (i*5));
+        cairo_move_to (w->crb, 280, (i*5));
         cairo_show_text(w->crb, notes[n]);
-        cairo_move_to (w->crb, 205, (i*5));
+        cairo_move_to (w->crb, 305, (i*5));
         cairo_show_text(w->crb, octaves[o]);
-        if (customkeys->keys[a]) {
-            cairo_move_to (w->crb, 70, (i*5));
-            cairo_show_text(w->crb, XKeysymToString(customkeys->keys[a]));
+        if (customkeys->multikeys[a][0]) {
+            int b = 70;
+            cairo_move_to (w->crb, b, (i*5));
+            int c = 0;
+            for (;c<2;c++) {
+                if (customkeys->multikeys[a][c] != 0) {
+                    cairo_show_text(w->crb, XKeysymToString(customkeys->multikeys[a][c]));
+                    b += 100;
+                    cairo_move_to (w->crb, b, (i*5));
+                }
+            }
         }
-        cairo_rectangle(w->crb,60,(i*5)-20,100,25);
+        cairo_rectangle(w->crb,60,(i*5)-20,200,25);
         cairo_stroke(w->crb);
         i +=5;
         a++;
@@ -149,7 +157,7 @@ void custom_motion(void *w_, void* xmotion_, void* user_data) {
     int height = attrs.height;
     XMotionEvent *xmotion = (XMotionEvent*)xmotion_;
     //fprintf(stderr, "xmotion->x %i xmotion->y %i \n", xmotion->x, xmotion->y);
-    if((xmotion->x < 180) && (xmotion->x > 0)) {
+    if((xmotion->x < 280) && (xmotion->x > 0)) {
         int i = 4;
         int a = 0;
         for (;i<height/5;i++) {
@@ -195,23 +203,29 @@ void key_press(void *w_, void *key_, void *user_data) {
     } else {
         KeySym keysym  = XLookupKeysym (key, 0);
         if (keysym == XK_BackSpace) {
-            customkeys->keys[customkeys->active] = 0;
+            int c = 1;
+            for (;c>=0;c--) {
+                if (customkeys->multikeys[customkeys->active][c] != 0) {
+                    customkeys->multikeys[customkeys->active][c] = 0;
+                    break;
+                }
+            }
             expose_widget(w);
             return;
         } else if (keysym == XK_Up) {
             if (customkeys->active) customkeys->active -=1;
             return;
-        } else if (keysym == XK_Return) {
-            if (customkeys->active) customkeys->active +=1;
-            float value = min(w->adj->max_value,max(w->adj->min_value, 
-                                w->adj->value + w->adj->step));
-            check_value_changed(w->adj, &value);
-            return;
         } else if (keysym == XK_Down) {
             if (customkeys->active) customkeys->active +=1;
             return;
         } else if (customkeys->active) {
-            customkeys->keys[customkeys->active] = keysym;
+            int c = 0;
+            for (;c<2;c++) {
+                if (customkeys->multikeys[customkeys->active][c] == 0) {
+                    customkeys->multikeys[customkeys->active][c] = keysym;
+                    break;
+                }
+            }
             customkeys->changed = 1;
             expose_widget(w);
         }
@@ -256,7 +270,7 @@ static void customkeys_mem_free(void *w_, void* user_data) {
 }
 
 Widget_t* add_viewport(Widget_t *parent, int width, int height) {
-    Widget_t *slider = add_vslider(parent, "", 230, 0, 10, 295);
+    Widget_t *slider = add_vslider(parent, "", 330, 0, 10, 385);
     slider->func.expose_callback = draw_viewslider;
     slider->adj_y = add_adjustment(slider,0.0, 0.0, 0.0, 1.0,0.0085, CL_VIEWPORTSLIDER);
     slider->adj = slider->adj_y;
@@ -287,7 +301,7 @@ Widget_t* add_viewport(Widget_t *parent, int width, int height) {
     wid->func.leave_callback = leave_keymap;
     wid->func.enter_callback = enter_keymap;
     wid->func.key_press_callback = key_press;
-    adj_set_value(wid->adj,max_value/9.8);
+    adj_set_value(wid->adj,max_value/9.5);
 
     parent->func.configure_notify_callback = adjust_viewport;
 
@@ -302,7 +316,7 @@ void cancel_callback(void *w_, void* user_data) {
     }
 }
 
-void open_keymap(Widget_t *w, const char* keymapfile, long keys[128]) {
+void open_keymap(Widget_t *w, const char* keymapfile, long keys[128][2]) {
     if( access(keymapfile, F_OK ) != -1 ) {
         FILE *fp;
         if((fp=fopen(keymapfile, "rb"))==NULL) {
@@ -312,7 +326,7 @@ void open_keymap(Widget_t *w, const char* keymapfile, long keys[128]) {
             return;
         }
 
-        if(fread(keys, sizeof(long), 128, fp) != 128) {
+        if(fread(keys, sizeof(long), 128*2, fp) != 128*2) {
             if(feof(fp)) {
                 Widget_t *dia = open_message_dialog(w, ERROR_BOX, keymapfile, 
                 _("Premature end of file"),NULL);
@@ -338,7 +352,7 @@ void save_custom_keymap(Widget_t *w) {
         return;
     }
 
-    if(fwrite(customkeys->keys, sizeof(long), 128, fp) != 128) {
+    if(fwrite(customkeys->multikeys, sizeof(long), 128*2, fp) != 128*2) {
         Widget_t *dia = open_message_dialog(w, ERROR_BOX, w->label, 
         _("File write error"),NULL);
         XSetTransientForHint(w->app->dpy, dia->widget, w->widget);
@@ -386,7 +400,7 @@ void exit_callback(void *w_, void* button, void* user_data) {
 }
 
 Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymapfile) {
-    Widget_t *wid = create_window(w->app, DefaultRootWindow(w->app->dpy), 0, 0, 300, 400);
+    Widget_t *wid = create_window(w->app, DefaultRootWindow(w->app->dpy), 0, 0, 400, 490);
     XSelectInput(wid->app->dpy, wid->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
@@ -394,11 +408,11 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
     XSizeHints* win_size_hints;
     win_size_hints = XAllocSizeHints();
     win_size_hints->flags =  PMinSize|PBaseSize|PMaxSize|PWinGravity|PResizeInc;
-    win_size_hints->min_width = 300;
+    win_size_hints->min_width = 400;
     win_size_hints->min_height = 400;
-    win_size_hints->base_width = 300;
-    win_size_hints->base_height = 400;
-    win_size_hints->max_width = 300;
+    win_size_hints->base_width = 400;
+    win_size_hints->base_height = 490;
+    win_size_hints->max_width = 400;
     win_size_hints->max_height = 793;
     win_size_hints->width_inc = 0;
     win_size_hints->height_inc = 30;
@@ -414,29 +428,29 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymap
     customkeys->active = 12;
     customkeys->pre_active = 12;
     customkeys->changed = 0;
-    memset(customkeys->keys, 0, 128*sizeof(long));
+    memset(customkeys->multikeys, 0, 128*2*sizeof customkeys->multikeys[0][0]);
     customkeys->keyboard = keyboard;
     wid->label = keymapfile;
-    open_keymap(wid, wid->label,customkeys->keys);
+    open_keymap(wid, wid->label,customkeys->multikeys);
     wid->flags &= ~USE_TRANSPARENCY;
     wid->flags |= HAS_MEM | NO_AUTOREPEAT | NO_PROPAGATE;
     wid->func.mem_free_callback = customkeys_mem_free;
 
-    Widget_t *view = create_widget(wid->app, wid, 30, 30, 240, 295);
+    Widget_t *view = create_widget(wid->app, wid, 30, 30, 340, 385);
     view->scale.gravity = NORTHWEST;
-    add_viewport(view, 230, 3840);
+    add_viewport(view, 330, 3840);
 
-    Widget_t * button = add_button(wid, _("Cancel"), 30, 350, 75, 30);
+    Widget_t * button = add_button(wid, _("Cancel"), 30, 440, 75, 30);
     button->scale.gravity = SOUTHWEST;
     button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     button->func.value_changed_callback = cancel_callback;
 
-    button = add_button(wid, _("Save"), 112, 350, 75, 30);
+    button = add_button(wid, _("Save"), 162, 440, 75, 30);
     button->scale.gravity = SOUTHWEST;
     button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     button->func.value_changed_callback = save_callback;
 
-    button = add_button(wid, _("Exit"), 195, 350, 75, 30);
+    button = add_button(wid, _("Exit"), 295, 440, 75, 30);
     button->scale.gravity = SOUTHWEST;
     button->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     button->func.button_release_callback = exit_callback;

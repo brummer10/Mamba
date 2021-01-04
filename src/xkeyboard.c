@@ -278,12 +278,15 @@ void keysym_qwerty_to_midi_key(unsigned int inkey, float *midi_key) {
     else if ((*midi_key) == 33) (*midi_key) = 12;
 }
 
-void custom_to_midi_key(long custom_keys[128], long inkey, float *midi_key) {
+void custom_to_midi_key(long custom_keys[128][2], long inkey, float *midi_key) {
     int i = 0;
     for(;i<129;i++) {
-        if (inkey == custom_keys[i]) {
-            (*midi_key) = (float)i;
-            break;
+        int j = 0;
+        for(;j<2;j++) {
+            if (inkey == custom_keys[i][j]) {
+                (*midi_key) = (float)i;
+                return;
+            }
         }
     }
 }
@@ -879,14 +882,14 @@ bool need_redraw(MidiKeyboard *keys) {
     have;
 }
 
-void read_keymap(const char* keymapfile, long keys[128]) {
+void read_keymap(const char* keymapfile, long keys[128][2]) {
     if( access(keymapfile, F_OK ) != -1 ) {
         FILE *fp;
         if((fp=fopen(keymapfile, "rb"))==NULL) {
             fprintf(stderr,"Cannot open file.\n");
         }
 
-        if(fread(keys, sizeof(long), 128, fp) != 128) {
+        if(fread(keys, sizeof(long), 128*2, fp) != 128*2) {
             if(feof(fp))
             fprintf(stderr,"Premature end of file.");
             else
@@ -931,7 +934,7 @@ void add_keyboard(Widget_t *wid, const char * label) {
     keys->channel = 0;
     keys->key_size = 24;
     keys->key_offset = 15;
-    memset(keys->custom_keys, 0, 128*sizeof(long));
+    memset(keys->custom_keys, 0, 128*2*sizeof keys->custom_keys[0][0]);
     int j = 0;
     for(;j<4;j++) {
         keys->key_matrix[j] = 0;

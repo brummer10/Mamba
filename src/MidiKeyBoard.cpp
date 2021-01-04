@@ -96,10 +96,12 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
         path = getenv("XDG_CONFIG_HOME");
         config_file = path +"/Mamba.conf";
         keymap_file =  path +"/Mamba.keymap";
+        multikeymap_file =  path +"/Mamba.multikeymap";
     } else {
         path = getenv("HOME");
         config_file = path +"/.config/Mamba.conf";
         keymap_file =  path +"/.config/Mamba.keymap";
+        multikeymap_file =  path +"/.config/Mamba.multikeymap";
     }
     fs_instruments = NULL;
     soundfontpath = getenv("HOME");
@@ -276,7 +278,44 @@ void XKeyBoard::read_config() {
         }
         vinfile.close();
     }
-    
+    // convert old custom keymap to new format when needed
+    if( access(keymap_file.data(), F_OK ) != -1 ) {
+        fprintf(stderr, "old keymap file found %s\n", keymap_file.data());
+        long temp[128];
+        memset(temp, 0, 128 * sizeof(long));
+        FILE *fp;
+        if((fp=fopen(keymap_file.data(), "rb"))==NULL) {
+            fprintf(stderr, "cant open keymap file\n");
+            remove(keymap_file.data());
+            return;
+        }
+        if(fread(temp, sizeof(long), 128, fp) != 128) {
+            fclose(fp);
+            fprintf(stderr, "cant read keymap file\n");
+            remove(keymap_file.data());
+            return;
+        }
+        fclose(fp);
+        long temp2[128][2];
+        memset(temp2, 0, 128 * 2 * sizeof temp2[0][0]);
+        int i = 0;        
+        for(;i<128;i++) {
+            temp2[i][0] = temp[i];
+        }
+        FILE *fp2;
+        if((fp2=fopen(multikeymap_file.data(), "wb"))==NULL) {
+            fprintf(stderr, "fail to convert custom keymap to new format\n");
+            remove(keymap_file.data());
+            return;
+        }
+        if(fwrite(temp2, sizeof(long), 128*2, fp2) != 128*2) {
+            fprintf(stderr, "fail to convert custom keymap to new format\n");
+            remove(keymap_file.data());
+        }
+        remove(keymap_file.data());
+        fprintf(stderr, "convert custom keymap to new format\n");
+        fclose(fp2);
+    }
 }
 
 void XKeyBoard::save_config() {
@@ -1111,7 +1150,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     wid->flags &= ~USE_TRANSPARENCY;
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     wid->scale.gravity = NORTHWEST;
-    add_midi_keyboard(wid, keymap_file.c_str(), 0, 0, 700, 118);
+    add_midi_keyboard(wid, multikeymap_file.c_str(), 0, 0, 700, 118);
 
     MidiKeyboard *keys = (MidiKeyboard*)wid->parent_struct;
 
@@ -2299,8 +2338,8 @@ void XKeyBoard::layout_callback(void *w_, void* user_data) {
     keys->layout = xjmkb->keylayout = (int)adj_get_value(w->adj);
     
     if ((int)adj_get_value(w->adj) == 3) {
-        if( access(xjmkb->keymap_file.c_str(), F_OK ) == -1 ) {
-            open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->keymap_file.c_str());
+        if( access(xjmkb->multikeymap_file.c_str(), F_OK ) == -1 ) {
+            open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->multikeymap_file.c_str());
         }
     }
 }
@@ -2332,7 +2371,7 @@ void XKeyBoard::keymap_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     if ((int)adj_get_value(w->adj) == 2)
-        open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->keymap_file.c_str());
+        open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->multikeymap_file.c_str());
 }
 
 // static
@@ -2400,7 +2439,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_k):
             {
-                open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->keymap_file.c_str());
+                open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->multikeymap_file.c_str());
             }
             break;
             case (XK_l):

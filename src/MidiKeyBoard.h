@@ -339,6 +339,7 @@ public:
     std::string client_name;
     std::string config_file;
     std::string keymap_file;
+    std::string multikeymap_file;
     std::string path;
     std::string soundfont;
 

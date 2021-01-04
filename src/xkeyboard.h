@@ -60,7 +60,7 @@ typedef struct {
     int key_offset;
     unsigned long key_matrix[4];
     unsigned long in_key_matrix[16][4];
-    long custom_keys[128];
+    long custom_keys[128][2];
 
     midikeyfunc mk_send_note;
     midiwheelfunc mk_send_all_sound_off;
@@ -80,7 +80,7 @@ void keysym_qwerty_to_midi_key(unsigned int inkey, float *midi_key);
 
 void custom_to_midi_key(long custom_keys[128], long inkey, float *midi_key);
 
-void read_keymap(const char* keymapfile, long keys[128]);
+void read_keymap(const char* keymapfile, long keys[128][2]);
 
 void set_key_in_matrix(unsigned long *key_matrix, int key, bool set);
 
