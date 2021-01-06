@@ -219,12 +219,10 @@ void key_press(void *w_, void *key_, void *user_data) {
             if (customkeys->active) customkeys->active +=1;
             return;
         } else if (customkeys->active) {
-            int c = 0;
-            for (;c<2;c++) {
-                if (customkeys->multikeys[customkeys->active][c] == 0) {
-                    customkeys->multikeys[customkeys->active][c] = keysym;
-                    break;
-                }
+            if (customkeys->multikeys[customkeys->active][0] == 0) {
+                customkeys->multikeys[customkeys->active][0] = keysym;
+            } else {
+                customkeys->multikeys[customkeys->active][1] = keysym;
             }
             customkeys->changed = 1;
             expose_widget(w);

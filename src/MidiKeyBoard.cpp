@@ -311,6 +311,8 @@ void XKeyBoard::read_config() {
         if(fwrite(temp2, sizeof(long), 128*2, fp2) != 128*2) {
             fprintf(stderr, "fail to convert custom keymap to new format\n");
             remove(keymap_file.data());
+            fclose(fp2);
+            return;
         }
         remove(keymap_file.data());
         fprintf(stderr, "convert custom keymap to new format\n");
