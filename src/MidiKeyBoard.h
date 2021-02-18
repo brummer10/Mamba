@@ -186,6 +186,7 @@ private:
     Widget_t *view_controller;
     Widget_t *view_proc;
     Widget_t *key_size_menu;
+    Widget_t *grab_keyboard;
     Pixmap *icon;
 
     std::string filepath;

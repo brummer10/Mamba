@@ -927,8 +927,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_entry(mapping,_("_Keymap Editor"));
     mapping->func.value_changed_callback = keymap_callback;
 
-    Widget_t *entry = menu_add_check_entry(mapping,_("Grab Keyboard"));
-    entry->func.value_changed_callback = grab_callback;
+    grab_keyboard = menu_add_accel_check_entry(mapping,_("_Grab Keyboard"));
+    grab_keyboard->func.value_changed_callback = grab_callback;
 
     connection = menubar_add_menu(menubar,_("C_onnect"));
     inputs = menu_add_submenu(connection,_("Jack input"));
@@ -2424,6 +2424,18 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                     pop_menu_show(xjmkb->filemenu, menu, 6, true);
                 } else {
                     widget_hide(menu);
+                }
+            }
+            break;
+            case (XK_g):
+            {
+                float value = adj_get_value(xjmkb->grab_keyboard->adj);
+                adj_set_value(xjmkb->grab_keyboard->adj, 1.0-value);
+                if (adj_get_value(xjmkb->grab_keyboard->adj)) {
+                    XGrabKeyboard(xjmkb->win->app->dpy, xjmkb->wid->widget, true, 
+                                GrabModeAsync, GrabModeAsync, CurrentTime); 
+                } else {
+                    XUngrabKeyboard(xjmkb->win->app->dpy, CurrentTime); 
                 }
             }
             break;
