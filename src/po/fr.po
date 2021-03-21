@@ -78,9 +78,8 @@ msgstr "Banque : "
 
 #: ../libxputty/xputty/dialogs/xfile-dialog.c:60
 #: ../libxputty/xputty/dialogs/xsavefile-dialoge.c:61
-#, fuzzy
 msgid "Base Directory"
-msgstr "Répertoire"
+msgstr "Répertoire de base"
 
 #: MidiKeyBoard.cpp:893
 msgid "Big"
