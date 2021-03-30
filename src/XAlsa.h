@@ -69,7 +69,7 @@ class XAlsa {
 private:
     // send midi message to the 'queue' for jack midi output
     std::function<void(
-        int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept>
+        int _cc, int _pg, int _bgn, int _num, bool have_channel) >
         send_to_jack;
     // the midi message 'queue' for alsa midi output
     XAlsaMidiMessenger xamessage;
@@ -100,7 +100,7 @@ private:
 
 public:
     XAlsa(std::function<void(
-        int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept>
+        int _cc, int _pg, int _bgn, int _num, bool have_channel)>
         send_to_jack);
     ~XAlsa();
     // get all available ports for alsa midi in/output

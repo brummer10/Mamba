@@ -74,7 +74,7 @@ class XJack : public sigc::trackable {
 private:
     mamba::MidiMessenger *mmessage;
     MidiClockToBpm mp;
-    std::function<void(const uint8_t*,uint8_t) noexcept> send_to_alsa;
+    std::function<void(const uint8_t*,uint8_t) > send_to_alsa;
     std::function<void(int)> set_alsa_priority;
     timespec ts1;
     jack_nframes_t event_count;
@@ -107,7 +107,7 @@ private:
 
 public:
     XJack(mamba::MidiMessenger *mmessage,
-        std::function<void(const uint8_t*,uint8_t) noexcept> send_to_alsa,
+        std::function<void(const uint8_t*,uint8_t) > send_to_alsa,
         std::function<void(int)> set_alsa_priority);
     ~XJack();
     std::atomic<bool> transport_state_changed;

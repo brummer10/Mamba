@@ -82,7 +82,7 @@ bool XAlsaMidiMessenger::send_midi_cc(const uint8_t *midi_get,
  */
 
 XAlsa::XAlsa(std::function<void(
-        int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept> 
+        int _cc, int _pg, int _bgn, int _num, bool have_channel) > 
         send_to_jack_) 
     :send_to_jack(send_to_jack_),
     xamessage(),

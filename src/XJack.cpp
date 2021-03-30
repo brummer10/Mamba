@@ -85,7 +85,7 @@ bool MidiClockToBpm::time_to_bpm(double time, unsigned int* bpm_) {
  */
 
 XJack::XJack(mamba::MidiMessenger *mmessage_,
-        std::function<void(const uint8_t*,uint8_t) noexcept>  send_to_alsa_,
+        std::function<void(const uint8_t*,uint8_t) >  send_to_alsa_,
         std::function<void(int)>  set_alsa_priority_)
     : sigc::trackable(),
      mmessage(mmessage_),
@@ -276,6 +276,8 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
                     }
                 }
                 send_to_alsa(midi_send, ev.num);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
                 if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
                     if (ev.buffer[2] > 0) // velocity 0 treaded as Note Off
                         std::async(std::launch::async, trigger_get_midi_in, (int(ev.buffer[0]&0x0f)), ev.buffer[1], true);
@@ -284,6 +286,7 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
                 } else if ((ev.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
                     std::async(std::launch::async, trigger_get_midi_in, (int(ev.buffer[0]&0x0f)), ev.buffer[1], false);
                 }
+#pragma GCC diagnostic pop
             }
             startPlay[i] = jack_last_frame_time(client)+n;
             posPlay[i]++;
@@ -353,6 +356,8 @@ inline void XJack::process_midi_in(void* buf, void* out_buf) {
         if (record)
             record_midi(midi_send, i, in_event.size);
         send_to_alsa(midi_send, in_event.size);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
         if ((in_event.buffer[0] & 0xf0) == 0x90) {   // Note On
             std::async(std::launch::async, trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], true);
         } else if ((in_event.buffer[0] & 0xf0) == 0x80) {   // Note Off
@@ -366,6 +371,7 @@ inline void XJack::process_midi_in(void* buf, void* out_buf) {
                 bpm_set.store((int)bpm, std::memory_order_release);
             }
         }
+#pragma GCC diagnostic pop
     }
 }
 
