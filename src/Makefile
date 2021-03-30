@@ -42,7 +42,7 @@
 	LOCAL_DIR ?= $(SHARE_DIR)/locale
 
 	# set compile flags
-	CXXFLAGS += -O2 -D_FORTIFY_SOURCE=2 -Wall -fstack-protector -funroll-loops -ffast-math -fomit-frame-pointer \
+	CXXFLAGS += -std=gnu++14 -O2 -D_FORTIFY_SOURCE=2 -Wall -fstack-protector -funroll-loops -ffast-math -fomit-frame-pointer \
 	-fstrength-reduce -fschedule-insns $(SSE_CFLAGS)
 	DEBUG_CXXFLAGS += -g -D DEBUG
 	LDFLAGS += -Wl,-z,noexecstack -Wl,--no-undefined -I./ -I../libxputty/libxputty/include/ \
