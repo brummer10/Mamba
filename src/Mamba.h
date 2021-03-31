@@ -19,6 +19,13 @@
  */
 
 
+// workaround for libsmf which include glib.h in a extern "C" block
+// that lead to a error when build with c++17
+
+extern "C++" {
+#include <type_traits>
+}
+
 #include <smf.h>
 
 #include <atomic>
