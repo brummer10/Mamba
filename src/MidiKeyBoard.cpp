@@ -414,6 +414,8 @@ void XKeyBoard::show_ui(int present) {
             nsmsig.trigger_nsm_gui_is_shown();
     }else {
         widget_hide(win);
+        map_callback(win,NULL);
+        visible = 0;
         if(nsmsig.nsm_session_control)
             nsmsig.trigger_nsm_gui_is_hidden();
     }
