@@ -131,6 +131,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     view_program = 1;
     width_inc = 25;
     key_size = 0;
+    is_inited = false;
     filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
@@ -390,12 +391,16 @@ inline void dummy_callback(void *w_, void* user_data) {
 }
 
 void XKeyBoard::nsm_show_ui() {
-    XLockDisplay(win->app->dpy);
-    widget_show_all(win);
-    XFlush(win->app->dpy);
-    XMoveWindow(win->app->dpy,win->widget, main_x, main_y);
-    nsmsig.trigger_nsm_gui_is_shown();
-    XUnlockDisplay(win->app->dpy);
+    if (is_inited) {
+        XLockDisplay(win->app->dpy);
+        widget_show_all(win);
+        XFlush(win->app->dpy);
+        XMoveWindow(win->app->dpy,win->widget, main_x, main_y);
+        nsmsig.trigger_nsm_gui_is_shown();
+        XUnlockDisplay(win->app->dpy);
+    } else {
+        visible = 1;
+    }
 }
 
 void XKeyBoard::nsm_hide_ui() {
@@ -412,7 +417,7 @@ void XKeyBoard::show_ui(int present) {
         XMoveWindow(win->app->dpy,win->widget, main_x, main_y);
         if(nsmsig.nsm_session_control)
             nsmsig.trigger_nsm_gui_is_shown();
-    }else {
+    } else {
         widget_hide(win);
         map_callback(win,NULL);
         visible = 0;
@@ -1188,6 +1193,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     init_synth_ui(win);
     // start the timeout thread for keyboard animation
     animidi->start(30, std::bind(animate_midi_keyboard,(void*)wid));
+    is_inited = true;
 }
 
 // static
