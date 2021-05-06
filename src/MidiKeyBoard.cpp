@@ -131,7 +131,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     view_program = 1;
     width_inc = 25;
     key_size = 0;
-    is_inited = false;
+    is_inited.store(false, std::memory_order_release);
     filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
@@ -391,7 +391,7 @@ inline void dummy_callback(void *w_, void* user_data) {
 }
 
 void XKeyBoard::nsm_show_ui() {
-    if (is_inited) {
+    if (is_inited.load(std::memory_order_acquire)) {
         XLockDisplay(win->app->dpy);
         widget_show_all(win);
         XFlush(win->app->dpy);
@@ -1193,7 +1193,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     init_synth_ui(win);
     // start the timeout thread for keyboard animation
     animidi->start(30, std::bind(animate_midi_keyboard,(void*)wid));
-    is_inited = true;
+    is_inited.store(true, std::memory_order_release);
 }
 
 // static

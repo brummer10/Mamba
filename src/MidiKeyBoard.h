@@ -223,7 +223,7 @@ private:
     int view_controls;
     int view_program;
     int width_inc;
-    bool is_inited;
+    std::atomic<bool> is_inited;
 
     std::string remove_sub (std::string a, std::string b);
     static void get_note(Widget_t *w, const int *key, const bool on_off) noexcept;
