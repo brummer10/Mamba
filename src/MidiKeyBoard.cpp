@@ -805,6 +805,12 @@ void XKeyBoard::draw_middlebox(void *w_, void* user_data) noexcept{
     cairo_pattern_destroy (pat);
 }
 
+// static
+void XKeyBoard::set_std_value(void *w_, void* button, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    adj_set_value(w->adj, w->adj->std_value);
+}
+
 Widget_t *XKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height) {
     Widget_t *wid = add_knob(parent,label, x, y, width, height);
@@ -813,6 +819,7 @@ Widget_t *XKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
     wid->func.expose_callback = mk_draw_knob;
     wid->func.key_press_callback = key_press;
     wid->func.key_release_callback = key_release;
+    wid->func.double_click_callback = set_std_value;
     return wid;
 }
 
@@ -823,6 +830,7 @@ Widget_t *XKeyBoard::add_keyboard_button(Widget_t *parent, const char * label,
     wid->func.expose_callback = draw_button;
     wid->func.key_press_callback = key_press;
     wid->func.key_release_callback = key_release;
+    wid->func.double_click_callback = set_std_value;
     return wid;
 }
 
@@ -2051,6 +2059,7 @@ void XKeyBoard::bank_callback(void *w_, void* user_data) noexcept{
     if(!xjmkb->xsynth->synth_is_active()) {
         xjmkb->mbank = (int)adj_get_value(w->adj);
         xjmkb->mmessage->send_midi_cc(0xB0, 32, xjmkb->mbank, 3, false);
+        xjmkb->mmessage->send_midi_cc(0xC0, xjmkb->mprogram, 0, 2, false);
     }
 }
 

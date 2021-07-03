@@ -229,6 +229,7 @@ private:
     static void get_note(Widget_t *w, const int *key, const bool on_off) noexcept;
     static void get_all_notes_off(Widget_t *w, const int *value) noexcept;
 
+    static void set_std_value(void *w_, void* button, void* user_data) noexcept;
     static void info_callback(void *w_, void* user_data);
     static void file_callback(void *w_, void* user_data);
     static void view_callback(void *w_, void* user_data);
