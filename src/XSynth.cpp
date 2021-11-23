@@ -68,6 +68,8 @@ void XSynth::setup(unsigned int SampleRate) {
 #else
 #define USE_FLUID_API 1
 #endif
+#else
+#define USE_FLUID_API 1
 #endif
 
 #if FLUIDSYNTH_VERSION_MAJOR > 1
