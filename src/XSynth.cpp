@@ -25,14 +25,9 @@
 namespace xsynth {
 
 // check which fluidsynth version is in use
-#if FLUIDSYNTH_VERSION_MAJOR > 1
-#if FLUIDSYNTH_VERSION_MINOR > 1
-#if FLUIDSYNTH_VERSION_MICRO > 2
+
+#if (FLUIDSYNTH_VERSION_MAJOR > 1 && FLUIDSYNTH_VERSION_MINOR > 1 && FLUIDSYNTH_VERSION_MICRO > 2)
 #define USE_FLUID_API 2
-#else
-#define USE_FLUID_API 1
-#endif
-#endif
 #else
 #define USE_FLUID_API 1
 #endif
