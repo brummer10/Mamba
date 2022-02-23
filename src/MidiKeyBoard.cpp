@@ -883,7 +883,10 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_entry(add_midi,_("Add New"));
     file_remove_menu = menu_add_submenu(filemenu, _("Remove MIDI"));
     menu_add_entry(filemenu,_("_Save MIDI as"));
-    menu_add_entry(filemenu,_("_Quit"));
+    if (nsmsig.nsm_session_control)
+        menu_add_entry(filemenu,_("Hide"));
+    else
+        menu_add_entry(filemenu,_("_Quit"));
     filemenu->func.value_changed_callback = file_callback;
     filemenu->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     filemenu->func.key_press_callback = key_press;
@@ -1855,7 +1858,14 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
         }
         break;
         case(4):
-            quit(xjmkb->win);
+        {
+            if(xjmkb->nsmsig.nsm_session_control) {
+                widget_hide(xjmkb->win);
+                xjmkb->nsmsig.trigger_nsm_gui_is_hidden();
+            } else {
+                quit(xjmkb->win);
+            }
+        }
         break;
         default:
         break;
@@ -2526,8 +2536,13 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_q):
             {
-                fprintf(stderr, "ctrl +q received, quit now\n");
-                quit(xjmkb->win);
+                if(xjmkb->nsmsig.nsm_session_control) {
+                    widget_hide(xjmkb->win);
+                    xjmkb->nsmsig.trigger_nsm_gui_is_hidden();
+                } else {
+                    fprintf(stderr, "ctrl +q received, quit now\n");
+                    quit(xjmkb->win);
+                }
             }
             break;
             case (XK_r):
