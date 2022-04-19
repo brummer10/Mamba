@@ -111,6 +111,9 @@ All your Settings will be saved on exit, so on next start you could just play al
 - libjack-(jackd2)-dev
 - libasound2-dev
 
+## Prebuild Binary
+
+[Mamba.zip](https://github.com/brummer10/Mamba/releases/download/Latest/Mamba.zip)
 
 ## Build
 
