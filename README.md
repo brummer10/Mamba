@@ -89,14 +89,16 @@ All your Settings will be saved on exit, so on next start you could just play al
 - Load MIDI-files on command-line
 - Support jack_transport to start/stop MIDI-Loops
 - Keyboard Shortcuts
-- `ctrl + r` toggle Record Button
-- `ctrl + p` toggle Play Button
-- `ctrl + l` open load file dialogue
-- `ctrl + s` open save file dialogue
-- `ctrl + a` show info box
-- `ctrl + k` show Key-map Editor
-- `ctrl + q` quit
-- `ctrl + c` quit
+  - `ctrl + 0-4` change octave
+  - `ctrl + g` toggle Grab Keyboard
+  - `ctrl + r` toggle Record Button
+  - `ctrl + p` toggle Play Button
+  - `ctrl + l` open load file dialogue
+  - `ctrl + s` open save file dialogue
+  - `ctrl + a` show info box
+  - `ctrl + k` show Key-map Editor
+  - `ctrl + q` quit
+  - `ctrl + c` quit
 
 
 ## Dependencies
