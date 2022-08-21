@@ -89,8 +89,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     mmessage(mmessage_),
     animidi(animidi_),
     nsmsig(nsmsig_),
-    xsig(xsig_),
-    icon(NULL) {
+    xsig(xsig_) {
     client_name = "Mamba";
     if (getenv("XDG_CONFIG_HOME")) {
         path = getenv("XDG_CONFIG_HOME");
@@ -159,12 +158,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
         sigc::mem_fun(this, &XKeyBoard::quit_by_jack));
 }
 
-XKeyBoard::~XKeyBoard() {
-    if (icon) {
-        XFreePixmap(win->app->dpy, (*icon));
-        icon = NULL;
-    }
-}
+XKeyBoard::~XKeyBoard() {}
 
 //static
 XKeyBoard* XKeyBoard::get_instance(void *w_) {
@@ -237,6 +231,7 @@ void XKeyBoard::read_config() {
             else if (key.compare("[chorus_speed]") == 0) xsynth->chorus_speed = std::stof(value);
             else if (key.compare("[chorus_level]") == 0) xsynth->chorus_level = std::stof(value);
             else if (key.compare("[chorus_voices]") == 0) xsynth->chorus_voices = std::stoi(value);
+            else if (key.compare("[synth_volume]") == 0) xsynth->volume_level = std::stof(value);
             else if (key.compare("[channel_instruments]") == 0) {
                 for (int i = 0; i < 15; i++) {
                     xsynth->channel_instrument[i] = std::stoi(value);
@@ -355,6 +350,7 @@ void XKeyBoard::save_config() {
          outfile << "[chorus_speed] " << xsynth->chorus_speed << std::endl;
          outfile << "[chorus_level] " << xsynth->chorus_level << std::endl;
          outfile << "[chorus_voices] " << xsynth->chorus_voices << std::endl;
+         outfile << "[synth_volume] " << xsynth->volume_level << std::endl;
          outfile << "[channel_instruments] ";
          for (int i = 0; i < 16; i++) {
              outfile << " " << xsynth->channel_instrument[i];
@@ -455,7 +451,7 @@ void XKeyBoard::draw_my_combobox_entrys(void *w_, void* user_data) noexcept{
 
     int i = (int)max(0,adj_get_value(w->adj));
     int a = 0;
-    int j = comboboxlist->list_size<comboboxlist->show_items+i+1 ? 
+    int j = comboboxlist->list_size < static_cast<unsigned int>(comboboxlist->show_items+i+1) ? 
       comboboxlist->list_size : comboboxlist->show_items+i+1;
     for(;i<j;i++) {
         double ci = ((i+1)/100.0)*12.0;
@@ -839,16 +835,15 @@ void XKeyBoard::init_ui(Xputty *app) {
     XSelectInput(win->app->dpy, win->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
-    widget_set_icon_from_png(win,icon,LDVAR(midikeyboard_png));
+    widget_set_icon_from_png(win,LDVAR(midikeyboard_png));
     std::string tittle = client_name + _(" - Virtual Midi Keyboard");
     widget_set_title(win, tittle.c_str());
     widget_set_dnd_aware(win);
-    win->flags |= HAS_MEM | NO_AUTOREPEAT;
+    win->flags |= NO_AUTOREPEAT;
     win->scale.gravity = NORTHEAST;
     win->parent_struct = this;
     win->func.dnd_notify_callback = dnd_load_response;
     win->func.configure_notify_callback = win_configure_callback;
-    win->func.mem_free_callback = win_mem_free;
     win->func.map_notify_callback = map_callback;
     win->func.unmap_notify_callback = unmap_callback;
     win->func.key_press_callback = key_press;
@@ -2759,6 +2754,13 @@ void XKeyBoard::channel_pressure_callback(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xsynth->set_channel_pressure(xjmkb->mchannel, (int)adj_get_value(w->adj));
 }
+// static
+void XKeyBoard::synth_volume_callback(void *w_, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    xjmkb->xsynth->volume_level = adj_get_value(w->adj);
+    xjmkb->xsynth->set_gain();
+}
 
 // static
 void XKeyBoard::set_on_off_label(void *w_, void* user_data) noexcept{
@@ -2853,7 +2855,7 @@ void XKeyBoard::show_synth_ui(int present) {
 }
 
 void XKeyBoard::init_synth_ui(Widget_t *parent) {
-    synth_ui = create_window(parent->app, DefaultRootWindow(parent->app->dpy), 0, 0, 570, 200);
+    synth_ui = create_window(parent->app, DefaultRootWindow(parent->app->dpy), 0, 0, 650, 200);
     XSelectInput(parent->app->dpy, synth_ui->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
@@ -2864,7 +2866,7 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     widget_set_title(synth_ui, title.c_str());
     widget_set_dnd_aware(synth_ui);
     synth_ui->flags &= ~USE_TRANSPARENCY;
-    synth_ui->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    synth_ui->flags |= NO_AUTOREPEAT | NO_PROPAGATE | HIDE_ON_DELETE;
     synth_ui->func.expose_callback = draw_synth_ui;
     synth_ui->scale.gravity = CENTER;
     synth_ui->parent = parent;
@@ -2988,8 +2990,17 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_release_callback = key_release;
 
     // general
-    tmp = add_keyboard_button(synth_ui, _("Close"), 490, 150, 60, 30);
+    tmp = add_keyboard_button(synth_ui, _("Close"), 570, 160, 60, 30);
     tmp->func.value_changed_callback = synth_ui_callback;
+
+    tmp = add_keyboard_knob(synth_ui, _("Volume"), 555, 40, 95, 105);
+    set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 1.2, 0.0005, CL_LOGSCALE);
+    adj_set_value(tmp->adj, xsynth->volume_level);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = synth_volume_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    
 }
 
 /******************* Exit handlers ********************/
@@ -3009,16 +3020,6 @@ void XKeyBoard::exit_handle (int sig) {
     xjack->client = NULL;
     fprintf (stderr, "\n%s: signal %i received, exiting ...\n",client_name.c_str(), sig);
     exit (0);
-}
-
-// static
-void XKeyBoard::win_mem_free(void *w_, void* user_data) {
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    if(xjmkb->icon) {
-        XFreePixmap(xjmkb->win->app->dpy, *xjmkb->icon);
-        xjmkb->icon = NULL;
-    }
 }
 
 /****************************************************************

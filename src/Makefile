@@ -28,7 +28,7 @@
 	NAME = Mamba
 	EXEC_NAME  = $(shell echo $(NAME) | tr A-Z a-z)
 	BUILD_DIR = build
-	VER = 2.2
+	VER = 2.4
 
 	LIB_DIR := ../libxputty/libxputty/
 	HEADER_DIR := $(LIB_DIR)include/
@@ -42,7 +42,7 @@
 	LOCAL_DIR ?= $(SHARE_DIR)/locale
 
 	# set compile flags
-	CXXFLAGS += -std=gnu++14 -O2 -D_FORTIFY_SOURCE=2 -Wall -fstack-protector -funroll-loops -ffast-math -fomit-frame-pointer \
+	CXXFLAGS += -std=gnu++14 -O3 -D_FORTIFY_SOURCE=2 -Wall -fstack-protector -funroll-loops -ffast-math -fomit-frame-pointer \
 	-fstrength-reduce -fschedule-insns $(SSE_CFLAGS)
 	DEBUG_CXXFLAGS += -g -D DEBUG
 	LDFLAGS += -Wl,-z,noexecstack -Wl,--no-undefined -I./ -I../libxputty/libxputty/include/ \

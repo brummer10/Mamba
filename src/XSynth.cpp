@@ -61,6 +61,8 @@ XSynth::XSynth() {
     chorus_speed = 0.3;
     chorus_level = 3.0;
     chorus_voices = 3;
+
+    volume_level = 0.2;
 };
 
 XSynth::~XSynth() {
@@ -86,6 +88,7 @@ void XSynth::init_synth() {
     synth = new_fluid_synth(settings);
     adriver = new_fluid_audio_driver(settings, synth);
     mdriver = new_fluid_midi_driver(settings, fluid_synth_handle_midi_event, synth);
+    volume_level = fluid_synth_get_gain(synth);
 }
 
 int XSynth::load_soundfont(const char *path) {
@@ -238,6 +241,12 @@ void XSynth::set_chorus_levels() {
 void XSynth::set_channel_pressure(int channel, int value) {
     if (synth) {
         fluid_synth_channel_pressure(synth, channel, value);
+    }
+}
+
+void XSynth::set_gain() {
+    if (synth) {
+        fluid_synth_set_gain(synth, volume_level);
     }
 }
 

@@ -187,7 +187,6 @@ private:
     Widget_t *view_proc;
     Widget_t *key_size_menu;
     Widget_t *grab_keyboard;
-    Pixmap *icon;
 
     std::string filepath;
     std::string soundfontpath;
@@ -289,7 +288,6 @@ private:
     static void mk_draw_knob(void *w_, void* user_data) noexcept;
     static void draw_button(void *w_, void* user_data) noexcept;
     static void set_play_label(void *w_, void* user_data) noexcept;
-    static void win_mem_free(void *w_, void* user_data);
 
     static void synth_ui_callback(void *w_, void* user_data);
 
@@ -309,6 +307,7 @@ private:
     static void channel_pressure_callback(void *w_, void* user_data);
     static void instrument_callback(void *w_, void* user_data);
     static void soundfont_callback(void *w_, void* user_data);
+    static void synth_volume_callback(void *w_, void* user_data) noexcept;
 
     Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
