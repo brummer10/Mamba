@@ -943,6 +943,11 @@ void XKeyBoard::init_ui(Xputty *app) {
     grab_keyboard = menu_add_accel_check_entry(mapping,_("_Grab Keyboard"));
     grab_keyboard->func.value_changed_callback = grab_callback;
 
+    Widget_t* midi_through = menu_add_accel_check_entry(mapping,_("Midi _Through"));
+    adj_set_value(midi_through->adj, 1.0);
+    midi_through->func.value_changed_callback = through_callback;
+
+
     connection = menubar_add_menu(menubar,_("C_onnect"));
     inputs = menu_add_submenu(connection,_("Jack input"));
     outputs = menu_add_submenu(connection,_("Jack output"));
@@ -2407,6 +2412,17 @@ void XKeyBoard::grab_callback(void *w_, void* user_data) {
                     GrabModeAsync, GrabModeAsync, CurrentTime); 
     } else {
         XUngrabKeyboard(xjmkb->win->app->dpy, CurrentTime); 
+    }
+}
+
+// static
+void XKeyBoard::through_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    if (adj_get_value(w->adj)) {
+        xjmkb->xjack->midi_through = true;
+    } else {
+        xjmkb->xjack->midi_through = false;
     }
 }
 

@@ -118,6 +118,7 @@ XJack::XJack(mamba::MidiMessenger *mmessage_,
         playPosTime = 0.0;
         fresh_take = true;
         first_play = true;
+        midi_through = true;
         store1.reserve(256);
         store2.reserve(256);
         st = &store1;
@@ -348,14 +349,16 @@ inline void XJack::process_midi_in(void* buf, void* out_buf) {
     unsigned int i;
     for (i = 0; i < event_count; i++) {
         jack_midi_event_get(&in_event, buf, i);
-        unsigned char* midi_send = jack_midi_event_reserve(out_buf, i, in_event.size);
-        midi_send[0] = in_event.buffer[0];
-        midi_send[1] = in_event.buffer[1];
-        if (in_event.size>2) 
-            midi_send[2] = in_event.buffer[2];
-        if (record)
-            record_midi(midi_send, i, in_event.size);
-        send_to_alsa(midi_send, in_event.size);
+        if (midi_through) {
+            unsigned char* midi_send = jack_midi_event_reserve(out_buf, i, in_event.size);
+            midi_send[0] = in_event.buffer[0];
+            midi_send[1] = in_event.buffer[1];
+            if (in_event.size>2) 
+                midi_send[2] = in_event.buffer[2];
+            if (record)
+                record_midi(midi_send, i, in_event.size);
+            send_to_alsa(midi_send, in_event.size);
+        }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
         if ((in_event.buffer[0] & 0xf0) == 0x90) {   // Note On

@@ -139,6 +139,7 @@ public:
     int view_channels;
     bool fresh_take;
     bool first_play;
+    bool midi_through;
     unsigned int SampleRate;
     double srms;
     double bpm_ratio;

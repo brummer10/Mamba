@@ -247,6 +247,7 @@ private:
     static void octave_callback(void *w_, void* user_data) noexcept;
     static void keymap_callback(void *w_, void* user_data);
     static void grab_callback(void *w_, void* user_data);
+    static void through_callback(void *w_, void* user_data);
     static void synth_callback(void *w_, void* user_data);
     static void modwheel_callback(void *w_, void* user_data) noexcept;
     static void detune_callback(void *w_, void* user_data) noexcept;
