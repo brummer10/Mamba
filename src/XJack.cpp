@@ -118,7 +118,7 @@ XJack::XJack(mamba::MidiMessenger *mmessage_,
         playPosTime = 0.0;
         fresh_take = true;
         first_play = true;
-        midi_through = true;
+        midi_through = 1;
         store1.reserve(256);
         store2.reserve(256);
         st = &store1;

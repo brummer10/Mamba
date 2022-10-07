@@ -137,9 +137,9 @@ public:
     int program;
     int freewheel;
     int view_channels;
+    int midi_through;
     bool fresh_take;
     bool first_play;
-    bool midi_through;
     unsigned int SampleRate;
     double srms;
     double bpm_ratio;

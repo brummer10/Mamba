@@ -211,6 +211,7 @@ void XKeyBoard::read_config() {
             else if (key.compare("[hide_proc]") == 0) view_program = std::stoi(value);
             else if (key.compare("[key_size]") == 0) key_size = std::stoi(value);
             else if (key.compare("[keylayout]") == 0) keylayout = std::stoi(value);
+            else if (key.compare("[midi_through]") == 0) xjack->midi_through = std::stoi(value);
             else if (key.compare("[mchannel]") == 0) mchannel = std::stoi(value);
             else if (key.compare("[velocity]") == 0) velocity = std::stoi(value);
             else if (key.compare("[filepath]") == 0) filepath = remove_sub(line, "[filepath] ");
@@ -330,6 +331,7 @@ void XKeyBoard::save_config() {
          outfile << "[hide_proc] " << view_program << std::endl;
          outfile << "[key_size] " << key_size << std::endl;
          outfile << "[keylayout] " << keylayout << std::endl;
+         outfile << "[midi_through] " << xjack->midi_through << std::endl;
          outfile << "[mchannel] " << mchannel << std::endl;
          outfile << "[velocity] " << velocity << std::endl;
          outfile << "[filepath] " << filepath << std::endl;
@@ -944,7 +946,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     grab_keyboard->func.value_changed_callback = grab_callback;
 
     Widget_t* midi_through = menu_add_accel_check_entry(mapping,_("Midi _Through"));
-    adj_set_value(midi_through->adj, 1.0);
+    adj_set_value(midi_through->adj, static_cast<float>(xjack->midi_through));
     midi_through->func.value_changed_callback = through_callback;
 
 
@@ -2420,9 +2422,9 @@ void XKeyBoard::through_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     if (adj_get_value(w->adj)) {
-        xjmkb->xjack->midi_through = true;
+        xjmkb->xjack->midi_through = 1;
     } else {
-        xjmkb->xjack->midi_through = false;
+        xjmkb->xjack->midi_through = 0;
     }
 }
 
