@@ -187,6 +187,7 @@ private:
     Widget_t *view_proc;
     Widget_t *key_size_menu;
     Widget_t *grab_keyboard;
+    Widget_t* midi_through;
 
     std::string filepath;
     std::string soundfontpath;

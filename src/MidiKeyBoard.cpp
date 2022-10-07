@@ -945,7 +945,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     grab_keyboard = menu_add_accel_check_entry(mapping,_("_Grab Keyboard"));
     grab_keyboard->func.value_changed_callback = grab_callback;
 
-    Widget_t* midi_through = menu_add_accel_check_entry(mapping,_("Midi _Through"));
+    midi_through = menu_add_accel_check_entry(mapping,_("Midi _Through"));
     adj_set_value(midi_through->adj, static_cast<float>(xjack->midi_through));
     midi_through->func.value_changed_callback = through_callback;
 
@@ -2570,6 +2570,12 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                 Widget_t *dia = save_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
                 XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
                 xjmkb->win->func.dialog_callback = dialog_save_response;
+            }
+            break;
+            case (XK_t):
+            {
+                float value = adj_get_value(xjmkb->midi_through->adj);
+                adj_set_value(xjmkb->midi_through->adj, 1.0-value);
             }
             break;
             case (XK_u):

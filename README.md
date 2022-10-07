@@ -90,6 +90,7 @@ All your Settings will be saved on exit, so on next start you could just play al
 - Support jack_transport to start/stop MIDI-Loops
 - Keyboard Shortcuts
   - `ctrl + 0-4` change octave
+  - `ctrl + t` toggle MIDI Through
   - `ctrl + g` toggle Grab Keyboard
   - `ctrl + r` toggle Record Button
   - `ctrl + p` toggle Play Button
