@@ -1953,9 +1953,11 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         expose_widget(xjmkb->fs_soundfont);
         const char **port_list = NULL;
         port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
+        std::string synth_instance = jack_get_client_name(xjmkb->xjack->client);
+        std::transform(synth_instance.begin(), synth_instance.end(), synth_instance.begin(), ::tolower);
         if (port_list) {
             for (int i = 0; port_list[i] != NULL; i++) {
-                if (strstr(port_list[i], "mamba")) {
+                if (strstr(port_list[i], synth_instance.c_str())) {
                     if (!jack_port_connected_to(xjmkb->xjack->out_port, port_list[i])) {
                         const char *my_port = jack_port_name(xjmkb->xjack->out_port);
                         jack_connect(xjmkb->xjack->client, my_port,port_list[i]);
@@ -3185,9 +3187,11 @@ int main (int argc, char *argv[]) {
             xsynth.load_soundfont(xjmkb.soundfont.c_str());
             const char **port_list = NULL;
             port_list = jack_get_ports(xjack.client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
+            std::string synth_instance = jack_get_client_name(xjack.client);
+            std::transform(synth_instance.begin(), synth_instance.end(), synth_instance.begin(), ::tolower);
             if (port_list) {
                 for (int i = 0; port_list[i] != NULL; i++) {
-                    if (strstr(port_list[i], "mamba")) {
+                    if (strstr(port_list[i], synth_instance.c_str())) {
                         const char *my_port = jack_port_name(xjack.out_port);
                         jack_connect(xjack.client, my_port,port_list[i]);
                         break;
