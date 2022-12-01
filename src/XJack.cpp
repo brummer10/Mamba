@@ -160,7 +160,7 @@ int XJack::init_jack() {
         fprintf (stderr, "cannot activate client");
         return 0;
     }
-
+    client_name = jack_get_client_name(client);
     if (!jack_is_realtime(client)) {
         fprintf (stderr, "jack isn't running with realtime priority\n");
     } else {

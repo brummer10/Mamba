@@ -64,7 +64,7 @@ public:
     int chorus_voices;
     double volume_level;
 
-    void setup(unsigned int SampleRate);
+    void setup(unsigned int SampleRate, const char *instance_name);
     void init_synth();
     int synth_is_active() {return synth ? 1 : 0;}
     int load_soundfont(const char *path);

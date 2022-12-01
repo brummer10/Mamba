@@ -71,7 +71,7 @@ XSynth::~XSynth() {
     unload_synth();
 };
 
-void XSynth::setup(unsigned int SampleRate) {
+void XSynth::setup(unsigned int SampleRate, const char *instance_name) {
 
 #if FLUIDSYNTH_VERSION_MAJOR > 1
     const char* driver[] = { "jack", NULL };
@@ -80,10 +80,10 @@ void XSynth::setup(unsigned int SampleRate) {
     settings = new_fluid_settings();
     fluid_settings_setnum(settings, "synth.sample-rate", SampleRate);
     fluid_settings_setstr(settings, "audio.driver", "jack");
-    fluid_settings_setstr(settings, "audio.jack.id", "mamba");
+    fluid_settings_setstr(settings, "audio.jack.id", instance_name);
     fluid_settings_setint(settings, "audio.jack.autoconnect", 1);
     fluid_settings_setstr(settings, "midi.driver", "jack");
-    fluid_settings_setstr(settings, "midi.jack.id", "mamba");
+    fluid_settings_setstr(settings, "midi.jack.id", instance_name);
 }
 
 void XSynth::init_synth() {

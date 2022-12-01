@@ -363,6 +363,7 @@ public:
     void read_config();
     void save_config();
     void set_config(const char *name, const char *client_id, bool op_gui);
+    void set_config_file();
 
     static void dialog_load_response(void *w_, void* user_data);
     static void synth_load_response(void *w_, void* user_data);

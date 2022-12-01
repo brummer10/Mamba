@@ -90,15 +90,15 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     animidi(animidi_),
     nsmsig(nsmsig_),
     xsig(xsig_) {
-    client_name = "Mamba";
+    client_name = xjack->client_name;
     if (getenv("XDG_CONFIG_HOME")) {
         path = getenv("XDG_CONFIG_HOME");
-        config_file = path +"/Mamba.conf";
+        config_file = path + client_name + ".conf";
         keymap_file =  path +"/Mamba.keymap";
         multikeymap_file =  path +"/Mamba.multikeymap";
     } else {
         path = getenv("HOME");
-        config_file = path +"/.config/Mamba.conf";
+        config_file = path +"/.config/" + client_name + ".conf";
         keymap_file =  path +"/.config/Mamba.keymap";
         multikeymap_file =  path +"/.config/Mamba.multikeymap";
     }
@@ -189,6 +189,17 @@ void XKeyBoard::set_config(const char *name, const char *client_id, bool op_gui)
         visible = 0;
     } else {
         visible = 1;
+    }
+}
+
+void XKeyBoard::set_config_file() {
+    client_name = xjack->client_name;
+    if (getenv("XDG_CONFIG_HOME")) {
+        path = getenv("XDG_CONFIG_HOME");
+        config_file = path + client_name + ".conf";
+    } else {
+        path = getenv("HOME");
+        config_file = path +"/.config/" + client_name + ".conf";
     }
 }
 
@@ -838,6 +849,7 @@ void XKeyBoard::init_ui(Xputty *app) {
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
     widget_set_icon_from_png(win,LDVAR(midikeyboard_png));
+    client_name = xjack->client_name;
     std::string tittle = client_name + _(" - Virtual Midi Keyboard");
     widget_set_title(win, tittle.c_str());
     widget_set_dnd_aware(win);
@@ -1079,7 +1091,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     bpm = add_valuedisplay(proc_box, _("BPM"), 450, 7, 60, 30);
     bpm->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     bpm->scale.gravity = ASPECT;
-    set_adjustment(bpm->adj,120.0, mbpm, 24.0, 360.0, 1.0, CL_CONTINUOS);
+    set_adjustment(bpm->adj,120.0, mbpm, 4.0, 360.0, 1.0, CL_CONTINUOS);
     bpm->func.value_changed_callback = bpm_callback;
     bpm->func.key_press_callback = key_press;
     bpm->func.key_release_callback = key_release;
@@ -1780,6 +1792,20 @@ void XKeyBoard::file_remove_callback(void *w_, void* user_data) {
     snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
     xjmkb->time_line->label = xjmkb->time_line->input_label;
     expose_widget(xjmkb->time_line);
+    int f = -1;
+    for(std::vector<std::string>::const_iterator i = xjmkb->file_names.begin(); i != xjmkb->file_names.end(); ++i) {
+        f++;
+    }
+    if (f == 0) {
+        std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard") + " - " + xjmkb->file_names[f].c_str();
+        widget_set_title(xjmkb->win, tittle.c_str());
+    } else if (f > 0) {
+        std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard") + " - " + "Multifile";
+        widget_set_title(xjmkb->win, tittle.c_str());
+    } else {
+        std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard");
+        widget_set_title(xjmkb->win, tittle.c_str());
+    }
     //if ((int)xjmkb->xjack->get_max_loop_time())
     //    adj_set_value(xjmkb->play->adj, play);    
 }
@@ -1909,6 +1935,8 @@ void XKeyBoard::recent_sfont_manager(const char* file_) {
 // static
 void XKeyBoard::synth_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
+    std::string synth_instance = xjmkb->xjack->client_name;
+    std::transform(synth_instance.begin(), synth_instance.end(), synth_instance.begin(), ::tolower);
     if(user_data !=NULL) {
         float play = adj_get_value(xjmkb->play->adj);
         //adj_set_value(xjmkb->play->adj,0.0);
@@ -1932,7 +1960,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             combobox_delete_entrys(xjmkb->fs_instruments);
         }
         if (!xjmkb->xsynth->synth_is_active()) {
-            xjmkb->xsynth->setup(xjmkb->xjack->SampleRate);
+            xjmkb->xsynth->setup(xjmkb->xjack->SampleRate, synth_instance.c_str());
             xjmkb->xsynth->init_synth();
         }
         if (xjmkb->xsynth->load_soundfont( *(const char**)user_data)) {
@@ -1953,9 +1981,8 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         expose_widget(xjmkb->fs_soundfont);
         const char **port_list = NULL;
         port_list = jack_get_ports(xjmkb->xjack->client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
-        std::string synth_instance = jack_get_client_name(xjmkb->xjack->client);
-        std::transform(synth_instance.begin(), synth_instance.end(), synth_instance.begin(), ::tolower);
         if (port_list) {
+            synth_instance.append(":");
             for (int i = 0; port_list[i] != NULL; i++) {
                 if (strstr(port_list[i], synth_instance.c_str())) {
                     if (!jack_port_connected_to(xjmkb->xjack->out_port, port_list[i])) {
@@ -3168,27 +3195,32 @@ int main (int argc, char *argv[]) {
 
     nsmsig.nsm_session_control = nsmh.check_nsm(xjmkb.client_name.c_str(), argv);
 
-    xjmkb.read_config();
-
     main_init(&app);
-    
-    xjmkb.init_ui(&app);
-    if (xalsa.xalsa_init("Mamba", "input", "output") >= 0) {
-        MidiKeyboard *keys = (MidiKeyboard*)xjmkb.wid->parent_struct;
-        xalsa.xalsa_start([keys] (int channel, int key, bool set)
-            {set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
-    } else {
-        fprintf(stderr, _("Couldn't open a alsa port, is the alsa sequencer running?\n"));
-    }
+
     if (xjack.init_jack()) {
+
+        if (!nsmsig.nsm_session_control)
+            xjmkb.set_config_file();
+
+        xjmkb.read_config();
+        xjmkb.init_ui(&app);
+
+        if (xalsa.xalsa_init("Mamba", "input", "output") >= 0) {
+            MidiKeyboard *keys = (MidiKeyboard*)xjmkb.wid->parent_struct;
+            xalsa.xalsa_start([keys] (int channel, int key, bool set)
+                {set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
+        } else {
+            fprintf(stderr, _("Couldn't open a alsa port, is the alsa sequencer running?\n"));
+        }
+
         if (!xjmkb.soundfont.empty()) {
-            xsynth.setup(xjack.SampleRate);
+            std::string synth_instance = xjack.client_name;
+            std::transform(synth_instance.begin(), synth_instance.end(), synth_instance.begin(), ::tolower);
+            xsynth.setup(xjack.SampleRate, synth_instance.c_str());
             xsynth.init_synth();
             xsynth.load_soundfont(xjmkb.soundfont.c_str());
             const char **port_list = NULL;
             port_list = jack_get_ports(xjack.client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
-            std::string synth_instance = jack_get_client_name(xjack.client);
-            std::transform(synth_instance.begin(), synth_instance.end(), synth_instance.begin(), ::tolower);
             if (port_list) {
                 for (int i = 0; port_list[i] != NULL; i++) {
                     if (strstr(port_list[i], synth_instance.c_str())) {
@@ -3219,6 +3251,9 @@ int main (int argc, char *argv[]) {
             }
         }
 
+        xjmkb.client_name = xjack.client_name;
+        std::string tittle = xjmkb.client_name + _(" - Virtual Midi Keyboard");
+        widget_set_title(xjmkb.win, tittle.c_str());
         xjmkb.show_ui(xjmkb.visible);
         auto t2 = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
