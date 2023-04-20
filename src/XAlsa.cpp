@@ -141,6 +141,7 @@ void XAlsa::xalsa_get_ports(std::vector<std::string> *iports, std::vector<std::s
 
     snd_seq_client_info_set_client(cinfo, -1);
 
+    std::string p;
     while (snd_seq_query_next_client(seq_handle, cinfo) >= 0) {
         snd_seq_port_info_set_client(pinfo, snd_seq_client_info_get_client(cinfo));
         snd_seq_port_info_set_port(pinfo, -1);
@@ -154,7 +155,8 @@ void XAlsa::xalsa_get_ports(std::vector<std::string> *iports, std::vector<std::s
                     snd_seq_port_info_get_port(pinfo),
                     snd_seq_client_info_get_name(cinfo),
                     snd_seq_port_info_get_name(pinfo));
-                iports->push_back(port);
+                p = port;
+                iports->push_back(p);
             }
             if ((snd_seq_port_info_get_capability(pinfo) & (SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE)) &&
                                  ((snd_seq_port_info_get_capability(pinfo) & SND_SEQ_PORT_CAP_NO_EXPORT) == 0) &&
@@ -164,7 +166,8 @@ void XAlsa::xalsa_get_ports(std::vector<std::string> *iports, std::vector<std::s
                     snd_seq_port_info_get_port(pinfo),
                     snd_seq_client_info_get_name(cinfo),
                     snd_seq_port_info_get_name(pinfo));
-                oports->push_back(port);
+                p = port;
+                oports->push_back(p);
             }
         }
     }

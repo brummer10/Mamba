@@ -1842,6 +1842,7 @@ void XKeyBoard::load_midi_callback(void *w_, void* user_data) {
     if (value == 0) {
         Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
         XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+        XResizeWindow(xjmkb->win->app->dpy, dia->widget, 760, 565);
         xjmkb->win->func.dialog_callback = dialog_load_response;
     } else {
         std::string recent = xjmkb->recent_files[value-1];
@@ -1858,6 +1859,7 @@ void XKeyBoard::add_midi_callback(void *w_, void* user_data) {
     if (value == 0) {
         Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
         XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+        XResizeWindow(xjmkb->win->app->dpy, dia->widget, 760, 565);
         xjmkb->win->func.dialog_callback = dialog_add_response;
     } else {
         std::string recent = xjmkb->recent_files[value-1];
@@ -2016,6 +2018,7 @@ void XKeyBoard::sfont_callback(void *w_, void* user_data) {
     int value = (int)adj_get_value(w->adj);
     if (value == 0) {
         Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->soundfontpath.c_str(), ".sf");
+        XResizeWindow(xjmkb->win->app->dpy, dia->widget, 760, 565);
         XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
         xjmkb->win->func.dialog_callback = synth_load_response;
     } else {
@@ -2481,6 +2484,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             {
                 Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->soundfontpath.c_str(), ".sf");
                 XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+                XResizeWindow(xjmkb->win->app->dpy, dia->widget, 760, 565);
                 xjmkb->win->func.dialog_callback = synth_load_response;
             }
             break;
@@ -2529,6 +2533,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             {
                 Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->filepath.c_str(), "midi");
                 XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+                XResizeWindow(xjmkb->win->app->dpy, dia->widget, 760, 565);
                 xjmkb->win->func.dialog_callback = dialog_load_response;
             }
             break;
@@ -3205,7 +3210,7 @@ int main (int argc, char *argv[]) {
         xjmkb.read_config();
         xjmkb.init_ui(&app);
 
-        if (xalsa.xalsa_init("Mamba", "input", "output") >= 0) {
+        if (xalsa.xalsa_init(xjack.client_name.c_str(), "input", "output") >= 0) {
             MidiKeyboard *keys = (MidiKeyboard*)xjmkb.wid->parent_struct;
             xalsa.xalsa_start([keys] (int channel, int key, bool set)
                 {set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
