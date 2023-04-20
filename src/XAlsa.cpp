@@ -189,6 +189,7 @@ void XAlsa::xalsa_get_iconnections(std::vector<std::string> *ports) {
     snd_seq_query_subscribe_set_type(subs, SND_SEQ_QUERY_SUBS_WRITE);
     snd_seq_query_subscribe_set_index(subs, 0);
 
+    std::string p;
     while (!snd_seq_query_port_subscribers(seq_handle, subs)) {
         char port[256];
         const snd_seq_addr_t *addr;
@@ -196,7 +197,8 @@ void XAlsa::xalsa_get_iconnections(std::vector<std::string> *ports) {
         snd_seq_get_any_port_info(seq_handle, addr->client, addr->port, pinfo);
         if (snd_seq_port_info_get_type(pinfo) & SND_SEQ_PORT_TYPE_MIDI_GENERIC) {
             snprintf(port,256,"%3d %d",addr->client, addr->port);
-            ports->push_back(port);
+            p = port;
+            ports->push_back(p);
         }
         snd_seq_query_subscribe_set_index(subs, snd_seq_query_subscribe_get_index(subs) + 1);
     }
@@ -218,6 +220,7 @@ void XAlsa::xalsa_get_oconnections(std::vector<std::string> *ports) {
     snd_seq_query_subscribe_set_type(subs, SND_SEQ_QUERY_SUBS_READ);
     snd_seq_query_subscribe_set_index(subs, 0);
 
+    std::string p;
     while (!snd_seq_query_port_subscribers(seq_handle, subs)) {
         char port[256];
         const snd_seq_addr_t *addr;
@@ -225,7 +228,8 @@ void XAlsa::xalsa_get_oconnections(std::vector<std::string> *ports) {
         snd_seq_get_any_port_info(seq_handle, addr->client, addr->port, pinfo);
         if (snd_seq_port_info_get_type(pinfo) & SND_SEQ_PORT_TYPE_MIDI_GENERIC) {
             snprintf(port,256,"%3d %d",addr->client, addr->port);
-            ports->push_back(port);
+            p = port;
+            ports->push_back(p);
         }
         snd_seq_query_subscribe_set_index(subs, snd_seq_query_subscribe_get_index(subs) + 1);
     }
