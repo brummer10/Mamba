@@ -180,6 +180,7 @@ private:
     Widget_t *sfont_menu;
     Widget_t *fs_instruments;
     Widget_t *fs_soundfont;
+    Widget_t *fs_edo;
     Widget_t *knob_box;
     Widget_t *proc_box;
     Widget_t *view_menu;
@@ -310,6 +311,7 @@ private:
     static void instrument_callback(void *w_, void* user_data);
     static void soundfont_callback(void *w_, void* user_data);
     static void synth_volume_callback(void *w_, void* user_data) noexcept;
+    static void edo_callback(void *w_, void* user_data) noexcept;
 
     Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);

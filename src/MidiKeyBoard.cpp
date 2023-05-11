@@ -250,6 +250,12 @@ void XKeyBoard::read_config() {
                     buf >> value;
                 }
                 xsynth->channel_instrument[15] = std::stoi(value);
+            } else if (key.compare("[channel_edos]") == 0) {
+                for (int i = 0; i < 15; i++) {
+                    xsynth->setup_channel_tuning(i,std::stoi(value));
+                    buf >> value;
+                }
+                xsynth->setup_channel_tuning(15,std::stoi(value));
             } else if (key.compare("[recent_files]") == 0) recent_files.push_back(remove_sub(line, "[recent_files] "));
             else if (key.compare("[recent_sfonts]") == 0) recent_sfonts.push_back(remove_sub(line, "[recent_sfonts] "));
             key.clear();
@@ -367,6 +373,11 @@ void XKeyBoard::save_config() {
          outfile << "[channel_instruments] ";
          for (int i = 0; i < 16; i++) {
              outfile << " " << xsynth->channel_instrument[i];
+         }
+         outfile << std::endl;
+         outfile << "[channel_edos] ";
+         for (int i = 0; i < 16; i++) {
+             outfile << " " << xsynth->get_tuning_for_channel(i);
          }
          outfile << std::endl;
          for (auto i : recent_files) {
@@ -2090,10 +2101,14 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) noexcept{
     }
     xjmkb->xjack->rec.channel = xjmkb->mmessage->channel = keys->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
     if(xjmkb->xsynth->synth_is_active()) {
+        //xjmkb->fs_edo->func.value_changed_callback = dummy_callback;
+        combobox_set_active_entry(xjmkb->fs_edo, xjmkb->xsynth->get_tuning_for_channel(xjmkb->mchannel));
+        //xjmkb->fs_edo->func.value_changed_callback = xjmkb->edo_callback;
         int i = xjmkb->xsynth->get_instrument_for_channel(xjmkb->mchannel);
         if ( i >-1)
             combobox_set_active_entry(xjmkb->fs_instruments, i);
     }
+    
 }
 
 // static
@@ -2412,7 +2427,7 @@ void XKeyBoard::octave_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
-    keys->octave = (int)12*adj_get_value(w->adj);
+    keys->octave = (int)keys->edo*adj_get_value(w->adj);
     xjmkb->octave = (int)adj_get_value(w->adj);
     expose_widget(xjmkb->wid);
 }
@@ -2654,8 +2669,8 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             {
                 MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
                 adj_set_value(xjmkb->octavemap->adj,1.0);
-                keys->octave = 12;
-                xjmkb->octave = 12;
+                keys->octave = keys->edo;
+                xjmkb->octave = keys->edo;
                 expose_widget(xjmkb->wid);
             }
             break;
@@ -2663,8 +2678,8 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             {
                 MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
                 adj_set_value(xjmkb->octavemap->adj,2.0);
-                keys->octave = 24;
-                xjmkb->octave = 24;
+                keys->octave = keys->edo*2;
+                xjmkb->octave = keys->edo*2;
                 expose_widget(xjmkb->wid);
             }
             break;
@@ -2672,8 +2687,8 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             {
                 MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
                 adj_set_value(xjmkb->octavemap->adj,3.0);
-                keys->octave = 36;
-                xjmkb->octave = 36;
+                keys->octave = keys->edo*3;
+                xjmkb->octave = keys->edo*3;
                 expose_widget(xjmkb->wid);
             }
             break;
@@ -2681,8 +2696,8 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             {
                 MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
                 adj_set_value(xjmkb->octavemap->adj,4.0);
-                keys->octave = 48;
-                xjmkb->octave = 48;
+                keys->octave = keys->edo*4;
+                xjmkb->octave = keys->edo*4;
                 expose_widget(xjmkb->wid);
             }
             break;
@@ -2901,8 +2916,21 @@ void XKeyBoard::rebuild_soundfont_list() {
     combobox_set_active_entry(fs_soundfont, active);
 }
 
+//static
+void XKeyBoard::edo_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xsynth->activate_tuning_for_channel(xjmkb->mchannel, i);
+    set_edo(keys, xjmkb->wid, i + 10);
+    //fprintf(stderr, "edo = %i\n", keys->edo);
+}
+
 void XKeyBoard::show_synth_ui(int present) {
     if(present) {
+        combobox_set_active_entry(fs_edo, xsynth->get_tuning_for_channel(mchannel));
         widget_show_all(synth_ui);
         int y = main_y-226;
         if (main_y < 230) y = main_y + main_h+21;
@@ -2933,7 +2961,7 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     synth_ui->func.key_release_callback = key_release;
     synth_ui->func.dnd_notify_callback = dnd_load_response;
 
-    fs_instruments = add_combobox(synth_ui, _("Instruments"), 20, 10, 260, 30);
+    fs_instruments = add_combobox(synth_ui, _("Instruments"), 20, 10, 250, 30);
     fs_instruments->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     fs_instruments->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     fs_instruments->func.value_changed_callback = instrument_callback;
@@ -2943,7 +2971,7 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    fs_soundfont = add_combobox(synth_ui, _("Soundfonts"), 290, 10, 260, 30);
+    fs_soundfont = add_combobox(synth_ui, _("Soundfonts"), 280, 10, 250, 30);
     fs_soundfont->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     fs_soundfont->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     fs_soundfont->func.value_changed_callback = soundfont_callback;
@@ -2952,6 +2980,22 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp = fs_soundfont->childlist->childs[0];
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
+
+    fs_edo = add_combobox(synth_ui, _("edo"), 540, 10, 90, 30);
+    fs_edo->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    for (unsigned int i = 10; i < 23; i++) {
+        std::string key = std::to_string(i)+"edo";
+        combobox_add_entry(fs_edo, key.c_str());
+    }
+    fs_edo->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    fs_edo->func.value_changed_callback = edo_callback;
+    fs_edo->func.key_press_callback = key_press;
+    fs_edo->func.key_release_callback = key_release;
+    tmp = fs_edo->childlist->childs[0];
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    combobox_set_active_entry(fs_edo, xsynth->get_tuning_for_channel(mchannel));
+    
 
     // reverb
     tmp = add_keyboard_button(synth_ui, _("On"), 20,  150, 60, 30);

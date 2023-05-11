@@ -19,6 +19,7 @@
  */
 
 #include <fluidsynth.h>
+#include <map>
 #include <vector>
 #include <string>
 
@@ -44,6 +45,14 @@ private:
     fluid_audio_driver_t* adriver;
     fluid_midi_driver_t* mdriver;
     int sf_id;
+
+    double cents[128];
+    std::map<std::string, double> tuning_map;
+    std::map<int, int> channel_tuning_map;
+    void create_tuning_scala(double cent);
+    void init_tuning_maps();
+    void setup_key_tunnings();
+    void setup_tunnings_for_channelemap();
 
 public:
     XSynth();
@@ -72,6 +81,10 @@ public:
     void set_default_instruments();
     void set_instrument_on_channel(int channel, int instrument);
     int get_instrument_for_channel(int channel);
+
+    void activate_tuning_for_channel(int channel, int set);
+    int get_tuning_for_channel(int channel);
+    void setup_channel_tuning(int channel, int set);
 
     void set_reverb_on(int on);
     void set_reverb_levels();

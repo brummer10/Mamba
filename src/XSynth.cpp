@@ -40,7 +40,7 @@ namespace xsynth {
  ** create a fluidsynth instance and load sondfont
  */
 
-XSynth::XSynth() {
+XSynth::XSynth() : cents{} {
     sf_id = -1;
     adriver = NULL;
     mdriver = NULL;
@@ -49,6 +49,7 @@ XSynth::XSynth() {
 
     for(int i = 0; i < 16; i++) {
         channel_instrument[i] = i;
+        channel_tuning_map.emplace(i, 2);
     }
 
     reverb_on = 0;
@@ -65,10 +66,13 @@ XSynth::XSynth() {
     chorus_voices = 3;
 
     volume_level = 0.2;
+    init_tuning_maps();
 };
 
 XSynth::~XSynth() {
     unload_synth();
+    tuning_map.clear();
+    channel_tuning_map.clear();
 };
 
 void XSynth::setup(unsigned int SampleRate, const char *instance_name) {
@@ -86,11 +90,57 @@ void XSynth::setup(unsigned int SampleRate, const char *instance_name) {
     fluid_settings_setstr(settings, "midi.jack.id", instance_name);
 }
 
+void XSynth::create_tuning_scala(double cent) {
+    double val = 0.0;
+    for (unsigned int i = 0; i < 128; i++) {
+        cents[i] = val;
+        val += cent;
+    }
+}
+
+void XSynth::init_tuning_maps() {
+    for (unsigned int i = 10; i < 23; i++) {
+        std::string key = std::to_string(i)+"edo";
+        double step = (100.0/double(i))*12.0;
+        tuning_map.emplace(key,step);
+    }
+}
+
+void XSynth::setup_key_tunnings() {
+    int i = 0;
+    for (const auto& [key, steps] : tuning_map) {
+        create_tuning_scala(steps);
+        fluid_synth_activate_key_tuning(synth, 0, i, key.c_str(), cents, 1);
+        i++;
+    }
+}
+
+void XSynth::activate_tuning_for_channel(int channel, int set) {
+    fluid_synth_activate_tuning(synth, channel, 0, set, 1);
+    channel_tuning_map[channel] = set;
+}
+
+void XSynth::setup_tunnings_for_channelemap() {
+    for(int i = 0; i < 16; i++) {
+        fluid_synth_activate_tuning(synth, i, 0, channel_tuning_map[i], 1);
+    }
+}
+
+int XSynth::get_tuning_for_channel(int channel) {
+    return channel_tuning_map[channel];
+}
+
+void XSynth::setup_channel_tuning(int channel, int set) {
+    channel_tuning_map[channel] = set;
+}
+
 void XSynth::init_synth() {
     synth = new_fluid_synth(settings);
     adriver = new_fluid_audio_driver(settings, synth);
     mdriver = new_fluid_midi_driver(settings, fluid_synth_handle_midi_event, synth);
     volume_level = fluid_synth_get_gain(synth);
+    setup_key_tunnings();
+    setup_tunnings_for_channelemap();
 }
 
 int XSynth::load_soundfont(const char *path) {
@@ -272,6 +322,9 @@ void XSynth::unload_synth() {
         adriver = NULL;
     }
     if (synth) {
+        for(int i = 0; i < 16; i++) {
+            fluid_synth_deactivate_tuning(synth, i, 1);
+        }
         delete_fluid_synth(synth);
         synth = NULL;
     }

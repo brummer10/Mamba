@@ -458,6 +458,161 @@ void use_matrix_color(Widget_t *w, int c) {
         cairo_set_source_rgba(w->crb, 0.12+(ci-1.56), 0.32, 0.4-(ci-1.44), 1.00);
 }
 
+void set_key_in_edo_matrix(unsigned long *key_matrix, int key, bool set) {
+    unsigned long *use_matrix = &key_matrix[0];
+
+    if(key>222) {
+        use_matrix = &key_matrix[7];
+        key -=222;
+    } else if(key>190) {
+        use_matrix = &key_matrix[6];
+        key -=190;
+    } else if(key>158) {
+        use_matrix = &key_matrix[5];
+        key -=158;
+    } else if(key>126) {
+        use_matrix = &key_matrix[4];
+        key -=126;
+    } else if(key>94) {
+        use_matrix = &key_matrix[3];
+        key -=94;
+    } else if(key>62) {
+        use_matrix = &key_matrix[2];
+        key -=62;
+    } else if(key>31) {
+        use_matrix = &key_matrix[1];
+        key -= 31;
+    }
+    if (set) {
+        (*use_matrix) |= (1 << key);
+    }else {
+        (*use_matrix) &= (~(1 << key));
+    }
+}
+
+bool is_key_in_edo_matrix(unsigned long *key_matrix, int key) {
+    unsigned long *use_matrix = &key_matrix[0];
+
+    if(key>222) {
+        use_matrix = &key_matrix[7];
+        key -=222;
+    } else if(key>190) {
+        use_matrix = &key_matrix[6];
+        key -=190;
+    } else if(key>158) {
+        use_matrix = &key_matrix[5];
+        key -=158;
+    } else if(key>126) {
+        use_matrix = &key_matrix[4];
+        key -=126;
+    } else if(key>94) {
+        use_matrix = &key_matrix[3];
+        key -=94;
+    } else if(key>62) {
+        use_matrix = &key_matrix[2];
+        key -=62;
+    } else if(key>31) {
+        use_matrix = &key_matrix[1];
+        key -= 31;
+    }
+    bool ret = false;
+    if((*use_matrix) & (1<<key)) {
+        ret = true;
+    }
+    return ret;
+}
+
+static void setup_edo_matrix(int *matrix, int edo, unsigned long *edo_matrix) {
+    int i = 0;
+    for(;i<254;i++) {
+        if (matrix[i % edo])
+            set_key_in_edo_matrix(edo_matrix, i, true);
+        else
+            set_key_in_edo_matrix(edo_matrix, i, false);
+    }
+}
+
+void set_edo(MidiKeyboard *keys, Widget_t *w, int edo) {
+    keys->edo = edo;
+    keys->octave = edo*2;
+    if (edo == 10) {
+        int matrix_set[10] = {1,0,1,1,0,1,1,0,1,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 11) {
+        int matrix_set[11] = {1,0,1,0,1,1,0,1,1,0,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 12) {
+        int matrix_set[12] = {1,0,1,0,1,1,0,1,0,1,0,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 13) {
+        int matrix_set[13] = {1,0,1,0,1,1,0,1,0,1,1,0,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 14) {
+        int matrix_set[14] = {1,0,1,0,1,0,1,0,1,0,1,0,1,0};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 15) {
+        int matrix_set[15] = {1,0,1,0,1,0,1,0,1,0,1,1,0,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 16) {
+        int matrix_set[16] = {1,0,1,0,1,1,0,1,0,1,0,1,0,1,1,0};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 17) {
+        int matrix_set[17] = {1,0,0,1,0,0,1,1,0,0,1,0,0,1,0,0,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 18) {
+        int matrix_set[18] = {1,0,0,1,0,0,1,1,0,0,1,0,0,1,1,0,0,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 19) {
+        int matrix_set[19] = {1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0,0,1,0};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 20) {
+        int matrix_set[20] = {1,0,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,0,0};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 21) {
+        int matrix_set[21] = {1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0,1,0,0,1,0};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 22) {
+        int matrix_set[22] = {1,0,0,1,0,0,1,0,0,1,0,0,1,0,1,0,1,0,0,1,0,0};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    }
+    
+    expose_widget(w);
+}
+
+static void draw_double_key(Widget_t* w, cairo_pattern_t *pat, MidiKeyboard *keys, int *i, int *k, int height) {
+    int ik = is_key_in_in_matrix(keys, (*k)+keys->octave);
+    int key_size = keys->key_size/2;
+    int j = 0;
+    int i_ = (*i);
+    cairo_set_line_width(w->crb, 1.0);
+    for (;j<2;j++) {
+        cairo_rectangle(w->crb,i_+keys->key_offset,0, key_size-1,height);
+        if ( (*k)+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,(*k)+keys->octave)) {
+            //use_base_color_scheme(w, ACTIVE_);
+            use_matrix_color(w, keys->channel);
+            cairo_set_line_width(w->crb, 1.0);
+        } else if (ik > -1) {
+            use_matrix_color(w, ik);
+            cairo_set_line_width(w->crb, 2.0);
+        } else if ( (*k)+keys->octave == keys->prelight_key) {
+            use_base_color_scheme(w, PRELIGHT_);
+            cairo_set_line_width(w->crb, 2.0);
+        } else {
+            use_bg_color_scheme(w, NORMAL_);
+            cairo_set_line_width(w->crb, 1.0);
+        }
+
+        cairo_fill_preserve(w->crb);
+        cairo_set_source(w->crb, pat);
+        cairo_fill_preserve(w->crb);
+        use_base_color_scheme(w, NORMAL_);
+        cairo_stroke(w->crb);
+
+        (*k)++;
+        i_ += key_size;
+    }
+}
+
 static void draw_keyboard(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XWindowAttributes attrs;
@@ -465,20 +620,23 @@ static void draw_keyboard(void *w_, void* user_data) {
     int width_t = attrs.width;
     int height_t = attrs.height;
     if (attrs.map_state != IsViewable) return;
+    use_bg_color_scheme(w, NORMAL_);
+    cairo_fill_preserve(w->crb);
+    cairo_paint(w->crb);
     MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
  
-    int space = 2;
-    int set = 0;
     int i = 0;
     int k = 0;
     int ik = -1;
     int octave_ofset = keys->key_size/6;
+    int octave = keys->octave;
     if (keys->key_size<24)
         cairo_set_font_size (w->crb, w->app->small_font);
     else
         cairo_set_font_size (w->crb, w->app->normal_font);
 
     for(;i<width_t;i++) {
+        //fprintf(stderr, " set white k = %i, set = %i, space = %i edo_matrix %i\n", k+keys->octave, set, space, is_key_in_matrix(keys->edo_matrix[0],k+keys->octave));
         ik = is_key_in_in_matrix(keys, k+keys->octave);
         cairo_rectangle(w->crb,i,0,keys->key_size+1,height_t);
         if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
@@ -500,73 +658,63 @@ static void draw_keyboard(void *w_, void* user_data) {
         use_base_color_scheme(w, NORMAL_);
         cairo_stroke(w->crb);
 
-        if(k+keys->octave == 0) {
+        if(k+octave == 0) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C-1");
-        } else if(k+keys->octave == 12) {
+        } else if(k+octave == keys->edo) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C0");
-        } else if(k+keys->octave == 24) {
+        } else if(k+octave == keys->edo *2) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C1");
-        } else if(k+keys->octave == 36) {
+        } else if(k+octave == keys->edo *3) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C2");
-        } else if(k+keys->octave == 48) {
+        } else if(k+octave == keys->edo *4) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C3");
-        } else if(k+keys->octave == 60) {
+        } else if(k+octave == keys->edo *5) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C4");
-        } else if(k+keys->octave == 72) {
+        } else if(k+octave == keys->edo *6) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C5");
-        } else if(k+keys->octave == 84) {
+        } else if(k+octave == keys->edo *7) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C6");
-        } else if(k+keys->octave == 96) {
+        } else if(k+octave == keys->edo *8) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C7");
-        } else if(k+keys->octave == 108) {
+        } else if(k+octave == keys->edo *9) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C8");
-        } else if(k+keys->octave == 120) {
+        } else if(k+octave == keys->edo *10) {
             cairo_move_to (w->crb, i+octave_ofset, height_t*0.9);
             use_bg_color_scheme(w, NORMAL_);
             cairo_show_text(w->crb, "C9");
         }
 
-        if (space!=4) {
+        if (!is_key_in_edo_matrix(keys->edo_matrix,k+1+keys->octave)) {
             k++;
-        } else {
-            if (set <= 3) {
-                space = 0;
-                set = 0;
-            } else if (set == 4) {
-                space = 1;
-                set = 0;
-            }
+            if (!is_key_in_edo_matrix(keys->edo_matrix,k+1+keys->octave))
+                k++;
         }
 
         if (k>127) break;
         i+=keys->key_size;
-        space++;
-        set++;
         k++;
     }
 
-    space = 1;
-    set = 0;
     k = 1;
     ik = -1;
     i = 0;
@@ -577,45 +725,36 @@ static void draw_keyboard(void *w_, void* user_data) {
 
     for(;i<width_t;i++) {
 
-        if (space!=3) {
-            ik = is_key_in_in_matrix(keys, k+keys->octave);
-            cairo_set_line_width(w->crb, 1.0);
-            cairo_rectangle(w->crb,i+keys->key_offset,0,keys->key_size-4,height_t*0.59);
-            if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
-                //use_base_color_scheme(w, ACTIVE_);
-                use_matrix_color(w, keys->channel);
-                cairo_set_line_width(w->crb, 1.0);
-            } else if (ik > -1) {
-                use_matrix_color(w, ik);
-                cairo_set_line_width(w->crb, 2.0);
-            } else if ( k+keys->octave == keys->prelight_key) {
-                use_base_color_scheme(w, PRELIGHT_);
-                cairo_set_line_width(w->crb, 2.0);
+        if ((!is_key_in_edo_matrix(keys->edo_matrix,k+keys->octave))) {
+            if (!is_key_in_edo_matrix(keys->edo_matrix,k+1+keys->octave)) {
+                draw_double_key(w, pat, keys, &i, &k, height_t*0.59);
             } else {
-                use_bg_color_scheme(w, NORMAL_);
+                ik = is_key_in_in_matrix(keys, k+keys->octave);
                 cairo_set_line_width(w->crb, 1.0);
+                cairo_rectangle(w->crb,i+keys->key_offset,0,keys->key_size-4,height_t*0.59);
+                if ( k+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,k+keys->octave)) {
+                    //use_base_color_scheme(w, ACTIVE_);
+                    use_matrix_color(w, keys->channel);
+                    cairo_set_line_width(w->crb, 1.0);
+                } else if (ik > -1) {
+                    use_matrix_color(w, ik);
+                    cairo_set_line_width(w->crb, 2.0);
+                } else if ( k+keys->octave == keys->prelight_key) {
+                    use_base_color_scheme(w, PRELIGHT_);
+                    cairo_set_line_width(w->crb, 2.0);
+                } else {
+                    use_bg_color_scheme(w, NORMAL_);
+                    cairo_set_line_width(w->crb, 1.0);
+                }
+
+                cairo_fill_preserve(w->crb);
+                cairo_set_source(w->crb, pat);
+                cairo_fill_preserve(w->crb);
+                use_base_color_scheme(w, NORMAL_);
+                cairo_stroke(w->crb);
+
+                k++;
             }
-
-            cairo_fill_preserve(w->crb);
-            cairo_set_source(w->crb, pat);
-            cairo_fill_preserve(w->crb);
-            use_base_color_scheme(w, NORMAL_);
-            cairo_stroke(w->crb);
-
-            k++;
-            space++;
-            set++;
-
-        } else {
-
-            if (set == 2) {
-                space = 0;
-                set = 0;
-            } else if (set == 3) {
-                space = 1;
-                set = 0;
-            }
-
         }
 
         i+=keys->key_size;
@@ -633,6 +772,43 @@ static void draw_keyboard(void *w_, void* user_data) {
     cairo_pattern_destroy (pat);
 }
 
+static void check_double_key(Widget_t *p, MidiKeyboard *keys, XMotionEvent *xmotion, bool *catchit, int *i, int *set_key, int height) {
+    int key_size = keys->key_size/2;
+    int i_ = (*i);
+    int j = 0;
+    for (;j<2;j++) {
+        if(xmotion->x > i_+keys->key_offset && xmotion->x < i_+key_size+keys->key_offset) {
+            keys->prelight_key = (*set_key)+keys->octave;
+            if(xmotion->state & Button1Mask) {
+                if (keys->active_key != keys->prelight_key) {
+                    keys->send_key = keys->active_key;
+                    if (keys->send_key>=0 && keys->send_key<128) {
+                        if (is_key_in_matrix(keys->in_key_matrix[keys->channel], keys->send_key)) 
+                            set_key_in_matrix(keys->in_key_matrix[keys->channel], keys->send_key,false);
+                        keys->mk_send_note(p, &keys->send_key,false);
+                    }
+                    keys->active_key = keys->prelight_key;
+                    keys->send_key = keys->active_key;
+                    keys->last_active_key = keys->active_key;
+                    if (keys->send_key>=0 && keys->send_key<128)
+                        keys->mk_send_note(p, &keys->send_key,true);
+                }
+            }
+            (*catchit) = true;
+            if (keys->prelight_key != keys->new_prelight_key ||
+                    keys->active_key != keys->new_active_key ) {
+                //expose_widget(w);
+                keys->new_prelight_key = keys->prelight_key;
+                keys->new_active_key = keys->active_key;
+            }
+            break;
+        }
+            
+        (*set_key)++;
+        i_ += key_size;
+    }
+}
+
 static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     Widget_t *p = (Widget_t *)w->parent;
@@ -648,14 +824,57 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
 
     if(xmotion->y < height*0.59) {
         keys->in_motion = 1;
-        int space = 1;
-        int set = 0;
         int set_key = 1;
         int i = 0;
         for(;i<width;i++) {
-            if (space!=3) {
-                if(xmotion->x > i+keys->key_offset && xmotion->x < i+keys->key_size+keys->key_offset-3) {
-                    keys->prelight_key = set_key+keys->octave;
+            if ((!is_key_in_edo_matrix(keys->edo_matrix,set_key+keys->octave))) {
+                if ((!is_key_in_edo_matrix(keys->edo_matrix,set_key+1+keys->octave)) ||
+                        (!is_key_in_matrix(keys->edo_matrix,set_key-1+keys->octave) &&
+                        !is_key_in_matrix(keys->edo_matrix,set_key+keys->octave))) {
+                    check_double_key(p, keys, xmotion, &catchit, &i, &set_key, height*0.59);
+                } else {
+                    if(xmotion->x > i+keys->key_offset && xmotion->x < i+keys->key_size+keys->key_offset-3) {
+                        keys->prelight_key = set_key+keys->octave;
+                        if(xmotion->state & Button1Mask) {
+                            if (keys->active_key != keys->prelight_key) {
+                                keys->send_key = keys->active_key;
+                                if (keys->send_key>=0 && keys->send_key<128) {
+                                    if (is_key_in_matrix(keys->in_key_matrix[keys->channel], keys->send_key)) 
+                                        set_key_in_matrix(keys->in_key_matrix[keys->channel], keys->send_key,false);
+                                    keys->mk_send_note(p, &keys->send_key,false);
+                                }
+                                keys->active_key = keys->prelight_key;
+                                keys->send_key = keys->active_key;
+                                keys->last_active_key = keys->active_key;
+                                if (keys->send_key>=0 && keys->send_key<128)
+                                    keys->mk_send_note(p, &keys->send_key,true);
+                            }
+                        }
+                        catchit = true;
+                        if (keys->prelight_key != keys->new_prelight_key ||
+                                keys->active_key != keys->new_active_key ) {
+                            //expose_widget(w);
+                            keys->new_prelight_key = keys->prelight_key;
+                            keys->new_active_key = keys->active_key;
+                        }
+                        break;
+                    }
+                    set_key++;
+                }
+            }
+            i+=keys->key_size;
+            set_key++;
+        }        
+    }
+
+    if (!catchit) {
+        int i = 0;
+        int k = 0;
+
+        for(;i<width;i++) {
+           // if ((is_key_in_matrix(keys->edo_matrix,k+keys->octave))) {
+                if(xmotion->x > i && xmotion->x < i+keys->key_size) {
+                    keys->prelight_key = k+keys->octave;
                     if(xmotion->state & Button1Mask) {
                         if (keys->active_key != keys->prelight_key) {
                             keys->send_key = keys->active_key;
@@ -671,7 +890,6 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
                                 keys->mk_send_note(p, &keys->send_key,true);
                         }
                     }
-                    catchit = true;
                     if (keys->prelight_key != keys->new_prelight_key ||
                             keys->active_key != keys->new_active_key ) {
                         //expose_widget(w);
@@ -680,71 +898,13 @@ static void keyboard_motion(void *w_, void* xmotion_, void* user_data) {
                     }
                     break;
                 }
-                space++;
-                set++;
-                set_key++;
-            } else {
-                if (set == 2) {
-                    space = 0;
-                    set = 0;
-                } else if (set == 3) {
-                    space = 1;
-                    set = 0;
+                if (!(is_key_in_edo_matrix(keys->edo_matrix,k+1+keys->octave))) {
+                    k++;
+                    if (!(is_key_in_edo_matrix(keys->edo_matrix,k+1+keys->octave)))
+                    k++;
                 }
-            }
+           // }
             i+=keys->key_size;
-            set_key++;
-        }        
-    }
-
-    if (!catchit) {
-        int space = 2;
-        int set = 0;
-        int i = 0;
-        int k = 0;
-
-        for(;i<width;i++) {
-            if(xmotion->x > i && xmotion->x < i+keys->key_size) {
-                keys->prelight_key = k+keys->octave;
-                if(xmotion->state & Button1Mask) {
-                    if (keys->active_key != keys->prelight_key) {
-                        keys->send_key = keys->active_key;
-                        if (keys->send_key>=0 && keys->send_key<128) {
-                            if (is_key_in_matrix(keys->in_key_matrix[keys->channel], keys->send_key)) 
-                                set_key_in_matrix(keys->in_key_matrix[keys->channel], keys->send_key,false);
-                            keys->mk_send_note(p, &keys->send_key,false);
-                        }
-                        keys->active_key = keys->prelight_key;
-                        keys->send_key = keys->active_key;
-                        keys->last_active_key = keys->active_key;
-                        if (keys->send_key>=0 && keys->send_key<128)
-                            keys->mk_send_note(p, &keys->send_key,true);
-                    }
-                }
-                if (keys->prelight_key != keys->new_prelight_key ||
-                        keys->active_key != keys->new_active_key ) {
-                    //expose_widget(w);
-                    keys->new_prelight_key = keys->prelight_key;
-                    keys->new_active_key = keys->active_key;
-                }
-                break;
-            }
-
-            if (space!=4) {
-                k++;
-            } else {
-                if (set <= 3) {
-                    space = 0;
-                    set = 0;
-                } else if (set == 4) {
-                    space = 1;
-                    set = 0;
-                }
-            }
-
-            i+=keys->key_size;
-            space++;
-            set++;
             k++;
         }
     }
@@ -955,6 +1115,7 @@ void add_keyboard(Widget_t *wid, const char * label) {
     keys->channel = 0;
     keys->key_size = 24;
     keys->key_offset = 15;
+    keys->edo = 12;
     memset(keys->custom_keys, 0, 128*2*sizeof keys->custom_keys[0][0]);
     int j = 0;
     for(;j<4;j++) {
@@ -967,6 +1128,11 @@ void add_keyboard(Widget_t *wid, const char * label) {
             keys->in_key_matrix[i][j] = 0;
         }
     }
+    j = 0;
+    for(;j<8;j++) {
+        keys->edo_matrix[j] = 0;
+    }
+    set_edo(keys, wid, 12);
     read_keymap(label, keys->custom_keys);
 
     wid->func.expose_callback = draw_keyboard;

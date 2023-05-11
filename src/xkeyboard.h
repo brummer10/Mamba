@@ -58,8 +58,10 @@ typedef struct {
     int in_motion;
     int key_size;
     int key_offset;
+    int edo;
     unsigned long key_matrix[4];
     unsigned long in_key_matrix[16][4];
+    unsigned long edo_matrix[8];
     long custom_keys[128][2];
 
     midikeyfunc mk_send_note;
@@ -89,6 +91,8 @@ bool is_key_in_matrix(unsigned long *key_matrix, int key);
 bool have_key_in_matrix(unsigned long *key_matrix);
 
 void clear_key_matrix(unsigned long *key_matrix);
+
+void set_edo(MidiKeyboard *keys, Widget_t *w, int edo);
 
 void add_keyboard(Widget_t *wid, const char * label);
 
