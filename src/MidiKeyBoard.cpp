@@ -1973,8 +1973,10 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             combobox_delete_entrys(xjmkb->fs_instruments);
         }
         if (!xjmkb->xsynth->synth_is_active()) {
+            MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
             xjmkb->xsynth->setup(xjmkb->xjack->SampleRate, synth_instance.c_str());
             xjmkb->xsynth->init_synth();
+            set_edo(keys, xjmkb->wid, (int)adj_get_value(xjmkb->fs_edo->adj)+10);
         }
         if (xjmkb->xsynth->load_soundfont( *(const char**)user_data)) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
@@ -2040,6 +2042,13 @@ void XKeyBoard::sfont_callback(void *w_, void* user_data) {
 }
 
 //static
+void XKeyBoard::reset_edos(XKeyBoard *xjmkb) noexcept {
+    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    for (int i = 0; i<16;i++)
+        set_edo(keys, xjmkb->wid, 12);
+}
+
+//static
 void XKeyBoard::synth_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
@@ -2063,6 +2072,7 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
         {
             xjmkb->show_synth_ui(0);
             xjmkb->xsynth->unload_synth();
+            xjmkb->reset_edos(xjmkb);
             xjmkb->soundfont = "";
             xjmkb->fs[0]->state = 4;
             xjmkb->fs[1]->state = 4;
@@ -2644,6 +2654,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                 if(!xjmkb->xsynth->synth_is_active()) break;
                 xjmkb->show_synth_ui(0);
                 xjmkb->xsynth->unload_synth();
+                xjmkb->reset_edos(xjmkb);
                 xjmkb->soundfont = "";
                 xjmkb->fs[0]->state = 4;
                 xjmkb->fs[1]->state = 4;
@@ -2983,10 +2994,11 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
 
     fs_edo = add_combobox(synth_ui, _("edo"), 540, 10, 90, 30);
     fs_edo->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    for (unsigned int i = 10; i < 23; i++) {
+    for (unsigned int i = 10; i < 24; i++) {
         std::string key = std::to_string(i)+"edo";
         combobox_add_entry(fs_edo, key.c_str());
     }
+    combobox_set_active_entry(fs_edo, 2);
     fs_edo->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     fs_edo->func.value_changed_callback = edo_callback;
     fs_edo->func.key_press_callback = key_press;

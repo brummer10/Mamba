@@ -312,6 +312,7 @@ private:
     static void soundfont_callback(void *w_, void* user_data);
     static void synth_volume_callback(void *w_, void* user_data) noexcept;
     static void edo_callback(void *w_, void* user_data) noexcept;
+    static void reset_edos(XKeyBoard *xjmkb) noexcept;
 
     Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);

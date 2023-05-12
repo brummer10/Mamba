@@ -99,7 +99,7 @@ void XSynth::create_tuning_scala(double cent) {
 }
 
 void XSynth::init_tuning_maps() {
-    for (unsigned int i = 10; i < 23; i++) {
+    for (unsigned int i = 10; i < 24; i++) {
         std::string key = std::to_string(i)+"edo";
         double step = (100.0/double(i))*12.0;
         tuning_map.emplace(key,step);

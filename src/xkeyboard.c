@@ -369,6 +369,7 @@ void add_minor_chord(unsigned long *key_matrix, int inkey, bool set) {
 
 void set_key_in_matrix(unsigned long *key_matrix, int key, bool set) {
     unsigned long *use_matrix = &key_matrix[0];
+    if (key > 127) return;
 
     if(key>94) {
         use_matrix = &key_matrix[3];
@@ -389,8 +390,8 @@ void set_key_in_matrix(unsigned long *key_matrix, int key, bool set) {
 
 bool is_key_in_matrix(unsigned long *key_matrix, int key) {
     unsigned long *use_matrix = &key_matrix[0];
-    
-    
+    if (key > 127) return false;
+
     if(key>94) {
         use_matrix = &key_matrix[3];
         key -=94;
@@ -460,6 +461,7 @@ void use_matrix_color(Widget_t *w, int c) {
 
 void set_key_in_edo_matrix(unsigned long *key_matrix, int key, bool set) {
     unsigned long *use_matrix = &key_matrix[0];
+    if (key > 253) return;
 
     if(key>222) {
         use_matrix = &key_matrix[7];
@@ -492,6 +494,7 @@ void set_key_in_edo_matrix(unsigned long *key_matrix, int key, bool set) {
 
 bool is_key_in_edo_matrix(unsigned long *key_matrix, int key) {
     unsigned long *use_matrix = &key_matrix[0];
+    if (key > 253) return false;
 
     if(key>222) {
         use_matrix = &key_matrix[7];
@@ -551,10 +554,10 @@ void set_edo(MidiKeyboard *keys, Widget_t *w, int edo) {
         int matrix_set[14] = {1,0,1,0,1,0,1,0,1,0,1,0,1,0};
         setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
     } else if (edo == 15) {
-        int matrix_set[15] = {1,0,1,0,1,0,1,0,1,0,1,1,0,1};
+        int matrix_set[15] = {1,0,1,0,1,0,1,0,1,0,1,0,0,1,0};
         setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
     } else if (edo == 16) {
-        int matrix_set[16] = {1,0,1,0,1,1,0,1,0,1,0,1,0,1,1,0};
+        int matrix_set[16] = {1,0,1,0,1,0,0,1,0,1,0,1,0,1,0,0};
         setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
     } else if (edo == 17) {
         int matrix_set[17] = {1,0,0,1,0,0,1,1,0,0,1,0,0,1,0,0,1};
@@ -574,6 +577,9 @@ void set_edo(MidiKeyboard *keys, Widget_t *w, int edo) {
     } else if (edo == 22) {
         int matrix_set[22] = {1,0,0,1,0,0,1,0,0,1,0,0,1,0,1,0,1,0,0,1,0,0};
         setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 23) {
+        int matrix_set[23] = {1,0,0,1,0,0,1,0,0,1,1,0,0,1,0,0,1,0,0,1,0,0,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
     }
     
     expose_widget(w);
@@ -586,7 +592,7 @@ static void draw_double_key(Widget_t* w, cairo_pattern_t *pat, MidiKeyboard *key
     int i_ = (*i);
     cairo_set_line_width(w->crb, 1.0);
     for (;j<2;j++) {
-        cairo_rectangle(w->crb,i_+keys->key_offset,0, key_size-1,height);
+        cairo_rectangle(w->crb,i_+keys->key_offset-2,0, key_size-1,height);
         if ( (*k)+keys->octave == keys->active_key || is_key_in_matrix(keys->key_matrix,(*k)+keys->octave)) {
             //use_base_color_scheme(w, ACTIVE_);
             use_matrix_color(w, keys->channel);
@@ -609,7 +615,7 @@ static void draw_double_key(Widget_t* w, cairo_pattern_t *pat, MidiKeyboard *key
         cairo_stroke(w->crb);
 
         (*k)++;
-        i_ += key_size;
+        i_ += key_size+1;
     }
 }
 
@@ -777,7 +783,7 @@ static void check_double_key(Widget_t *p, MidiKeyboard *keys, XMotionEvent *xmot
     int i_ = (*i);
     int j = 0;
     for (;j<2;j++) {
-        if(xmotion->x > i_+keys->key_offset && xmotion->x < i_+key_size+keys->key_offset) {
+        if(xmotion->x > i_+keys->key_offset-2 && xmotion->x < i_+key_size+keys->key_offset) {
             keys->prelight_key = (*set_key)+keys->octave;
             if(xmotion->state & Button1Mask) {
                 if (keys->active_key != keys->prelight_key) {
@@ -805,7 +811,7 @@ static void check_double_key(Widget_t *p, MidiKeyboard *keys, XMotionEvent *xmot
         }
             
         (*set_key)++;
-        i_ += key_size;
+        i_ += key_size-2;
     }
 }
 
