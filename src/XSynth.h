@@ -22,6 +22,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <cmath>
 
 #pragma once
 
@@ -53,6 +54,7 @@ private:
     void init_tuning_maps();
     void setup_key_tunnings();
     void setup_tunnings_for_channelemap();
+    void just_intonation();
 
 public:
     XSynth();

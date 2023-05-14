@@ -538,7 +538,12 @@ static void setup_edo_matrix(int *matrix, int edo, unsigned long *edo_matrix) {
 void set_edo(MidiKeyboard *keys, Widget_t *w, int edo) {
     keys->edo = edo;
     keys->octave = edo*2;
-    if (edo == 10) {
+    if (edo == 9) { // just intonation
+        keys->edo = 12;
+        keys->octave = keys->edo*2;
+        int matrix_set[12] = {1,0,1,0,1,1,0,1,0,1,0,1};
+        setup_edo_matrix(matrix_set, keys->edo, keys->edo_matrix);
+    } else if (edo == 10) {
         int matrix_set[10] = {1,0,1,1,0,1,1,0,1,1};
         setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
     } else if (edo == 11) {
@@ -1069,14 +1074,27 @@ bool need_redraw(MidiKeyboard *keys) {
     have;
 }
 
-void read_keymap(const char* keymapfile, long keys[128][2]) {
+const char* dir_name(const char* path) {
+    char* p = NULL;
+    if (!asprintf(&p, "%s", path)) return NULL;
+    static char buffer[PATH_MAX];
+    char* n = strrchr(p, '/');
+    if (n) {
+        strncpy(buffer, p, n-p);
+    }
+    free(p);
+    return buffer;
+}
+
+void read_keymap(MidiKeyboard *keys, const char* keymapfile, long custom_keys[128][2]) {
     if( access(keymapfile, F_OK ) != -1 ) {
         FILE *fp;
         if((fp=fopen(keymapfile, "rb"))==NULL) {
-            fprintf(stderr,"Cannot open file.\n");
+            fprintf(stderr,"Cannot open %s.\n", keymapfile);
+            return;
         }
 
-        if(fread(keys, sizeof(long), 128*2, fp) != 128*2) {
+        if(fread(custom_keys, sizeof(long), 128*2, fp) != 128*2) {
             if(feof(fp))
             fprintf(stderr,"Premature end of file.");
             else
@@ -1139,7 +1157,7 @@ void add_keyboard(Widget_t *wid, const char * label) {
         keys->edo_matrix[j] = 0;
     }
     set_edo(keys, wid, 12);
-    read_keymap(label, keys->custom_keys);
+    read_keymap(keys, label, keys->custom_keys);
 
     wid->func.expose_callback = draw_keyboard;
     wid->func.motion_callback = keyboard_motion;

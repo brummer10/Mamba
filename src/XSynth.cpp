@@ -49,7 +49,7 @@ XSynth::XSynth() : cents{} {
 
     for(int i = 0; i < 16; i++) {
         channel_instrument[i] = i;
-        channel_tuning_map.emplace(i, 2);
+        channel_tuning_map.emplace(i, 3);
     }
 
     reverb_on = 0;
@@ -90,6 +90,19 @@ void XSynth::setup(unsigned int SampleRate, const char *instance_name) {
     fluid_settings_setstr(settings, "midi.jack.id", instance_name);
 }
 
+void XSynth::just_intonation() {
+    double steps [12] = {1.0, 1.06667, 1.125, 1.2, 1.25, 1.33333, 1.40625, 1.5, 1.6, 1.66667, 1.75, 1.875};
+    double val = 0.0;
+    double oc = 1.0;
+    for (unsigned int i = 0; i < 128; i++) {
+        val = 1200.0 * std::log2(steps[i % 12] * oc);
+        cents[i] = val;
+        if (i % 12 == 11) {
+            oc *=2;
+        }
+    }
+}
+
 void XSynth::create_tuning_scala(double cent) {
     double val = 0.0;
     for (unsigned int i = 0; i < 128; i++) {
@@ -107,9 +120,13 @@ void XSynth::init_tuning_maps() {
 }
 
 void XSynth::setup_key_tunnings() {
+    just_intonation();
     int i = 0;
+    fluid_synth_activate_key_tuning(synth, 0, i, "ji", cents, 1);
+    i = 1;
     for (const auto& [key, steps] : tuning_map) {
         create_tuning_scala(steps);
+        //just_intonation();
         fluid_synth_activate_key_tuning(synth, 0, i, key.c_str(), cents, 1);
         i++;
     }

@@ -37,6 +37,7 @@
 #include <iostream>
 #include <sstream>
 #include <queue>
+#include <regex>
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
@@ -312,6 +313,7 @@ private:
     static void soundfont_callback(void *w_, void* user_data);
     static void synth_volume_callback(void *w_, void* user_data) noexcept;
     static void edo_callback(void *w_, void* user_data) noexcept;
+    static void check_edo_mapfile(XKeyBoard *xjmkb, int edo);
     static void reset_edos(XKeyBoard *xjmkb) noexcept;
 
     Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,

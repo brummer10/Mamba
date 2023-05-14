@@ -30,7 +30,7 @@ extern "C" {
 #endif
 
 
-Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, const char* keymapfile);
+Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, Widget_t *k, int edo, const char* keymapfile);
 
 
 #ifdef __cplusplus
