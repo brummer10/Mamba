@@ -30,6 +30,7 @@
 	BUILD_DIR = build
 	VER = 2.4
 
+	LIBSCALA_DIR := ../libscala-file/
 	LIB_DIR := ../libxputty/libxputty/
 	HEADER_DIR := $(LIB_DIR)include/
 	LOCALIZE_DIR := ../libxputty/xputty/dialogs/
@@ -45,11 +46,13 @@
 	CXXFLAGS += -std=gnu++17 -O3 -D_FORTIFY_SOURCE=2 -Wall -fstack-protector -funroll-loops -ffast-math -fomit-frame-pointer \
 	-fstrength-reduce -fschedule-insns $(SSE_CFLAGS)
 	DEBUG_CXXFLAGS += -g -D DEBUG
-	LDFLAGS += -Wl,-z,noexecstack -Wl,--no-undefined -I./ -I../libxputty/libxputty/include/ \
+	LDFLAGS += -Wl,-z,noexecstack -Wl,--no-undefined \
+	-I./ -I../libxputty/libxputty/include/ -I../libscala-file/ \
 	`pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo smf fluidsynth` -lm -pthread -lasound \
 	-DVERSION=\"$(VER)\"
 	# invoke build files
-	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XAlsa.cpp XJack.cpp NsmHandler.cpp xkeyboard.c xcustommap.c XSynth.cpp
+	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XAlsa.cpp XJack.cpp NsmHandler.cpp xkeyboard.c xcustommap.c XSynth.cpp \
+	$(LIBSCALA_DIR)scala_kbm.cpp $(LIBSCALA_DIR)scala_scl.cpp
 	LOCALIZE = $(LOCALIZE_DIR)xfile-dialog.c $(LOCALIZE_DIR)xmessage-dialog.c $(LOCALIZE_DIR)xsavefile-dialoge.c
 	## output style (bash colours)
 	BLUE = "\033[1;34m"

@@ -538,11 +538,26 @@ static void setup_edo_matrix(int *matrix, int edo, unsigned long *edo_matrix) {
 void set_edo(MidiKeyboard *keys, Widget_t *w, int edo) {
     keys->edo = edo;
     keys->octave = edo*2;
-    if (edo == 9) { // just intonation
+    if (edo == 0) { // just intonation
         keys->edo = 12;
         keys->octave = keys->edo*2;
         int matrix_set[12] = {1,0,1,0,1,1,0,1,0,1,0,1};
         setup_edo_matrix(matrix_set, keys->edo, keys->edo_matrix);
+    } else if (edo == 5) {
+        int matrix_set[5] = {1,1,1,1,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 6) {
+        int matrix_set[6] = {1,1,1,1,1,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 7) {
+        int matrix_set[7] = {1,1,1,1,1,1,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 8) {
+        int matrix_set[8] = {1,1,1,1,1,1,1,1};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
+    } else if (edo == 9) {
+        int matrix_set[9] = {1,1,1,0,1,1,1,1,0};
+        setup_edo_matrix(matrix_set, edo, keys->edo_matrix);
     } else if (edo == 10) {
         int matrix_set[10] = {1,0,1,1,0,1,1,0,1,1};
         setup_edo_matrix(matrix_set, edo, keys->edo_matrix);

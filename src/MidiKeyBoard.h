@@ -55,6 +55,7 @@
 #include "xfile-dialog.h"
 #include "xmessage-dialog.h"
 #include "XSynth.h"
+#include "scala_file.hpp"
 
 #pragma once
 
@@ -178,6 +179,7 @@ private:
     Widget_t *file_remove_menu;
     Widget_t *load_midi;
     Widget_t *add_midi;
+    Widget_t *load_scala;
     Widget_t *sfont_menu;
     Widget_t *fs_instruments;
     Widget_t *fs_soundfont;
@@ -201,6 +203,8 @@ private:
     std::vector<std::string> file_names;
     std::vector<std::string> recent_files;
     std::vector<std::string> recent_sfonts;
+
+    std::string scala_filepath;
 
     int main_x;
     int main_y;
@@ -351,6 +355,7 @@ public:
     std::string multikeymap_file;
     std::string path;
     std::string soundfont;
+    std::string selected_edo;
 
     bool has_config;
     Widget_t *win;
@@ -372,6 +377,8 @@ public:
 
     static void dialog_load_response(void *w_, void* user_data);
     static void synth_load_response(void *w_, void* user_data);
+    static void scala_load_response(void *w_, void* user_data);
+    int get_edo_steps();
     static XKeyBoard* get_instance(void *w_);
 };
 

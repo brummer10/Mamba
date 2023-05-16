@@ -85,8 +85,13 @@ public:
     int get_instrument_for_channel(int channel);
 
     void activate_tuning_for_channel(int channel, int set);
+    void activate_tunning_for_all_channel(int set);
     int get_tuning_for_channel(int channel);
     void setup_channel_tuning(int channel, int set);
+    void setup_scala_tuning();
+    void setup_scala();
+    std::vector<double> scala_ratios;
+    unsigned int scala_size;
 
     void set_reverb_on(int on);
     void set_reverb_levels();

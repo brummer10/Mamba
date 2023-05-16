@@ -25,7 +25,11 @@
 
 #include <unistd.h>
 
-
+static const char *notes_5edo[] = {"C","D","E","G","A"};
+static const char *notes_6edo[] = {"C","D","E","F#","G#","B"};
+static const char *notes_7edo[] = {"C","D","E","F","G","A","B"};
+static const char *notes_8edo[] = {"C","D","E","F#","Fb","Gb","Ab","B#"};
+static const char *notes_9edo[] = {"C","D","E","F#","F","G","A","B","C#"};
 static const char *notes_10edo[] = {"C","Db","D","E","Fb","F","G","Ab","A","B"};
 static const char *notes_11edo[] = {"C","Db","D","Eb","E","F","Gb","G","A","Bb","B"};
 static const char *notes_12edo[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
@@ -49,6 +53,7 @@ typedef struct {
     int pre_active;
     int changed;
     int nsize;
+    int ratio;
     const char** notes;
     char* keymapfile;
     long multikeys[128][2];
@@ -421,14 +426,96 @@ void exit_callback(void *w_, void* button, void* user_data) {
     }
 }
 
+void notes_by_ratio(CustomKeymap *customkeys) {
+    switch(customkeys->ratio) {
+        case(5) :
+            customkeys->notes = notes_5edo;
+            customkeys->nsize = 5;
+        break;
+        case(6) :
+            customkeys->notes = notes_6edo;
+            customkeys->nsize = 6;
+        break;
+        case(7) :
+            customkeys->notes = notes_7edo;
+            customkeys->nsize = 7;
+        break;
+        case(8) :
+            customkeys->notes = notes_8edo;
+            customkeys->nsize = 8;
+        break;
+        case(9) :
+            customkeys->notes = notes_9edo;
+            customkeys->nsize = 9;
+        break;
+        case(10) :
+            customkeys->notes = notes_10edo;
+            customkeys->nsize = 10;
+        break;
+        case(11) :
+            customkeys->notes = notes_11edo;
+            customkeys->nsize = 11;
+        break;
+        case(12) :
+            customkeys->notes = notes_12edo;
+            customkeys->nsize = 12;
+        break;
+        case(13) :
+            customkeys->notes = notes_13edo;
+            customkeys->nsize = 13;
+        break;
+        case(14) :
+            customkeys->notes = notes_14edo;
+            customkeys->nsize = 14;
+        break;
+        case(15) :
+            customkeys->notes = notes_15edo;
+            customkeys->nsize = 15;
+        break;
+        case(16) :
+            customkeys->notes = notes_16edo;
+            customkeys->nsize = 16;
+        break;
+        case(17) :
+            customkeys->notes = notes_17edo;
+            customkeys->nsize = 17;
+        break;
+        case(18) :
+            customkeys->notes = notes_18edo;
+            customkeys->nsize = 18;
+        break;
+        case(19) :
+            customkeys->notes = notes_19edo;
+            customkeys->nsize = 19;
+        break;
+        case(20) :
+            customkeys->notes = notes_20edo;
+            customkeys->nsize = 20;
+        break;
+        case(21) :
+            customkeys->notes = notes_21edo;
+            customkeys->nsize = 21;
+        break;
+        case(22) :
+            customkeys->notes = notes_22edo;
+            customkeys->nsize = 22;
+        break;
+        case(23) :
+            customkeys->notes = notes_23edo;
+            customkeys->nsize = 23;
+        break;      
+        default:
+            customkeys->notes = notes_12edo;
+            customkeys->nsize = 12;
+        break;
+    }    
+}
+
 //static
 void edo_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *parent = (Widget_t*)w->parent;
     CustomKeymap *customkeys = (CustomKeymap*)parent->parent_struct;
-   // Widget_t *win = get_toplevel_widget(w->app);
-   // XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-   // MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     int i = (int)adj_get_value(w->adj);
     switch(i) {
         case(0) :
@@ -436,68 +523,24 @@ void edo_callback(void *w_, void* user_data)  noexcept{
             customkeys->nsize = 12;
         break;
         case(1) :
-            customkeys->notes = notes_10edo;
-            customkeys->nsize = 10;
-        break;
-        case(2) :
-            customkeys->notes = notes_11edo;
-            customkeys->nsize = 11;
-        break;
-        case(3) :
             customkeys->notes = notes_12edo;
             customkeys->nsize = 12;
         break;
-        case(4) :
-            customkeys->notes = notes_13edo;
-            customkeys->nsize = 13;
+        case(2) :
+            notes_by_ratio(customkeys);
         break;
-        case(5) :
-            customkeys->notes = notes_14edo;
-            customkeys->nsize = 14;
-        break;
-        case(6) :
-            customkeys->notes = notes_15edo;
-            customkeys->nsize = 15;
-        break;
-        case(7) :
-            customkeys->notes = notes_16edo;
-            customkeys->nsize = 16;
-        break;
-        case(8) :
-            customkeys->notes = notes_17edo;
-            customkeys->nsize = 17;
-        break;
-        case(9) :
-            customkeys->notes = notes_18edo;
-            customkeys->nsize = 18;
-        break;
-        case(10) :
-            customkeys->notes = notes_19edo;
-            customkeys->nsize = 19;
-        break;
-        case(11) :
-            customkeys->notes = notes_20edo;
-            customkeys->nsize = 20;
-        break;
-        case(12) :
-            customkeys->notes = notes_21edo;
-            customkeys->nsize = 21;
-        break;
-        case(13) :
-            customkeys->notes = notes_22edo;
-            customkeys->nsize = 22;
-        break;
-        case(14) :
-            customkeys->notes = notes_23edo;
-            customkeys->nsize = 23;
-        break;
-      
         default:
+            customkeys->notes = notes_12edo;
+            customkeys->nsize = 12;
         break;
     }
     memset(customkeys->multikeys, 0, 128*2*sizeof customkeys->multikeys[0][0]);
     std::string path = dirname(customkeys->keymapfile);
-    std::string mapfile = path + "/Mamba_" + std::to_string(i+9)+"edo.multikeymap";
+    Widget_t *menu = w->childlist->childs[1];
+    Widget_t* view_port =  menu->childlist->childs[0];
+    ComboBox_t *comboboxlist = (ComboBox_t*)view_port->parent_struct;
+    std::string mapfile = path + "/Mamba_" + comboboxlist->list_names[i] +".multikeymap";
+    //fprintf(stderr, "%s\n", mapfile.c_str());
     free(customkeys->keymapfile);
     customkeys->keymapfile = NULL;
     if (asprintf(&customkeys->keymapfile, "%s", mapfile.c_str())) {
@@ -507,7 +550,7 @@ void edo_callback(void *w_, void* user_data)  noexcept{
     expose_widget(customkeys->keyboardmap);
 }
 
-Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, Widget_t *k, int edo, const char* keymapfile) {
+Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, Widget_t *k, int sel, int ratio, const char* keymapfile) {
     Widget_t *wid = create_window(w->app, DefaultRootWindow(w->app->dpy), 0, 0, 400, 490);
     XSelectInput(wid->app->dpy, wid->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
@@ -541,6 +584,7 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, Widget_t *k, int e
     customkeys->km = k;
     customkeys->notes = notes_12edo;
     customkeys->nsize = 12;
+    customkeys->ratio = ratio;
     if (asprintf(&customkeys->keymapfile, "%s", keymapfile))
         wid->label = customkeys->keymapfile;
     else 
@@ -556,14 +600,17 @@ Widget_t *open_custom_keymap(Widget_t *keyboard, Widget_t *w, Widget_t *k, int e
 
     Widget_t *fs_edo = add_combobox(wid, _("edo"), 30, 440, 90, 30);
     fs_edo->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    combobox_add_entry(fs_edo, "Just I.");
-    for (unsigned int i = 10; i < 24; i++) {
+    combobox_add_entry(fs_edo, "12ji");
+    /*for (unsigned int i = 10; i < 24; i++) {
         std::string key = std::to_string(i)+"edo";
         combobox_add_entry(fs_edo, key.c_str());
-    }
+    }*/
+    combobox_add_entry(fs_edo, "12edo");
+    combobox_add_entry(fs_edo, "Scala");
     fs_edo->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     fs_edo->func.value_changed_callback = edo_callback;
-    combobox_set_active_entry(fs_edo, edo);
+    combobox_set_active_entry(fs_edo, sel);
+    edo_callback(fs_edo, NULL);
 
     Widget_t * button = add_button(wid, _("Cancel"), 130, 440, 75, 30);
     button->scale.gravity = SOUTHWEST;

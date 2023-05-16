@@ -49,7 +49,7 @@ XSynth::XSynth() : cents{} {
 
     for(int i = 0; i < 16; i++) {
         channel_instrument[i] = i;
-        channel_tuning_map.emplace(i, 3);
+        channel_tuning_map.emplace(i, 1);
     }
 
     reverb_on = 0;
@@ -66,6 +66,7 @@ XSynth::XSynth() : cents{} {
     chorus_voices = 3;
 
     volume_level = 0.2;
+    scala_size = 0;
     init_tuning_maps();
 };
 
@@ -73,6 +74,7 @@ XSynth::~XSynth() {
     unload_synth();
     tuning_map.clear();
     channel_tuning_map.clear();
+    scala_ratios.clear();
 };
 
 void XSynth::setup(unsigned int SampleRate, const char *instance_name) {
@@ -88,6 +90,19 @@ void XSynth::setup(unsigned int SampleRate, const char *instance_name) {
     fluid_settings_setint(settings, "audio.jack.autoconnect", 1);
     fluid_settings_setstr(settings, "midi.driver", "jack");
     fluid_settings_setstr(settings, "midi.jack.id", instance_name);
+}
+
+void XSynth::setup_scala_tuning() {
+    double val = 0.0;
+    double oc = 1.0;
+    for (unsigned int i = 0; i < 128; i++) {
+        val = 1200.0 * std::log2(scala_ratios[i % scala_size] * oc);
+        cents[i] = val;
+        if (i % scala_size == scala_size-1) {
+            oc *=2;
+        }
+    }
+    fluid_synth_activate_key_tuning(synth, 0, 2, "scala", cents, 1);
 }
 
 void XSynth::just_intonation() {
@@ -124,17 +139,25 @@ void XSynth::setup_key_tunnings() {
     int i = 0;
     fluid_synth_activate_key_tuning(synth, 0, i, "ji", cents, 1);
     i = 1;
-    for (const auto& [key, steps] : tuning_map) {
+    create_tuning_scala(100.0);
+    fluid_synth_activate_key_tuning(synth, 0, i, "12edo", cents, 1);
+   /* for (const auto& [key, steps] : tuning_map) {
         create_tuning_scala(steps);
-        //just_intonation();
         fluid_synth_activate_key_tuning(synth, 0, i, key.c_str(), cents, 1);
         i++;
-    }
+    }*/
 }
 
 void XSynth::activate_tuning_for_channel(int channel, int set) {
-    fluid_synth_activate_tuning(synth, channel, 0, set, 1);
     channel_tuning_map[channel] = set;
+    fluid_synth_activate_tuning(synth, channel, 0, set, 1);
+}
+
+void XSynth::activate_tunning_for_all_channel(int set) {
+    for(int i = 0; i < 16; i++) {
+        channel_tuning_map[i] = set;
+        fluid_synth_activate_tuning(synth, i, 0, set, 1);
+    }
 }
 
 void XSynth::setup_tunnings_for_channelemap() {
@@ -157,6 +180,7 @@ void XSynth::init_synth() {
     mdriver = new_fluid_midi_driver(settings, fluid_synth_handle_midi_event, synth);
     volume_level = fluid_synth_get_gain(synth);
     setup_key_tunnings();
+    if (scala_size) setup_scala_tuning();
     setup_tunnings_for_channelemap();
 }
 

@@ -130,8 +130,10 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     view_program = 1;
     width_inc = 25;
     key_size = 0;
+    selected_edo = "12edo";
     is_inited.store(false, std::memory_order_release);
     filepath = getenv("HOME") ? getenv("HOME") : "/";
+    scala_filepath = getenv("HOME") ? getenv("HOME") : "/";
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
         sigc::mem_fun(this, &XKeyBoard::nsm_show_ui));
@@ -226,6 +228,7 @@ void XKeyBoard::read_config() {
             else if (key.compare("[mchannel]") == 0) mchannel = std::stoi(value);
             else if (key.compare("[velocity]") == 0) velocity = std::stoi(value);
             else if (key.compare("[filepath]") == 0) filepath = remove_sub(line, "[filepath] ");
+            else if (key.compare("[scala_filepath]") == 0) scala_filepath = remove_sub(line, "[scala_filepath] ");
             else if (key.compare("[octave]") == 0) octave = std::stoi(value);
             else if (key.compare("[volume]") == 0) volume = std::stoi(value);
             else if (key.compare("[freewheel]") == 0) freewheel = std::stoi(value);
@@ -256,6 +259,15 @@ void XKeyBoard::read_config() {
                     buf >> value;
                 }
                 xsynth->setup_channel_tuning(15,std::stoi(value));
+            } else if (key.compare("[scala_size]") == 0) {
+                 xsynth->scala_size = std::stoi(value);
+            } else if (key.compare("[scala_ratios]") == 0) {
+                xsynth->scala_ratios.clear();
+                for (unsigned int i = 0; i < xsynth->scala_size; i++) {
+                    xsynth->scala_ratios.push_back(std::stof(value));
+                    buf >> value;
+                }
+                xsynth->scala_ratios.push_back(std::stof(value));
             } else if (key.compare("[recent_files]") == 0) recent_files.push_back(remove_sub(line, "[recent_files] "));
             else if (key.compare("[recent_sfonts]") == 0) recent_sfonts.push_back(remove_sub(line, "[recent_sfonts] "));
             key.clear();
@@ -352,6 +364,7 @@ void XKeyBoard::save_config() {
          outfile << "[mchannel] " << mchannel << std::endl;
          outfile << "[velocity] " << velocity << std::endl;
          outfile << "[filepath] " << filepath << std::endl;
+         outfile << "[scala_filepath] " << scala_filepath << std::endl;
          outfile << "[octave] " << octave << std::endl;
          outfile << "[volume] " << volume << std::endl;
          outfile << "[freewheel] " << freewheel << std::endl;
@@ -380,6 +393,15 @@ void XKeyBoard::save_config() {
              outfile << " " << xsynth->get_tuning_for_channel(i);
          }
          outfile << std::endl;
+         if (!xsynth->scala_ratios.empty()) {
+             outfile << "[scala_size] " << xsynth->scala_size;
+             outfile << std::endl;
+             outfile << "[scala_ratios] ";
+             for (unsigned int i = 0; i < xsynth->scala_size; i++) {
+                 outfile << " " << xsynth->scala_ratios[i];
+             }
+             outfile << std::endl;
+         }
          for (auto i : recent_files) {
              outfile << "[recent_files] "  << i << std::endl;
          }
@@ -903,6 +925,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_entry(add_midi,_("Add New"));
     file_remove_menu = menu_add_submenu(filemenu, _("Remove MIDI"));
     menu_add_entry(filemenu,_("_Save MIDI as"));
+    menu_add_entry(filemenu,_("Load Scala"));
     if (nsmsig.nsm_session_control)
         menu_add_entry(filemenu,_("Hide"));
     else
@@ -1644,6 +1667,8 @@ void XKeyBoard::dnd_load_response(void *w_, void* user_data) {
             } else if (strstr(dndfile, ".sf") && !sf2_done) {
                 synth_load_response(w_, (void*)&dndfile);
                 sf2_done = true;
+            } else if (strstr(dndfile, ".scl") && !sf2_done) {
+                scala_load_response(w_, (void*)&dndfile);
             }
             dndfile = strtok(NULL, "\r\n");
         }
@@ -1903,6 +1928,14 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
         break;
         case(4):
         {
+            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->scala_filepath.c_str(), ".scl");
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            XResizeWindow(xjmkb->win->app->dpy, dia->widget, 760, 565);
+            xjmkb->win->func.dialog_callback = scala_load_response;
+        }
+        break;
+        case(5):
+        {
             if(xjmkb->nsmsig.nsm_session_control) {
                 widget_hide(xjmkb->win);
                 xjmkb->nsmsig.trigger_nsm_gui_is_hidden();
@@ -1949,6 +1982,49 @@ void XKeyBoard::recent_sfont_manager(const char* file_) {
 }
 
 // static
+void XKeyBoard::scala_load_response(void *w_, void* user_data) {
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
+    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    if(user_data !=NULL) {
+            if( access(*(const char**)user_data, F_OK ) == -1 ) {
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            _("Couldn't access file, sorry"),NULL);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            return;
+        }
+        std::ifstream _scale;
+        _scale.open(*(const char**)user_data);
+        scala::scale scale = scala::read_scl(_scale);
+        if (!xjmkb->xsynth->synth_is_active()) {
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            _("Could only parse file when fluidsynth is active, sorry"),NULL);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            return;
+        } else if ( scale.get_scale_length() <= 1) {
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            _("Fail to parse file, sorry"),NULL);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            return;
+        } else {
+            xjmkb->scala_filepath = dirname(*(char**)user_data);
+            xjmkb->xsynth->scala_size = scale.get_scale_length()-1;
+            xjmkb->xsynth->scala_ratios.clear();
+            for (unsigned int i = 0; i < xjmkb->xsynth->scala_size; i++ ){
+                xjmkb->xsynth->scala_ratios.push_back(scale.get_ratio(i));
+            }
+        }
+        xjmkb->xsynth->setup_scala_tuning();
+        if (adj_get_value(xjmkb->fs_edo->adj) !=2.0) {
+            adj_set_value(xjmkb->fs_edo->adj, 2.0);
+        } else {
+            if ( xjmkb->mchannel > 15) xjmkb->xsynth->activate_tunning_for_all_channel(2);
+            else xjmkb->xsynth->activate_tuning_for_channel(xjmkb->mchannel, 2);
+            set_edo(keys, xjmkb->wid, xjmkb->xsynth->scala_size);
+        }
+    }
+
+}
+// static
 void XKeyBoard::synth_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
     std::string synth_instance = xjmkb->xjack->client_name;
@@ -1976,11 +2052,9 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             combobox_delete_entrys(xjmkb->fs_instruments);
         }
         if (!xjmkb->xsynth->synth_is_active()) {
-            //MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
             xjmkb->xsynth->setup(xjmkb->xjack->SampleRate, synth_instance.c_str());
             xjmkb->xsynth->init_synth();
-            check_edo_mapfile(xjmkb, (int)adj_get_value(xjmkb->fs_edo->adj)+9);
-            //set_edo(keys, xjmkb->wid, (int)adj_get_value(xjmkb->fs_edo->adj)+9);
+            check_edo_mapfile(xjmkb, xjmkb->get_edo_steps());
         }
         if (xjmkb->xsynth->load_soundfont( *(const char**)user_data)) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
@@ -2100,6 +2174,8 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
     info += _("|For MIDI file handling it uses libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala|");
     info += "https://github.com/stump/libsmf";
     info += _("|");
+    info += _("|For Scala support it use libscala-file| a MIT-licensed C++ library|written by Mark Conway Wirt|");
+    info += "https://github.com/MarkCWirt/libscala-file";
     Widget_t *dia = open_message_dialog(win, INFO_BOX, _("Mamba"), info.data(), NULL);
     XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
 }
@@ -2426,7 +2502,7 @@ void XKeyBoard::check_edo_mapfile(XKeyBoard *xjmkb, int edo) {
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     set_edo(keys, xjmkb->wid, edo);
     if (keys->layout == 4) {
-        std::string p = "Mamba_" + std::to_string(edo)+"edo.";
+        std::string p = "Mamba_" + xjmkb->selected_edo +".";
         std::string mapfile = std::regex_replace(xjmkb->multikeymap_file, std::regex("Mamba."), p);
         if( access(mapfile.c_str(), F_OK ) == 0 ) {
             read_keymap(keys, mapfile.c_str(),keys->custom_keys);
@@ -2441,11 +2517,11 @@ void XKeyBoard::layout_callback(void *w_, void* user_data) {
     MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
 
     if ((int)adj_get_value(w->adj) == 4) {
-        std::string p = "Mamba_" + std::to_string(keys->edo)+"edo.";
+        std::string p = "Mamba_" + xjmkb->selected_edo + ".";
         std::string mapfile = std::regex_replace(xjmkb->multikeymap_file, std::regex("Mamba."), p);
         if( access(mapfile.c_str(), F_OK ) == -1 ) {
             open_custom_keymap(xjmkb->wid, xjmkb->win, w,
-                (int)adj_get_value(xjmkb->fs_edo->adj), mapfile.c_str());
+                (int)adj_get_value(xjmkb->fs_edo->adj), xjmkb->get_edo_steps(), mapfile.c_str());
             adj_set_value(w->adj, xjmkb->keylayout);
             return;
         }
@@ -2482,7 +2558,7 @@ void XKeyBoard::keymap_callback(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     if ((int)adj_get_value(w->adj) == 2)
         open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->keymap,
-            (int)adj_get_value(xjmkb->fs_edo->adj), xjmkb->multikeymap_file.c_str());
+            (int)adj_get_value(xjmkb->fs_edo->adj), xjmkb->get_edo_steps(), xjmkb->multikeymap_file.c_str());
 }
 
 // static
@@ -2575,7 +2651,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             case (XK_k):
             {
                 open_custom_keymap(xjmkb->wid, xjmkb->win, xjmkb->keymap,
-                    (int)adj_get_value(xjmkb->fs_edo->adj), xjmkb->multikeymap_file.c_str());
+                    (int)adj_get_value(xjmkb->fs_edo->adj), xjmkb->get_edo_steps(), xjmkb->multikeymap_file.c_str());
             }
             break;
             case (XK_l):
@@ -2951,17 +3027,23 @@ void XKeyBoard::rebuild_soundfont_list() {
     combobox_set_active_entry(fs_soundfont, active);
 }
 
+int XKeyBoard::get_edo_steps() {
+    if (selected_edo.compare("12ji") == 0) return 12;
+    else if (selected_edo.compare("12edo") == 0) return 12;
+    else if (selected_edo.compare("Scala") == 0) return xsynth->scala_size;
+    return 12;
+}
+
 //static
 void XKeyBoard::edo_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
     Widget_t *win = get_toplevel_widget(w->app);
     XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
-    //MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
     int i = (int)adj_get_value(w->adj);
-    xjmkb->xsynth->activate_tuning_for_channel(xjmkb->mchannel, i);
-    check_edo_mapfile(xjmkb, (int)i + 9);
-    //set_edo(keys, xjmkb->wid, i + 10);
-    //fprintf(stderr, "edo = %i\n", keys->edo);
+    if ( xjmkb->mchannel > 15) xjmkb->xsynth->activate_tunning_for_all_channel(i);
+    else xjmkb->xsynth->activate_tuning_for_channel(xjmkb->mchannel, i);
+    xjmkb->selected_edo = w->label;
+    check_edo_mapfile(xjmkb, xjmkb->get_edo_steps());
 }
 
 void XKeyBoard::show_synth_ui(int present) {
@@ -3018,13 +3100,15 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_release_callback = key_release;
 
     fs_edo = add_combobox(synth_ui, _("edo"), 540, 10, 90, 30);
-    combobox_add_entry(fs_edo, "Just I.");
-    fs_edo->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    combobox_add_entry(fs_edo, "12ji");
+    /*fs_edo->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     for (unsigned int i = 10; i < 24; i++) {
         std::string key = std::to_string(i)+"edo";
         combobox_add_entry(fs_edo, key.c_str());
-    }
-    combobox_set_active_entry(fs_edo, 3);
+    }*/
+    combobox_add_entry(fs_edo, "12edo");
+    combobox_add_entry(fs_edo, "Scala");
+    combobox_set_active_entry(fs_edo, 1);
     fs_edo->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     fs_edo->func.value_changed_callback = edo_callback;
     fs_edo->func.key_press_callback = key_press;
