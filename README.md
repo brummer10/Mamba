@@ -13,6 +13,11 @@ with the included Key-map Editor as well. Beside the computer keyboard and mouse
 out. Every channel use it's own Colour to display the played Notes per channel.
 Jack and ALSA connections could be mannaged within the connection menu.
 
+Mamba implements full [Scala](https://www.huygens-fokker.org/scala/) tuning support, means it could load Scala tuning files (*.scl) and Scala Keymap files (*.kbm)
+to support microtonal tunings. Those could be loaded by simply drag n' drop or over the File menu.
+The Keyboard layout "tries" to reflect the loaded tuning ratio scala.
+MIDI Keyboard mapping works for jack as for alsa MIDI input.
+
 The MIDI-CC controllers on GUI could be controlled by the mouse or the keyboard. With the mouse you could use the mouse-wheel,
 or, press the left mouse button and move the mouse up/down. A special case is the Pitch-wheel control, to use it with the
 mouse-wheel, you must press the mouse-wheel while moving it. This is because of the spring back to default value behave of
@@ -58,6 +63,7 @@ If you don't give the usual file extension Mamba will add the extension .midi be
 You could load a Sound-font via the Menu -> "Fluidsynth" -> "Load Sound-font", or drag'n drop it from your Filemanager on the Keyboard.
 Mamba will start the Fluidsynth engine and do the needed connections so that you could just play along.
 Menu -> "Fluidsynth" -> "Settings" will pop-up a new Window were you could select the Instrument for the channel and do settings for Fluisynth Reverb and Chorus.
+As well you could select there your tuning scale to use, available options been Just Intonation, 12-edo or Scala.
 All your Settings will be saved on exit, so on next start you could just play along.
 
 
@@ -71,6 +77,7 @@ All your Settings will be saved on exit, so on next start you could just play al
 - Sound-font loader for fluidsynth
 - Controls for fluidsynth reverb, chorus and channel pressure
 - Instrument selector for fluidsynth
+- Microtonal tuning for fluidsynth
 - Channel selector
 - Bank and Program selector
 - Keyboard mapping for qwertz, qwerty, azerty(fr) and azerty(be) selectable from menu
@@ -88,6 +95,8 @@ All your Settings will be saved on exit, so on next start you could just play al
 - Resizeable to a full range 127 key view
 - Load MIDI-files on command-line
 - Support jack_transport to start/stop MIDI-Loops
+- Support loading (*.scl) tuning files
+- Support loading (*.kbm) Midi Keyboard mapping files
 - Keyboard Shortcuts
   - `ctrl + 0-4` change octave
   - `ctrl + t` toggle MIDI Through
