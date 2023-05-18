@@ -25,28 +25,32 @@
 
 #include <unistd.h>
 
-static const char *notes_5edo[] = {"C","D","E","G","A"};
-static const char *notes_6edo[] = {"C","D","E","F#","G#","B"};
-static const char *notes_7edo[] = {"C","D","E","F","G","A","B"};
-static const char *notes_8edo[] = {"C","D","E","F#","Fb","Gb","Ab","B#"};
-static const char *notes_9edo[] = {"C","D","E","F#","F","G","A","B","C#"};
-static const char *notes_10edo[] = {"C","Db","D","E","Fb","F","G","Ab","A","B"};
-static const char *notes_11edo[] = {"C","Db","D","Eb","E","F","Gb","G","A","Bb","B"};
-static const char *notes_12edo[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
-static const char *notes_13edo[] = {"C","C#","D","D#","E","F","F#","G","G#","H","A","A#","B"};
-static const char *notes_14edo[] = {"C","^C","D","^D","E","^E","F","^F","G","^G","A","^A","B","^B"};
-static const char *notes_15edo[] = {"C","C#","D","D#","E","E#","F","F#","G","G#","Ab","A","A#","B","B#"};
-static const char *notes_16edo[] = {"C","D#","D","E#","E","Eb","F#","F","G#""G","A#","A","B#","B","Bb","C#"};
-static const char *notes_17edo[] = {"C","Db","C#","D","Eb","E#","E","F","Gb","F#","G","Ab","G#","A","Bb","A#","B"};
-static const char *notes_18edo[] = {"C","Db","C#","D","Eb","D#","E","F","Gb","F#","G","Hb","G#","H","A","Bb","A#","B"};
-static const char *notes_19edo[] = {"C","C#","Db","D","D#","Eb","E","Fb","F","F#","Gb","G","G#","Ab","A","A#","Bb","B","Cb"};
-static const char *notes_20edo[] = {"C","C#","Db","D","D#","Eb","E","E#","Fb","F","F#","Gb","G","Ab","A","A#","Bb","B","B#","Cb"};
-static const char *notes_21edo[] = {"C","C#","Db","D","D#","Eb","E","Fb","F","F#","Gb","G","G#","Hb","H","Ab","A","A#","Bb","B","Cb"};
-static const char *notes_22edo[] = {"C","C#","Db","D","D#","Eb","E","E#","Fb","F","F#","Gb","G","G#","Abb","Ab","A","A#","Bb","B","B#","Cb"};
-static const char *notes_23edo[] = {"C","Cb","D#","D","Db","E#","E","Eb","Ebb","F#","F","Fb","G#","G","Gb","A#","A","Ab","B#","B","Bb","Bbb","C#"};
+static const char * const notes_5edo[] = {"C","D","E","G","A"};
+static const char * const notes_6edo[] = {"C","D","E","F#","G#","B"};
+static const char * const notes_7edo[] = {"C","D","E","F","G","A","B"};
+static const char * const notes_8edo[] = {"C","D","E","F#","Fb","Gb","Ab","B#"};
+static const char * const notes_9edo[] = {"C","D","E","F#","F","G","A","B","C#"};
+static const char * const notes_10edo[] = {"C","Db","D","E","Fb","F","G","Ab","A","B"};
+static const char * const notes_11edo[] = {"C","Db","D","Eb","E","F","Gb","G","A","Bb","B"};
+static const char * const notes_12edo[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
+static const char * const notes_13edo[] = {"C","C#","D","D#","E","F","F#","G","G#","H","A","A#","B"};
+static const char * const notes_14edo[] = {"C","^C","D","^D","E","^E","F","^F","G","^G","A","^A","B","^B"};
+static const char * const notes_15edo[] = {"C","C#","D","D#","E","E#","F","F#","G","G#","Ab","A","A#","B","B#"};
+static const char * const notes_16edo[] = {"C","D#","D","E#","E","Eb","F#","F","G#""G","A#","A","B#","B","Bb","C#"};
+static const char * const notes_17edo[] = {"C","Db","C#","D","Eb","E#","E","F","Gb","F#","G","Ab","G#","A","Bb","A#","B"};
+static const char * const notes_18edo[] = {"C","Db","C#","D","Eb","D#","E","F","Gb","F#","G","Hb","G#","H","A","Bb","A#","B"};
+static const char * const notes_19edo[] = {"C","C#","Db","D","D#","Eb","E","Fb","F","F#","Gb","G","G#","Ab","A","A#","Bb","B","Cb"};
+static const char * const notes_20edo[] = {"C","C#","Db","D","D#","Eb","E","E#","Fb","F","F#","Gb","G","Ab","A","A#","Bb","B","B#","Cb"};
+static const char * const notes_21edo[] = {"C","C#","Db","D","D#","Eb","E","Fb","F","F#","Gb","G","G#","Hb","H","Ab","A","A#","Bb","B","Cb"};
+static const char * const notes_22edo[] = {"C","C#","Db","D","D#","Eb","E","E#","Fb","F","F#","Gb","G","G#","Abb","Ab","A","A#","Bb","B","B#","Cb"};
+static const char * const notes_23edo[] = {"C","Cb","D#","D","Db","E#","E","Eb","Ebb","F#","F","Fb","G#","G","Gb","A#","A","Ab","B#","B","Bb","Bbb","C#"};
 
 
-static const char *octaves[] = {"-1","0","1","2","3","4","5","6","7","8","9", "10"};
+static const char * const * const note_names[] = {notes_5edo, notes_6edo, notes_7edo, notes_8edo, notes_9edo,
+        notes_10edo, notes_11edo, notes_12edo, notes_13edo, notes_14edo, notes_15edo, notes_16edo,
+        notes_17edo, notes_18edo, notes_19edo, notes_20edo, notes_21edo, notes_22edo, notes_23edo};
+
+static const char * const octaves[] = {"-1","0","1","2","3","4","5","6","7","8","9", "10"};
 
 typedef struct {
     int active;
@@ -54,7 +58,7 @@ typedef struct {
     int changed;
     int nsize;
     int ratio;
-    const char** notes;
+    const char * const * notes;
     char* keymapfile;
     long multikeys[128][2];
     Widget_t *keyboard;
@@ -427,88 +431,8 @@ void exit_callback(void *w_, void* button, void* user_data) {
 }
 
 void notes_by_ratio(CustomKeymap *customkeys) {
-    switch(customkeys->ratio) {
-        case(5) :
-            customkeys->notes = notes_5edo;
-            customkeys->nsize = 5;
-        break;
-        case(6) :
-            customkeys->notes = notes_6edo;
-            customkeys->nsize = 6;
-        break;
-        case(7) :
-            customkeys->notes = notes_7edo;
-            customkeys->nsize = 7;
-        break;
-        case(8) :
-            customkeys->notes = notes_8edo;
-            customkeys->nsize = 8;
-        break;
-        case(9) :
-            customkeys->notes = notes_9edo;
-            customkeys->nsize = 9;
-        break;
-        case(10) :
-            customkeys->notes = notes_10edo;
-            customkeys->nsize = 10;
-        break;
-        case(11) :
-            customkeys->notes = notes_11edo;
-            customkeys->nsize = 11;
-        break;
-        case(12) :
-            customkeys->notes = notes_12edo;
-            customkeys->nsize = 12;
-        break;
-        case(13) :
-            customkeys->notes = notes_13edo;
-            customkeys->nsize = 13;
-        break;
-        case(14) :
-            customkeys->notes = notes_14edo;
-            customkeys->nsize = 14;
-        break;
-        case(15) :
-            customkeys->notes = notes_15edo;
-            customkeys->nsize = 15;
-        break;
-        case(16) :
-            customkeys->notes = notes_16edo;
-            customkeys->nsize = 16;
-        break;
-        case(17) :
-            customkeys->notes = notes_17edo;
-            customkeys->nsize = 17;
-        break;
-        case(18) :
-            customkeys->notes = notes_18edo;
-            customkeys->nsize = 18;
-        break;
-        case(19) :
-            customkeys->notes = notes_19edo;
-            customkeys->nsize = 19;
-        break;
-        case(20) :
-            customkeys->notes = notes_20edo;
-            customkeys->nsize = 20;
-        break;
-        case(21) :
-            customkeys->notes = notes_21edo;
-            customkeys->nsize = 21;
-        break;
-        case(22) :
-            customkeys->notes = notes_22edo;
-            customkeys->nsize = 22;
-        break;
-        case(23) :
-            customkeys->notes = notes_23edo;
-            customkeys->nsize = 23;
-        break;      
-        default:
-            customkeys->notes = notes_12edo;
-            customkeys->nsize = 12;
-        break;
-    }    
+    customkeys->notes = note_names[customkeys->ratio - 5];
+    customkeys->nsize = customkeys->ratio;
 }
 
 //static

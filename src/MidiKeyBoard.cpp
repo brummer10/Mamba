@@ -79,11 +79,13 @@ bool AnimatedKeyBoard::is_running() const noexcept {
  */
 
 XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth *xsynth_,
+        midimapper::MidiMapper *midimap,
         mamba::MidiMessenger *mmessage_, nsmhandler::NsmSignalHandler& nsmsig_,
         PosixSignalHandler& xsig_, AnimatedKeyBoard * animidi_)
     : xjack(xjack_),
     xalsa(xalsa_),
     xsynth(xsynth_),
+    mmapper(midimap),
     save(),
     load(),
     mmessage(mmessage_),
@@ -268,6 +270,15 @@ void XKeyBoard::read_config() {
                     buf >> value;
                 }
                 xsynth->scala_ratios.push_back(std::stof(value));
+            } else if (key.compare("[midi_mapper]") == 0) {
+                xjack->midi_map =  std::stoi(value);
+            } else if (key.compare("[mapper_map]") == 0) {
+                mmapper->kbm_map.clear();
+                for (unsigned int i = 0; i < 127; i++) {
+                    mmapper->kbm_map.push_back(std::stoi(value));
+                    buf >> value;
+                }
+                mmapper->kbm_map.push_back(std::stoi(value));
             } else if (key.compare("[recent_files]") == 0) recent_files.push_back(remove_sub(line, "[recent_files] "));
             else if (key.compare("[recent_sfonts]") == 0) recent_sfonts.push_back(remove_sub(line, "[recent_sfonts] "));
             key.clear();
@@ -402,6 +413,13 @@ void XKeyBoard::save_config() {
              }
              outfile << std::endl;
          }
+         outfile << "[midi_mapper] " << xjack->midi_map << std::endl;
+         outfile << "[mapper_map] ";
+         for (int i = 0; i < 128; i++) {
+             outfile << " " << mmapper->kbm_map[i];
+         }
+         outfile << std::endl;
+
          for (auto i : recent_files) {
              outfile << "[recent_files] "  << i << std::endl;
          }
@@ -925,7 +943,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_entry(add_midi,_("Add New"));
     file_remove_menu = menu_add_submenu(filemenu, _("Remove MIDI"));
     menu_add_entry(filemenu,_("_Save MIDI as"));
-    menu_add_entry(filemenu,_("Load Scala"));
+    scala_menu = menu_add_submenu(filemenu,_("Load Scala"));
+    menu_add_entry(scala_menu,_("Tuning File (*.scl)"));
+    menu_add_entry(scala_menu,_("Keymap File (*.kbm)"));
     if (nsmsig.nsm_session_control)
         menu_add_entry(filemenu,_("Hide"));
     else
@@ -943,6 +963,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     file_remove_menu->func.key_press_callback = key_press;
     file_remove_menu->func.key_release_callback = key_release;
     file_remove_menu->func.value_changed_callback = file_remove_callback;
+    scala_menu->func.key_press_callback = key_press;
+    scala_menu->func.key_release_callback = key_release;
+    scala_menu->func.value_changed_callback = load_scala_callback;
 
     view_menu = menubar_add_menu(menubar,_("_View"));
     view_menu->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -987,6 +1010,10 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     menu_add_entry(mapping,_("_Keymap Editor"));
     mapping->func.value_changed_callback = keymap_callback;
+
+    midi_map = menu_add_accel_check_entry(mapping,_("Midi Ma_pper"));
+    adj_set_value(midi_map->adj, static_cast<float>(xjack->midi_map));
+    midi_map->func.value_changed_callback = midi_map_callback;
 
     grab_keyboard = menu_add_accel_check_entry(mapping,_("_Grab Keyboard"));
     grab_keyboard->func.value_changed_callback = grab_callback;
@@ -1669,6 +1696,8 @@ void XKeyBoard::dnd_load_response(void *w_, void* user_data) {
                 sf2_done = true;
             } else if (strstr(dndfile, ".scl") && !sf2_done) {
                 scala_load_response(w_, (void*)&dndfile);
+            } else if (strstr(dndfile, ".kbm") && !sf2_done) {
+                scala_kbm_load_response(w_, (void*)&dndfile);
             }
             dndfile = strtok(NULL, "\r\n");
         }
@@ -1908,6 +1937,33 @@ void XKeyBoard::add_midi_callback(void *w_, void* user_data) {
 }
 
 //static
+void XKeyBoard::load_scala_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    int value = (int)adj_get_value(w->adj);
+    switch (value) {
+        case(0):
+        {
+            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->scala_filepath.c_str(), ".scl");
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            XResizeWindow(xjmkb->win->app->dpy, dia->widget, 760, 565);
+            xjmkb->win->func.dialog_callback = scala_load_response;
+        }
+        break;
+        case(1):
+        {
+            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->scala_filepath.c_str(), ".kbm");
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            XResizeWindow(xjmkb->win->app->dpy, dia->widget, 760, 565);
+            xjmkb->win->func.dialog_callback = scala_kbm_load_response;
+        }
+        break;
+        default:
+        break;
+    }
+}
+
+//static
 void XKeyBoard::file_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
@@ -1927,12 +1983,6 @@ void XKeyBoard::file_callback(void *w_, void* user_data) {
         }
         break;
         case(4):
-        {
-            Widget_t *dia = open_file_dialog(xjmkb->win, xjmkb->scala_filepath.c_str(), ".scl");
-            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
-            XResizeWindow(xjmkb->win->app->dpy, dia->widget, 760, 565);
-            xjmkb->win->func.dialog_callback = scala_load_response;
-        }
         break;
         case(5):
         {
@@ -2021,9 +2071,47 @@ void XKeyBoard::scala_load_response(void *w_, void* user_data) {
             else xjmkb->xsynth->activate_tuning_for_channel(xjmkb->mchannel, 2);
             set_edo(keys, xjmkb->wid, xjmkb->xsynth->scala_size);
         }
+        _scale.close();
     }
 
 }
+
+// static
+void XKeyBoard::scala_kbm_load_response(void *w_, void* user_data) {
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
+    // MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    if(user_data !=NULL) {
+        if( access(*(const char**)user_data, F_OK ) == -1 ) {
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            _("Couldn't access file, sorry"),NULL);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            return;
+        }
+        std::ifstream _scale;
+        _scale.open(*(const char**)user_data);
+        scala::kbm _kbm = scala::read_kbm(_scale);
+        if ( _kbm.map_size <= 1) {
+            Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
+            _("Fail to parse file, sorry"),NULL);
+            XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
+            return;
+        }
+        // switch off midimapper when recreate mapping matrix
+        adj_set_value(xjmkb->midi_map->adj, 0.0);
+        xjmkb->mmapper->kbm_map.clear();
+        int oc = 0;
+        for ( int i = 0; i < 128; i++) {
+            int m = _kbm.mapping[i % _kbm.map_size];
+            if (m >= 0 && m+oc < 128) xjmkb->mmapper->kbm_map.push_back(m + oc);
+            else xjmkb->mmapper->kbm_map.push_back(1000); // key is sciped
+            if (i % _kbm.map_size == _kbm.map_size-1)
+                oc += _kbm.map_size;
+        }
+        _scale.close();
+        adj_set_value(xjmkb->midi_map->adj, 1.0);
+    }
+}
+
 // static
 void XKeyBoard::synth_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
@@ -2174,7 +2262,7 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
     info += _("|For MIDI file handling it uses libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala|");
     info += "https://github.com/stump/libsmf";
     info += _("|");
-    info += _("|For Scala support it use libscala-file| a MIT-licensed C++ library|written by Mark Conway Wirt|");
+    info += _("|For Scala support (*.scl / *.kbm) it use libscala-file| a MIT-licensed C++ library|written by Mark Conway Wirt|");
     info += "https://github.com/MarkCWirt/libscala-file";
     Widget_t *dia = open_message_dialog(win, INFO_BOX, _("Mamba"), info.data(), NULL);
     XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
@@ -2581,6 +2669,17 @@ void XKeyBoard::through_callback(void *w_, void* user_data) {
         xjmkb->xjack->midi_through = 1;
     } else {
         xjmkb->xjack->midi_through = 0;
+    }
+}
+
+// static
+void XKeyBoard::midi_map_callback(void *w_, void* user_data) {
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    if (adj_get_value(w->adj)) {
+        xjmkb->xjack->midi_map = xjmkb->xalsa->mmap = 1;
+    } else {
+        xjmkb->xjack->midi_map = xjmkb->xalsa->mmap = 0;
     }
 }
 
@@ -3352,16 +3451,23 @@ int main (int argc, char *argv[]) {
     nsmhandler::NsmSignalHandler nsmsig;
     midikeyboard::AnimatedKeyBoard  animidi;
 
-    xalsa::XAlsa xalsa([&mmessage]
+    midimapper::MidiMapper midimap([&mmessage]
         (int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept
         {mmessage.send_midi_cc( _cc, _pg, _bgn, _num, have_channel);});
 
+    xalsa::XAlsa xalsa([&mmessage]
+        (int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept
+        {mmessage.send_midi_cc( _cc, _pg, _bgn, _num, have_channel);},
+        [&midimap] (const uint8_t* m ,uint8_t n ) noexcept {midimap.mmapper_input_notify(m,n);});
+
     xjack::XJack xjack(&mmessage,
         [&xalsa] (const uint8_t* m ,uint8_t n ) noexcept {xalsa.xalsa_output_notify(m,n);},
-        [&xalsa] (int p ) {xalsa.xalsa_set_priority(p);});
+        [&xalsa] (int p ) {xalsa.xalsa_set_priority(p);},
+        [&midimap] (const uint8_t* m ,uint8_t n ) noexcept {midimap.mmapper_input_notify(m,n);},
+        [&midimap] (int p ) {midimap.mmapper_set_priority(p);});
 
     xsynth::XSynth xsynth;
-    midikeyboard::XKeyBoard xjmkb(&xjack, &xalsa, &xsynth, &mmessage, nsmsig, xsig, &animidi);
+    midikeyboard::XKeyBoard xjmkb(&xjack, &xalsa, &xsynth, &midimap, &mmessage, nsmsig, xsig, &animidi);
     nsmhandler::NsmHandler nsmh(&nsmsig);
 
     nsmsig.nsm_session_control = nsmh.check_nsm(xjmkb.client_name.c_str(), argv);
@@ -3375,9 +3481,10 @@ int main (int argc, char *argv[]) {
 
         xjmkb.read_config();
         xjmkb.init_ui(&app);
-
+        MidiKeyboard *keys = (MidiKeyboard*)xjmkb.wid->parent_struct;
+        midimap.mmapper_start([keys] (int channel, int key, bool set)
+            {set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
         if (xalsa.xalsa_init(xjack.client_name.c_str(), "input", "output") >= 0) {
-            MidiKeyboard *keys = (MidiKeyboard*)xjmkb.wid->parent_struct;
             xalsa.xalsa_start([keys] (int channel, int key, bool set)
                 {set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
         } else {

@@ -3,9 +3,11 @@
             See LICENSE for licensing terms (MIT)
  ****************************************************************/
 
+#include <iostream>
 #include <regex>
 #include <vector>
 #include <stdexcept>
+#include <exception>
 
 #include "scala_file.hpp"
 
@@ -35,6 +37,7 @@ namespace scala {
         std::regex EX = std::regex("^[ \t]*[xX]{1}.*");
 #endif
     
+        try {
         while(input_file){
             getline(input_file, buffer);
             if (std::regex_match (buffer, COMMENT_REGEX)) {
@@ -94,6 +97,9 @@ namespace scala {
             } else {
                 throw std::runtime_error("ERROR: Too many entires in mapping file");
             }
+        }
+        } catch (std::exception& e) {
+            std::cout << e.what() << '\n';
         }
         return keyboard_mapping;
     }

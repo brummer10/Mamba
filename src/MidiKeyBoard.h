@@ -51,6 +51,7 @@
 #include "Mamba.h"
 #include "XJack.h"
 #include "XAlsa.h"
+#include "MidiMapper.h"
 #include "xwidgets.h"
 #include "xfile-dialog.h"
 #include "xmessage-dialog.h"
@@ -144,6 +145,7 @@ private:
     xjack::XJack *xjack;
     xalsa::XAlsa *xalsa;
     xsynth::XSynth *xsynth;
+    midimapper::MidiMapper *mmapper;
     mamba::MidiSave save;
     mamba::MidiLoad load;
     mamba::MidiMessenger *mmessage;
@@ -192,6 +194,8 @@ private:
     Widget_t *key_size_menu;
     Widget_t *grab_keyboard;
     Widget_t* midi_through;
+    Widget_t* midi_map;
+    Widget_t* scala_menu;
 
     std::string filepath;
     std::string soundfontpath;
@@ -237,6 +241,7 @@ private:
 
     static void set_std_value(void *w_, void* button, void* user_data) noexcept;
     static void info_callback(void *w_, void* user_data);
+    static void load_scala_callback(void *w_, void* user_data);
     static void file_callback(void *w_, void* user_data);
     static void view_callback(void *w_, void* user_data);
     static void key_size_callback(void *w_, void* user_data);
@@ -255,6 +260,7 @@ private:
     static void keymap_callback(void *w_, void* user_data);
     static void grab_callback(void *w_, void* user_data);
     static void through_callback(void *w_, void* user_data);
+    static void midi_map_callback(void *w_, void* user_data);
     static void synth_callback(void *w_, void* user_data);
     static void modwheel_callback(void *w_, void* user_data) noexcept;
     static void detune_callback(void *w_, void* user_data) noexcept;
@@ -345,6 +351,7 @@ private:
     void build_sfont_menu();
 public:
     XKeyBoard(xjack::XJack *xjack, xalsa::XAlsa *xalsa, xsynth::XSynth *xsynth,
+        midimapper::MidiMapper *midimap,
         mamba::MidiMessenger *mmessage, nsmhandler::NsmSignalHandler& nsmsig,
         PosixSignalHandler& xsig, AnimatedKeyBoard * animidi);
     ~XKeyBoard();
@@ -378,6 +385,7 @@ public:
     static void dialog_load_response(void *w_, void* user_data);
     static void synth_load_response(void *w_, void* user_data);
     static void scala_load_response(void *w_, void* user_data);
+    static void scala_kbm_load_response(void *w_, void* user_data);
     int get_edo_steps();
     static XKeyBoard* get_instance(void *w_);
 };

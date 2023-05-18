@@ -83,14 +83,17 @@ bool XAlsaMidiMessenger::send_midi_cc(const uint8_t *midi_get,
 
 XAlsa::XAlsa(std::function<void(
         int _cc, int _pg, int _bgn, int _num, bool have_channel) > 
-        send_to_jack_) 
+        send_to_jack_,
+        std::function<void(const uint8_t*,uint8_t) > send_to_midimapper_) 
     :send_to_jack(send_to_jack_),
+    send_to_midimapper(send_to_midimapper_),
     xamessage(),
     _execute(false),
     _execute_out(false) {
     sequencer = -1;
     in_port = -1;
     out_port = -1;
+    mmap = 0;
 }
 
 XAlsa::~XAlsa() {
@@ -336,6 +339,7 @@ void XAlsa::xalsa_start_input(std::function<void(int,int,bool)> set_key) {
     };
     _execute.store(true, std::memory_order_release);
     _thd = std::thread([this, set_key]() {
+        uint8_t event[3] = {0};
         while (_execute.load(std::memory_order_acquire)) {
             if (sequencer < 0) {
                 _execute.store(false, std::memory_order_release);
@@ -344,14 +348,28 @@ void XAlsa::xalsa_start_input(std::function<void(int,int,bool)> set_key) {
             snd_seq_event_t *ev = NULL;
             snd_seq_event_input(seq_handle, &ev);
             if (ev->type == SND_SEQ_EVENT_NOTEON) {
-                send_to_jack(0x90 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
-                if (ev->data.note.velocity)
-                    set_key(ev->data.control.channel, ev->data.note.note, true);
-                else
-                    set_key(ev->data.control.channel, ev->data.note.note, false);
+                if (mmap) {
+                    event[0] = ev->data.note.velocity ? 0x90 | ev->data.control.channel : 0x80 | ev->data.control.channel;
+                    event[1] = ev->data.note.note;
+                    event[2] = ev->data.note.velocity;
+                    send_to_midimapper(event, 3);
+                } else {
+                    send_to_jack(0x90 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
+                    if (ev->data.note.velocity)
+                        set_key(ev->data.control.channel, ev->data.note.note, true);
+                    else
+                        set_key(ev->data.control.channel, ev->data.note.note, false);
+                }
             } else if (ev->type == SND_SEQ_EVENT_NOTEOFF) {
-                send_to_jack(0x80 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
-                set_key(ev->data.control.channel, ev->data.note.note, false);
+                if (mmap) {
+                    event[0] = 0x80 | ev->data.control.channel;
+                    event[1] = ev->data.note.note;
+                    event[2] = ev->data.note.velocity;
+                    send_to_midimapper(event, 3);
+                } else {
+                    send_to_jack(0x80 | ev->data.control.channel, ev->data.note.note,ev->data.note.velocity, 3, true);
+                    set_key(ev->data.control.channel, ev->data.note.note, false);
+                }
             } else if(ev->type == SND_SEQ_EVENT_CONTROLLER) {
                 send_to_jack(0xB0 | ev->data.control.channel, ev->data.control.param, ev->data.control.value, 3, true);
             } else if(ev->type == SND_SEQ_EVENT_PGMCHANGE) {

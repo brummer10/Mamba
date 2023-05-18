@@ -86,12 +86,16 @@ bool MidiClockToBpm::time_to_bpm(double time, unsigned int* bpm_) {
 
 XJack::XJack(mamba::MidiMessenger *mmessage_,
         std::function<void(const uint8_t*,uint8_t) >  send_to_alsa_,
-        std::function<void(int)>  set_alsa_priority_)
+        std::function<void(int)>  set_alsa_priority_,
+        std::function<void(const uint8_t*,uint8_t) >  send_to_midimapper_,
+        std::function<void(int)>  set_midimapper_priority_)
     : sigc::trackable(),
      mmessage(mmessage_),
      mp(),
      send_to_alsa(send_to_alsa_),
      set_alsa_priority(set_alsa_priority_),
+     send_to_midimapper(send_to_midimapper_),
+     set_midimapper_priority(set_midimapper_priority_),
      event_count(0),
      stop(0),
      deltaTime(0),
@@ -129,6 +133,7 @@ XJack::XJack(mamba::MidiMessenger *mmessage_,
         stStart = 0;
         rcStart = 0;
         priority = -1;
+        midi_map = 0;
         for ( int i = 0; i < 16; i++) posPlay[i] = 0;
         for ( int i = 0; i < 16; i++) startPlay[i] = 0;
         for ( int i = 0; i < 16; i++) stopPlay[i] = 0;
@@ -168,6 +173,7 @@ int XJack::init_jack() {
         priority = jack_client_real_time_priority(client);
         if (priority > 2) {
             set_alsa_priority(priority);
+            set_midimapper_priority(priority);
         }
     }
     return 1;
@@ -349,32 +355,39 @@ inline void XJack::process_midi_in(void* buf, void* out_buf) {
     unsigned int i;
     for (i = 0; i < event_count; i++) {
         jack_midi_event_get(&in_event, buf, i);
-        if (midi_through) {
-            unsigned char* midi_send = jack_midi_event_reserve(out_buf, i, in_event.size);
-            midi_send[0] = in_event.buffer[0];
-            midi_send[1] = in_event.buffer[1];
-            if (in_event.size>2) 
-                midi_send[2] = in_event.buffer[2];
-            if (record)
-                record_midi(midi_send, i, in_event.size);
-            send_to_alsa(midi_send, in_event.size);
-        }
+        // only mapping note on/off messages
+        if (midi_map && (((in_event.buffer[0] & 0xf0) == 0x90) ||
+                        ((in_event.buffer[0] & 0xf0) == 0x80))) {
+            // record and send_to_also happen now in process_midi_out
+            send_to_midimapper(in_event.buffer, in_event.size);
+        } else {
+            if (midi_through) {
+                unsigned char* midi_send = jack_midi_event_reserve(out_buf, i, in_event.size);
+                midi_send[0] = in_event.buffer[0];
+                midi_send[1] = in_event.buffer[1]; // implement mapping
+                if (in_event.size>2) 
+                    midi_send[2] = in_event.buffer[2];
+                if (record)
+                    record_midi(midi_send, i, in_event.size);
+                send_to_alsa(midi_send, in_event.size);
+            }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
-        if ((in_event.buffer[0] & 0xf0) == 0x90) {   // Note On
-            std::async(std::launch::async, trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], true);
-        } else if ((in_event.buffer[0] & 0xf0) == 0x80) {   // Note Off
-            std::async(std::launch::async, trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], false);
-        } else if ((in_event.buffer[0] ) == 0xf8) {   // midi beat clock
-            clock_gettime(CLOCK_MONOTONIC, &ts1);
-            double time0 = (ts1.tv_sec*1000000000.0)+(ts1.tv_nsec)+
-                    (1000000000.0/(double)(SampleRate/(double)in_event.time));
-            if (mp.time_to_bpm(time0, &bpm)) {
-                bpm_changed.store(true, std::memory_order_release);
-                bpm_set.store((int)bpm, std::memory_order_release);
+            if ((in_event.buffer[0] & 0xf0) == 0x90) {   // Note On
+                std::async(std::launch::async, trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], true);
+            } else if ((in_event.buffer[0] & 0xf0) == 0x80) {   // Note Off
+                std::async(std::launch::async, trigger_get_midi_in, (int(in_event.buffer[0]&0x0f)), in_event.buffer[1], false);
+            } else if ((in_event.buffer[0] ) == 0xf8) {   // midi beat clock
+                clock_gettime(CLOCK_MONOTONIC, &ts1);
+                double time0 = (ts1.tv_sec*1000000000.0)+(ts1.tv_nsec)+
+                        (1000000000.0/(double)(SampleRate/(double)in_event.time));
+                if (mp.time_to_bpm(time0, &bpm)) {
+                    bpm_changed.store(true, std::memory_order_release);
+                    bpm_set.store((int)bpm, std::memory_order_release);
+                }
             }
-        }
 #pragma GCC diagnostic pop
+        }
     }
 }
 

@@ -1,25 +1,23 @@
 
 	# check CPU and supported optimization flags
-	ifeq ($(UNAME), Linux)
-		ifneq ($(shell cat /proc/cpuinfo | grep sse3 ) , )
-			SSE_CFLAGS = -msse3 -mfpmath=sse
-		else ifneq ($(shell cat /proc/cpuinfo | grep sse2 ) , )
-			SSE_CFLAGS = -msse2 -mfpmath=sse
-		else ifneq ($(shell cat /proc/cpuinfo | grep sse ) , )
-			SSE_CFLAGS = -msse -mfpmath=sse
-			else ifneq ($(shell cat /proc/cpuinfo | grep ARM ) , )
-			ifneq ($(shell cat /proc/cpuinfo | grep ARMv7 ) , )
-				ifneq ($(shell cat /proc/cpuinfo | grep vfpd32 ) , )
-					SSE_CFLAGS = -march=armv7-a -mfpu=vfpv3 
-				else ifneq ($(shell cat /proc/cpuinfo | grep vfpv3 ) , )
-					SSE_CFLAGS = -march=armv7-a -mfpu=vfpv3
-				endif
-			else
-				ARMCPU = "YES"
+	ifneq ($(shell cat /proc/cpuinfo | grep sse3 ) , )
+		SSE_CFLAGS = -msse3 -mfpmath=sse
+	else ifneq ($(shell cat /proc/cpuinfo | grep sse2 ) , )
+		SSE_CFLAGS = -msse2 -mfpmath=sse
+	else ifneq ($(shell cat /proc/cpuinfo | grep sse ) , )
+		SSE_CFLAGS = -msse -mfpmath=sse
+		else ifneq ($(shell cat /proc/cpuinfo | grep ARM ) , )
+		ifneq ($(shell cat /proc/cpuinfo | grep ARMv7 ) , )
+			ifneq ($(shell cat /proc/cpuinfo | grep vfpd32 ) , )
+				SSE_CFLAGS = -march=armv7-a -mfpu=vfpv3 
+			else ifneq ($(shell cat /proc/cpuinfo | grep vfpv3 ) , )
+				SSE_CFLAGS = -march=armv7-a -mfpu=vfpv3
 			endif
 		else
-			SSE_CFLAGS =
+			ARMCPU = "YES"
 		endif
+	else
+		SSE_CFLAGS =
 	endif
 
 	# set bundle name
@@ -44,26 +42,29 @@
 
 	# set compile flags
 	CXXFLAGS += -std=gnu++17 -O3 -D_FORTIFY_SOURCE=2 -Wall -fstack-protector -funroll-loops -ffast-math -fomit-frame-pointer \
-	-fstrength-reduce -fschedule-insns $(SSE_CFLAGS)
+	-fstrength-reduce -fschedule-insns -MMD $(SSE_CFLAGS)
 	DEBUG_CXXFLAGS += -g -D DEBUG
 	LDFLAGS += -Wl,-z,noexecstack -Wl,--no-undefined \
-	-I./ -I../libxputty/libxputty/include/ -I../libscala-file/ \
-	`pkg-config --cflags --libs jack cairo x11 sigc++-2.0 liblo smf fluidsynth` -lm -pthread -lasound \
+	`pkg-config --libs jack cairo x11 sigc++-2.0 liblo smf fluidsynth` -lm -pthread -lasound 
+	INCFLAGS = -I./ -I../libxputty/libxputty/include/ -I../libscala-file/ \
+	`pkg-config --cflags jack cairo x11 sigc++-2.0 liblo smf fluidsynth`\
 	-DVERSION=\"$(VER)\"
 	# invoke build files
-	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XAlsa.cpp XJack.cpp NsmHandler.cpp xkeyboard.c xcustommap.c XSynth.cpp \
-	$(LIBSCALA_DIR)scala_kbm.cpp $(LIBSCALA_DIR)scala_scl.cpp
+	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XAlsa.cpp XJack.cpp NsmHandler.cpp XSynth.cpp MidiMapper.cpp
+	SOBJECTS = $(LIBSCALA_DIR)scala_kbm.cpp $(LIBSCALA_DIR)scala_scl.cpp
+	COBJECTS = xkeyboard.c xcustommap.c
+	OBJ_FILES = $(addprefix ./$(BUILD_DIR)/,$(notdir $(OBJECTS:.cpp=.o)))
+	SOBJ_FILES = $(addprefix ./$(BUILD_DIR)/,$(notdir $(SOBJECTS:.cpp=.o)))
+	COBJ_FILES = $(addprefix ./$(BUILD_DIR)/,$(notdir $(COBJECTS:.c=.o)))
 	LOCALIZE = $(LOCALIZE_DIR)xfile-dialog.c $(LOCALIZE_DIR)xmessage-dialog.c $(LOCALIZE_DIR)xsavefile-dialoge.c
 	## output style (bash colours)
 	BLUE = "\033[1;34m"
 	RED =  "\033[1;31m"
 	NONE = "\033[0m"
 
-.PHONY : $(HEADER_DIR)*.h all debug nls gettext updatepot po clean install uninstall 
+.PHONY : all debug nls gettext updatepot po clean install uninstall 
 
 all : check $(NAME)
-	@mkdir -p ./$(BUILD_DIR)
-	@mv ./$(EXEC_NAME) ./$(BUILD_DIR)
 	@if [ -f ./$(BUILD_DIR)/$(EXEC_NAME) ]; then echo $(BLUE)"build finish, now run make install"; \
 	else echo $(RED)"sorry, build failed"; fi
 	@echo $(NONE)
@@ -96,6 +97,7 @@ po:
 	echo $(LANG)
 
 check :
+	@mkdir -p ./$(BUILD_DIR)
 ifdef ARMCPU
 	@echo $(RED)ARM CPU DEDECTED, please check the optimization flags
 	@echo $(NONE)
@@ -142,8 +144,21 @@ uninstall :
 	@rm -rf $(addprefix $(SHARE_DIR)/, $(MSGOBJS))
 	@echo ". ." $(BLUE)", done"$(NONE)
 
-$(NAME) :
-	$(CXX) $(CXXFLAGS) $(OBJECTS) -L. ../libxputty/libxputty/libxputty.a -o $(EXEC_NAME) $(LDFLAGS)
+./$(BUILD_DIR)/%.o: %.cpp
+	$(CXX) $(CXXFLAGS)  $(INCFLAGS) -c $< -o $@
+
+./$(BUILD_DIR)/%.o: $(LIBSCALA_DIR)%.cpp
+	$(CXX) $(CXXFLAGS)  $(INCFLAGS) -c $< -o $@
+
+./$(BUILD_DIR)/%.o: %.c
+	$(CXX) $(CXXFLAGS)  $(INCFLAGS) -c $< -o $@
+
+-include $(OBJ_FILES:%.o=%.d)
+-include $(SOBJ_FILES:%.o=%.d)
+-include $(COBJ_FILES:%.o=%.d)
+
+$(NAME) : $(OBJ_FILES) $(SOBJ_FILES) $(COBJ_FILES) 
+	$(CXX) $(CXXFLAGS) -o ./$(BUILD_DIR)/$(EXEC_NAME) $(OBJ_FILES) $(SOBJ_FILES) $(COBJ_FILES) $(INCFLAGS) $(LDFLAGS) -L. ../libxputty/libxputty/libxputty.a
 
 doc:
 	#pass

@@ -76,6 +76,8 @@ private:
     MidiClockToBpm mp;
     std::function<void(const uint8_t*,uint8_t) > send_to_alsa;
     std::function<void(int)> set_alsa_priority;
+    std::function<void(const uint8_t*,uint8_t) > send_to_midimapper;
+    std::function<void(int)> set_midimapper_priority;
     timespec ts1;
     jack_nframes_t event_count;
     jack_nframes_t stop;
@@ -108,7 +110,9 @@ private:
 public:
     XJack(mamba::MidiMessenger *mmessage,
         std::function<void(const uint8_t*,uint8_t) > send_to_alsa,
-        std::function<void(int)> set_alsa_priority);
+        std::function<void(int)> set_alsa_priority,
+        std::function<void(const uint8_t*,uint8_t) > send_to_midimapper,
+        std::function<void(int)> set_midimapper_priority);
     ~XJack();
     std::atomic<bool> transport_state_changed;
     std::atomic<int> transport_set;
@@ -145,6 +149,7 @@ public:
     double bpm_ratio;
     unsigned int bpm;
     float max_loop_time;
+    int midi_map;
 
     float get_max_loop_time() noexcept;
     sigc::signal<void > trigger_quit_by_jack;

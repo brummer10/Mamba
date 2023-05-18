@@ -72,6 +72,8 @@ private:
     std::function<void(
         int _cc, int _pg, int _bgn, int _num, bool have_channel) >
         send_to_jack;
+    // send midi message to the 'queue' for the midi mapper
+    std::function<void(const uint8_t*,uint8_t) > send_to_midimapper;
     // the midi message 'queue' for alsa midi output
     XAlsaMidiMessenger xamessage;
     // the sequencer
@@ -102,7 +104,7 @@ private:
 public:
     XAlsa(std::function<void(
         int _cc, int _pg, int _bgn, int _num, bool have_channel)>
-        send_to_jack);
+        send_to_jack, std::function<void(const uint8_t*,uint8_t) > send_to_midimapper);
     ~XAlsa();
     // get all available ports for alsa midi in/output
     void xalsa_get_ports(std::vector<std::string> *ports,
@@ -129,6 +131,8 @@ public:
     void xalsa_output_notify(const uint8_t *midi_get, uint8_t num) noexcept;
     // set the priority for the I/O threads
     void xalsa_set_priority(int priority);
+    // set to 1 to use midimapper
+    int mmap;
     // check if the sequencer is running
     bool is_running() const noexcept;
 };
