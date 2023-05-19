@@ -169,8 +169,8 @@ int XJack::init_jack() {
     if (!jack_is_realtime(client)) {
         fprintf (stderr, "jack isn't running with realtime priority\n");
     } else {
-        fprintf (stderr, "jack running with realtime priority\n");
         priority = jack_client_real_time_priority(client);
+        fprintf (stderr, "jack running with realtime priority %i\n", priority);
         if (priority > 2) {
             set_alsa_priority(priority);
             set_midimapper_priority(priority);
