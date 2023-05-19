@@ -26,7 +26,7 @@
 	NAME = Mamba
 	EXEC_NAME  = $(shell echo $(NAME) | tr A-Z a-z)
 	BUILD_DIR = build
-	VER = 2.4
+	VER = 2.5
 
 	LIBSCALA_DIR := ../libscala-file/
 	LIB_DIR := ../libxputty/libxputty/
@@ -52,7 +52,7 @@
 	# invoke build files
 	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XAlsa.cpp XJack.cpp NsmHandler.cpp XSynth.cpp MidiMapper.cpp
 	SOBJECTS = $(LIBSCALA_DIR)scala_kbm.cpp $(LIBSCALA_DIR)scala_scl.cpp
-	COBJECTS = xkeyboard.c xcustommap.c
+	COBJECTS = xmkeyboard.c xcustommap.c
 	OBJ_FILES = $(addprefix ./$(BUILD_DIR)/,$(notdir $(OBJECTS:.cpp=.o)))
 	SOBJ_FILES = $(addprefix ./$(BUILD_DIR)/,$(notdir $(SOBJECTS:.cpp=.o)))
 	COBJ_FILES = $(addprefix ./$(BUILD_DIR)/,$(notdir $(COBJECTS:.c=.o)))

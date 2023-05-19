@@ -20,7 +20,7 @@
 
 
 #include "MidiKeyBoard.h"
-#include "xkeyboard.h"
+#include "xmkeyboard.h"
 #include "xcustommap.h"
 
 
@@ -487,8 +487,8 @@ void XKeyBoard::show_ui(int present) {
 }
 
 void XKeyBoard::get_midi_in(int c, int n, bool on) {
-    MidiKeyboard *keys = (MidiKeyboard*)wid->parent_struct;
-    set_key_in_matrix(keys->in_key_matrix[c], n, on);
+    MambaKeyboard *keys = (MambaKeyboard*)wid->parent_struct;
+    mamba_set_key_in_matrix(keys->in_key_matrix[c], n, on);
 }
 
 void XKeyBoard::quit_by_jack() {
@@ -589,7 +589,7 @@ void XKeyBoard::pattern_out(Widget_t *w, int height) {
 }
 
 void XKeyBoard::pattern_in(Widget_t *w, Color_state st, int height) {
-    Colors *c = get_color_scheme(w->app,st);
+    Colors *c = get_color_scheme(w,st);
     if (!c) return;
     cairo_pattern_t *pat = cairo_pattern_create_linear (2, 2, 2, height);
     cairo_pattern_add_color_stop_rgba(pat, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -871,7 +871,7 @@ void XKeyBoard::set_std_value(void *w_, void* button, void* user_data) noexcept{
     adj_set_value(w->adj, w->adj->std_value);
 }
 
-Widget_t *XKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
+Widget_t *XKeyBoard::mamba_add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height) {
     Widget_t *wid = add_knob(parent,label, x, y, width, height);
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -883,7 +883,7 @@ Widget_t *XKeyBoard::add_keyboard_knob(Widget_t *parent, const char * label,
     return wid;
 }
 
-Widget_t *XKeyBoard::add_keyboard_button(Widget_t *parent, const char * label,
+Widget_t *XKeyBoard::mamba_add_keyboard_button(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height) {
     Widget_t *wid = add_toggle_button(parent,label, x, y, width, height);   
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -951,7 +951,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     else
         menu_add_entry(filemenu,_("_Quit"));
     filemenu->func.value_changed_callback = file_callback;
-    filemenu->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    filemenu->flags |= NO_AUTOREPEAT;
     filemenu->func.key_press_callback = key_press;
     filemenu->func.key_release_callback = key_release;
     load_midi->func.key_press_callback = key_press;
@@ -968,7 +968,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     scala_menu->func.value_changed_callback = load_scala_callback;
 
     view_menu = menubar_add_menu(menubar,_("_View"));
-    view_menu->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    view_menu->flags |= NO_AUTOREPEAT;
     view_menu->func.key_press_callback = key_press;
     view_menu->func.key_release_callback = key_release;
     view_proc = menu_add_check_entry(view_menu, _("Channel/Bank/Instrument"));
@@ -991,7 +991,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     menu_add_radio_entry(keymap,_("azerty (fr)"));
     menu_add_radio_entry(keymap,_("azerty (be)"));
     menu_add_radio_entry(keymap,_("custom"));
-    mapping->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    mapping->flags |= NO_AUTOREPEAT;
     mapping->func.key_press_callback = key_press;
     mapping->func.key_release_callback = key_release;
     keymap->func.value_changed_callback = layout_callback;
@@ -1028,7 +1028,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     outputs = menu_add_submenu(connection,_("Jack output"));
     alsa_inputs = menu_add_submenu(connection,_("ALSA input"));
     alsa_outputs = menu_add_submenu(connection,_("ALSA output"));
-    connection->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    connection->flags |= NO_AUTOREPEAT;
     connection->func.key_press_callback = key_press;
     connection->func.key_release_callback = key_release;
     connection->func.button_press_callback = make_connection_menu;
@@ -1046,7 +1046,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     fs[1]->state = 4;
     fs[2] = menu_add_entry(synth,_("E_xit Fluidsynth"));
     fs[2]->state = 4;
-    synth->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    synth->flags |= NO_AUTOREPEAT;
     synth->func.key_press_callback = key_press;
     synth->func.key_release_callback = key_release;
     synth->func.value_changed_callback = synth_callback;
@@ -1062,7 +1062,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     view_channels->func.key_release_callback = key_release;
     view_channels->func.value_changed_callback = view_channels_callback;
     
-    looper->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    looper->flags |= NO_AUTOREPEAT;
     free_wheel = menu_add_check_entry(looper,_("Freewheel"));
     free_wheel->func.value_changed_callback = freewheel_callback;
     menu_add_entry(looper,_("Clear All Channels"));
@@ -1073,7 +1073,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     info = menubar_add_menu(menubar,_("_Info"));
     menu_add_entry(info,_("_About"));
-    info->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    info->flags |= NO_AUTOREPEAT;
     info->func.key_press_callback = key_press;
     info->func.key_release_callback = key_release;
     info->func.value_changed_callback = info_callback;
@@ -1182,59 +1182,59 @@ void XKeyBoard::init_ui(Xputty *app) {
     knob_box->func.key_press_callback = key_press;
     knob_box->func.key_release_callback = key_release;
     
-    w[0] = add_keyboard_knob(knob_box, _("PitchBend"), 5, 0, 60, 75);
+    w[0] = mamba_add_keyboard_knob(knob_box, _("PitchBend"), 5, 0, 60, 75);
     w[0]->data = PITCHBEND;
     w[0]->func.value_changed_callback = pitchwheel_callback;
     w[0]->func.button_release_callback = pitchwheel_release_callback;
     w[0]->func.button_press_callback = pitchwheel_press_callback;
 
-    w[9] = add_keyboard_knob(knob_box, _("Balance"), 65, 0, 60, 75);
+    w[9] = mamba_add_keyboard_knob(knob_box, _("Balance"), 65, 0, 60, 75);
     w[9]->data = BALANCE;
     w[9]->func.value_changed_callback = balance_callback;
 
-    w[1] = add_keyboard_knob(knob_box, _("ModWheel"), 125, 0, 60, 75);
+    w[1] = mamba_add_keyboard_knob(knob_box, _("ModWheel"), 125, 0, 60, 75);
     w[1]->data = MODULATION;
     set_adjustment(w[1]->adj, 0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[1]->func.value_changed_callback = modwheel_callback;
 
-    w[2] = add_keyboard_knob(knob_box, _("Detune"), 185, 0, 60, 75);
+    w[2] = mamba_add_keyboard_knob(knob_box, _("Detune"), 185, 0, 60, 75);
     w[2]->data = CELESTE;
     w[2]->func.value_changed_callback = detune_callback;
 
-    w[10] = add_keyboard_knob(knob_box, _("Expression"), 245, 0, 60, 75);
+    w[10] = mamba_add_keyboard_knob(knob_box, _("Expression"), 245, 0, 60, 75);
     w[10]->data = EXPRESSION;
     set_adjustment(w[10]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[10]->func.value_changed_callback = expression_callback;
 
-    w[3] = add_keyboard_knob(knob_box, _("Attack"), 305, 0, 60, 75);
+    w[3] = mamba_add_keyboard_knob(knob_box, _("Attack"), 305, 0, 60, 75);
     w[3]->data = ATTACK_TIME;
     w[3]->func.value_changed_callback = attack_callback;
 
-    w[4] = add_keyboard_knob(knob_box, _("Release"), 365, 0, 60, 75);
+    w[4] = mamba_add_keyboard_knob(knob_box, _("Release"), 365, 0, 60, 75);
     w[4]->data = RELEASE_TIME;
     w[4]->func.value_changed_callback = release_callback;
 
-    w[5] = add_keyboard_knob(knob_box, _("Volume"), 425, 0, 60, 75);
+    w[5] = mamba_add_keyboard_knob(knob_box, _("Volume"), 425, 0, 60, 75);
     w[5]->data = VOLUME;
     w[5]->func.value_changed_callback = volume_callback;
 
-    w[6] = add_keyboard_knob(knob_box, _("Velocity"), 485, 0, 60, 75);
+    w[6] = mamba_add_keyboard_knob(knob_box, _("Velocity"), 485, 0, 60, 75);
     w[6]->data = VELOCITY;
     set_adjustment(w[6]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[6]->func.value_changed_callback = velocity_callback;
 
-    w[7] = add_keyboard_button(knob_box, _("Sustain"), 550, 5, 75, 30);
+    w[7] = mamba_add_keyboard_button(knob_box, _("Sustain"), 550, 5, 75, 30);
     w[7]->data = SUSTAIN;
     w[7]->func.value_changed_callback = sustain_callback;
 
-    w[8] = add_keyboard_button(knob_box, _("Sostenuto"), 550, 45, 75, 30);
+    w[8] = mamba_add_keyboard_button(knob_box, _("Sostenuto"), 550, 45, 75, 30);
     w[8]->data = SOSTENUTO;
     w[8]->func.value_changed_callback = sostenuto_callback;
 
-    record = add_keyboard_button(knob_box, _("_Record"), 635, 5, 55, 30);
+    record = mamba_add_keyboard_button(knob_box, _("_Record"), 635, 5, 55, 30);
     record->func.value_changed_callback = record_callback;
 
-    play = add_keyboard_button(knob_box, _("_Play"), 635, 45, 55, 30);
+    play = mamba_add_keyboard_button(knob_box, _("_Play"), 635, 45, 55, 30);
     play->func.adj_callback = set_play_label;
     play->func.value_changed_callback = play_callback;
 
@@ -1248,9 +1248,9 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     std::string p = "Mamba_" + std::to_string(xsynth->get_tuning_for_channel(mchannel)+9)+"edo.";
     std::string mapfile = std::regex_replace(multikeymap_file, std::regex("Mamba."), p);
-    add_midi_keyboard(wid, mapfile.c_str(), 0, 0, 700, 118);
+    mamba_add_midi_keyboard(wid, mapfile.c_str(), 0, 0, 700, 118);
 
-    MidiKeyboard *keys = (MidiKeyboard*)wid->parent_struct;
+    MambaKeyboard *keys = (MambaKeyboard*)wid->parent_struct;
 
     keys->mk_send_note = get_note;
     keys->mk_send_all_sound_off = get_all_notes_off;
@@ -1288,7 +1288,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 // static
 void XKeyBoard::animate_midi_keyboard(void *w_) {
     Widget_t *w = (Widget_t*)w_;
-    MidiKeyboard *keys = (MidiKeyboard*)w->parent_struct;
+    MambaKeyboard *keys = (MambaKeyboard*)w->parent_struct;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
 
     if (xjmkb->xjack->transport_state_changed.load(std::memory_order_acquire)) {
@@ -1348,7 +1348,7 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         }
     }
 
-    bool repeat = need_redraw(keys);
+    bool repeat = mamba_need_redraw(keys);
     if ((repeat || xjmkb->run_one_more) && xjmkb->xjack->client) {
         XLockDisplay(w->app->dpy);
         expose_widget(w);
@@ -1464,7 +1464,7 @@ void XKeyBoard::view_callback(void *w_, void* user_data) {
 void XKeyBoard::key_size_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
     xjmkb->key_size = (int)adj_get_value(w->adj);
     static bool first_set = true;
     if (xjmkb->key_size == 0) {
@@ -2034,7 +2034,7 @@ void XKeyBoard::recent_sfont_manager(const char* file_) {
 // static
 void XKeyBoard::scala_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
-    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
     if(user_data !=NULL) {
             if( access(*(const char**)user_data, F_OK ) == -1 ) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
@@ -2069,7 +2069,7 @@ void XKeyBoard::scala_load_response(void *w_, void* user_data) {
         } else {
             if ( xjmkb->mchannel > 15) xjmkb->xsynth->activate_tunning_for_all_channel(2);
             else xjmkb->xsynth->activate_tuning_for_channel(xjmkb->mchannel, 2);
-            set_edo(keys, xjmkb->wid, xjmkb->xsynth->scala_size);
+            mamba_set_edo(keys, xjmkb->wid, xjmkb->xsynth->scala_size);
         }
         _scale.close();
     }
@@ -2079,7 +2079,7 @@ void XKeyBoard::scala_load_response(void *w_, void* user_data) {
 // static
 void XKeyBoard::scala_kbm_load_response(void *w_, void* user_data) {
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w_);
-    // MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    // MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
     if(user_data !=NULL) {
         if( access(*(const char**)user_data, F_OK ) == -1 ) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
@@ -2208,10 +2208,10 @@ void XKeyBoard::sfont_callback(void *w_, void* user_data) {
 }
 
 //static
-void XKeyBoard::reset_edos(XKeyBoard *xjmkb) noexcept {
-    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+void XKeyBoard::remamba_set_edos(XKeyBoard *xjmkb) noexcept {
+    MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
     for (int i = 0; i<16;i++)
-        set_edo(keys, xjmkb->wid, 12);
+        mamba_set_edo(keys, xjmkb->wid, 12);
 }
 
 //static
@@ -2238,7 +2238,7 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
         {
             xjmkb->show_synth_ui(0);
             xjmkb->xsynth->unload_synth();
-            xjmkb->reset_edos(xjmkb);
+            xjmkb->remamba_set_edos(xjmkb);
             xjmkb->soundfont = "";
             xjmkb->fs[0]->state = 4;
             xjmkb->fs[1]->state = 4;
@@ -2262,7 +2262,7 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
     info += _("|For MIDI file handling it uses libsmf|a BSD-licensed C library|written by Edward Tomasz Napierala|");
     info += "https://github.com/stump/libsmf";
     info += _("|");
-    info += _("|For Scala support (*.scl / *.kbm) it use libscala-file| a MIT-licensed C++ library|written by Mark Conway Wirt|");
+    info += _("|For Scala support (*.scl / *.kbm) it use libscala-file|a MIT-licensed C++ library|written by Mark Conway Wirt|");
     info += "https://github.com/MarkCWirt/libscala-file";
     Widget_t *dia = open_message_dialog(win, INFO_BOX, _("Mamba"), info.data(), NULL);
     XSetTransientForHint(win->app->dpy, dia->widget, win->widget);
@@ -2272,10 +2272,10 @@ void XKeyBoard::info_callback(void *w_, void* user_data) {
 void XKeyBoard::channel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
     if (xjmkb->xjack->play>0) {
         for (int i = 0; i<16;i++) 
-            clear_key_matrix(keys->in_key_matrix[i]);
+            mamba_clear_key_matrix(keys->in_key_matrix[i]);
     }
     xjmkb->xjack->rec.channel = xjmkb->mmessage->channel = keys->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
     if(xjmkb->xsynth->synth_is_active()) {
@@ -2511,9 +2511,9 @@ void XKeyBoard::play_callback(void *w_, void* user_data) noexcept{
     int value = (int)adj_get_value(w->adj);
     xjmkb->xjack->play = value;
     if (value < 1) {
-        MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+        MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
         for (int i = 0; i<16;i++) 
-            clear_key_matrix(keys->in_key_matrix[i]);
+            mamba_clear_key_matrix(keys->in_key_matrix[i]);
         xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3, false);
         if (xjmkb->xsynth->synth_is_active()) xjmkb->xsynth->panic();
         xjmkb->xjack->first_play = true;
@@ -2547,7 +2547,7 @@ void XKeyBoard::freewheel_callback(void *w_, void* user_data) noexcept{
 void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
     if ((int)adj_get_value(w->adj) == 2) {
         xjmkb->xjack->play = 0.0;
         //adj_set_value(xjmkb->play->adj, 0.0);
@@ -2556,7 +2556,7 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
         for (int i = 0; i<16;i++) 
             xjmkb->xjack->rec.play[i].clear();
         for (int i = 0; i<16;i++) 
-            clear_key_matrix(keys->in_key_matrix[i]);
+            mamba_clear_key_matrix(keys->in_key_matrix[i]);
         xjmkb->file_names.clear();
         xjmkb->build_remove_menu();
         xjmkb->load.positions.clear();
@@ -2580,20 +2580,20 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
             xjmkb->load.positions.clear();
         }
         xjmkb->xjack->rec.play[xjmkb->xjack->rec.channel].clear();
-        clear_key_matrix(keys->in_key_matrix[xjmkb->xjack->rec.channel]);
+        mamba_clear_key_matrix(keys->in_key_matrix[xjmkb->xjack->rec.channel]);
         xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->xjack->rec.channel, 123, 0, 3, true);
         xjmkb->need_save = true;
     }
 }
 
 void XKeyBoard::check_edo_mapfile(XKeyBoard *xjmkb, int edo) {
-    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
-    set_edo(keys, xjmkb->wid, edo);
+    MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
+    mamba_set_edo(keys, xjmkb->wid, edo);
     if (keys->layout == 4) {
         std::string p = "Mamba_" + xjmkb->selected_edo +".";
         std::string mapfile = std::regex_replace(xjmkb->multikeymap_file, std::regex("Mamba."), p);
         if( access(mapfile.c_str(), F_OK ) == 0 ) {
-            read_keymap(keys, mapfile.c_str(),keys->custom_keys);
+            mamba_read_keymap(keys, mapfile.c_str(),keys->custom_keys);
         }
     }
 }
@@ -2602,7 +2602,7 @@ void XKeyBoard::check_edo_mapfile(XKeyBoard *xjmkb, int edo) {
 void XKeyBoard::layout_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
 
     if ((int)adj_get_value(w->adj) == 4) {
         std::string p = "Mamba_" + xjmkb->selected_edo + ".";
@@ -2613,7 +2613,7 @@ void XKeyBoard::layout_callback(void *w_, void* user_data) {
             adj_set_value(w->adj, xjmkb->keylayout);
             return;
         }
-        read_keymap(keys, mapfile.c_str(),keys->custom_keys);
+        mamba_read_keymap(keys, mapfile.c_str(),keys->custom_keys);
     } 
     keys->layout = xjmkb->keylayout = (int)adj_get_value(w->adj);
 }
@@ -2622,7 +2622,7 @@ void XKeyBoard::layout_callback(void *w_, void* user_data) {
 void XKeyBoard::octave_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+    MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
     keys->octave = (int)keys->edo*adj_get_value(w->adj);
     xjmkb->octave = (int)adj_get_value(w->adj);
     expose_widget(xjmkb->wid);
@@ -2634,9 +2634,9 @@ void XKeyBoard::view_channels_callback(void *w_, void* user_data) noexcept{
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->xjack->view_channels = xjmkb->lchannels = (int)adj_get_value(w->adj);
     if (xjmkb->lchannels) {
-        MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+        MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
         for (int i = 0; i<16;i++) 
-            clear_key_matrix(keys->in_key_matrix[i]);
+            mamba_clear_key_matrix(keys->in_key_matrix[i]);
     }
 }
 
@@ -2853,7 +2853,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                 if(!xjmkb->xsynth->synth_is_active()) break;
                 xjmkb->show_synth_ui(0);
                 xjmkb->xsynth->unload_synth();
-                xjmkb->reset_edos(xjmkb);
+                xjmkb->remamba_set_edos(xjmkb);
                 xjmkb->soundfont = "";
                 xjmkb->fs[0]->state = 4;
                 xjmkb->fs[1]->state = 4;
@@ -2868,7 +2868,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_0):
             {
-                MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+                MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
                 adj_set_value(xjmkb->octavemap->adj,0.0);
                 keys->octave = 0;
                 xjmkb->octave = 0;
@@ -2877,7 +2877,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_1):
             {
-                MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+                MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
                 adj_set_value(xjmkb->octavemap->adj,1.0);
                 keys->octave = keys->edo;
                 xjmkb->octave = keys->edo;
@@ -2886,7 +2886,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_2):
             {
-                MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+                MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
                 adj_set_value(xjmkb->octavemap->adj,2.0);
                 keys->octave = keys->edo*2;
                 xjmkb->octave = keys->edo*2;
@@ -2895,7 +2895,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_3):
             {
-                MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+                MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
                 adj_set_value(xjmkb->octavemap->adj,3.0);
                 keys->octave = keys->edo*3;
                 xjmkb->octave = keys->edo*3;
@@ -2904,7 +2904,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
             break;
             case (XK_4):
             {
-                MidiKeyboard *keys = (MidiKeyboard*)xjmkb->wid->parent_struct;
+                MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
                 adj_set_value(xjmkb->octavemap->adj,4.0);
                 keys->octave = keys->edo*4;
                 xjmkb->octave = keys->edo*4;
@@ -3219,7 +3219,7 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     
 
     // reverb
-    tmp = add_keyboard_button(synth_ui, _("On"), 20,  150, 60, 30);
+    tmp = mamba_add_keyboard_button(synth_ui, _("On"), 20,  150, 60, 30);
     tmp->func.adj_callback = set_on_off_label;
     tmp->func.value_changed_callback = reverb_on_callback;
     adj_set_value(tmp->adj,(float)xsynth->reverb_on);
@@ -3229,28 +3229,28 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Roomsize"), 20, 70, 60, 75);
+    tmp = mamba_add_keyboard_knob(synth_ui, _("Roomsize"), 20, 70, 60, 75);
     set_adjustment(tmp->adj, 0.2, 0.2, 0.0, 1.2, 0.01, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->reverb_roomsize);
     tmp->func.value_changed_callback = reverb_roomsize_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Damp"), 80, 70, 65, 75);
+    tmp = mamba_add_keyboard_knob(synth_ui, _("Damp"), 80, 70, 65, 75);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 1.0, 0.01, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->reverb_damp);
     tmp->func.value_changed_callback = reverb_damp_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Width"), 145, 70, 65, 75);
+    tmp = mamba_add_keyboard_knob(synth_ui, _("Width"), 145, 70, 65, 75);
     set_adjustment(tmp->adj, 0.5, 0.5, 0.0, 100.0, 0.5, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->reverb_width);
     tmp->func.value_changed_callback = reverb_width_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Level"), 210, 70, 65, 75);
+    tmp = mamba_add_keyboard_knob(synth_ui, _("Level"), 210, 70, 65, 75);
     set_adjustment(tmp->adj, 0.5, 0.5, 0.0, 1.0, 0.01, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->reverb_level);
     tmp->func.value_changed_callback = reverb_level_callback;
@@ -3263,33 +3263,33 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_button(synth_ui, _("On"), 290,  150, 60, 30);
+    tmp = mamba_add_keyboard_button(synth_ui, _("On"), 290,  150, 60, 30);
     tmp->func.adj_callback = set_on_off_label;
     tmp->func.value_changed_callback = chorus_on_callback;
     adj_set_value(tmp->adj, (float)xsynth->chorus_on);
 
-    tmp = add_keyboard_knob(synth_ui, _("voices"), 290, 70, 65, 75);
+    tmp = mamba_add_keyboard_knob(synth_ui, _("voices"), 290, 70, 65, 75);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 99.0, 1.0, CL_CONTINUOS);
     adj_set_value(tmp->adj, (float)xsynth->chorus_voices);
     tmp->func.value_changed_callback = chorus_voices_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Level"), 355, 70, 65, 75);
+    tmp = mamba_add_keyboard_knob(synth_ui, _("Level"), 355, 70, 65, 75);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 10.0, 0.1, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->chorus_level);
     tmp->func.value_changed_callback = chorus_level_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Speed"), 420, 70, 65, 75);
+    tmp = mamba_add_keyboard_knob(synth_ui, _("Speed"), 420, 70, 65, 75);
     set_adjustment(tmp->adj, 0.1, 0.1, 0.1, 5.0, 0.05, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->chorus_speed);
     tmp->func.value_changed_callback = chorus_speed_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
 
-    tmp = add_keyboard_knob(synth_ui, _("Depth"), 485, 70, 65, 75);
+    tmp = mamba_add_keyboard_knob(synth_ui, _("Depth"), 485, 70, 65, 75);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 21.0, 0.1, CL_CONTINUOS);
     adj_set_value(tmp->adj, xsynth->chorus_depth);
     tmp->func.value_changed_callback = chorus_depth_callback;
@@ -3313,10 +3313,10 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_release_callback = key_release;
 
     // general
-    tmp = add_keyboard_button(synth_ui, _("Close"), 570, 160, 60, 30);
+    tmp = mamba_add_keyboard_button(synth_ui, _("Close"), 570, 160, 60, 30);
     tmp->func.value_changed_callback = synth_ui_callback;
 
-    tmp = add_keyboard_knob(synth_ui, _("Volume"), 555, 40, 95, 105);
+    tmp = mamba_add_keyboard_knob(synth_ui, _("Volume"), 555, 40, 95, 105);
     set_adjustment(tmp->adj, 0.0, 0.0, 0.0, 1.2, 0.0005, CL_LOGSCALE);
     adj_set_value(tmp->adj, xsynth->volume_level);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
@@ -3481,12 +3481,12 @@ int main (int argc, char *argv[]) {
 
         xjmkb.read_config();
         xjmkb.init_ui(&app);
-        MidiKeyboard *keys = (MidiKeyboard*)xjmkb.wid->parent_struct;
+        MambaKeyboard *keys = (MambaKeyboard*)xjmkb.wid->parent_struct;
         midimap.mmapper_start([keys] (int channel, int key, bool set)
-            {set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
+            {mamba_set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
         if (xalsa.xalsa_init(xjack.client_name.c_str(), "input", "output") >= 0) {
             xalsa.xalsa_start([keys] (int channel, int key, bool set)
-                {set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
+                {mamba_set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
         } else {
             fprintf(stderr, _("Couldn't open a alsa port, is the alsa sequencer running?\n"));
         }

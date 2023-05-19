@@ -81,6 +81,8 @@ private:
     std::mutex m;
     // stop the threads for mapper midi handling
     void mmapper_stop();
+    // priority for the mapper thread
+    int prio;
 
 public:
     MidiMapper(std::function<void(

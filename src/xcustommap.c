@@ -20,7 +20,7 @@
 #include <string>
 #include <libgen.h>
 #include "xcustommap.h"
-#include "xkeyboard.h"
+#include "xmkeyboard.h"
 #include "xmessage-dialog.h"
 
 #include <unistd.h>
@@ -373,7 +373,7 @@ void open_keymap(Widget_t *w, const char* keymapfile, long keys[128][2]) {
 
 void save_custom_keymap(Widget_t *w) {
     CustomKeymap *customkeys = (CustomKeymap*)w->parent_struct;
-    MidiKeyboard *keys = (MidiKeyboard*)customkeys->keyboard->parent_struct;
+    MambaKeyboard *keys = (MambaKeyboard*)customkeys->keyboard->parent_struct;
     FILE *fp;
     if((fp=fopen(w->label, "wb"))==NULL) {
         Widget_t *dia = open_message_dialog(w, ERROR_BOX, w->label, 
@@ -388,7 +388,7 @@ void save_custom_keymap(Widget_t *w) {
         XSetTransientForHint(w->app->dpy, dia->widget, w->widget);
     }
     fclose(fp);
-    read_keymap(keys, w->label,keys->custom_keys);
+    mamba_read_keymap(keys, w->label,keys->custom_keys);
 }
 
 void save_callback(void *w_, void* user_data) {

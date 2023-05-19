@@ -100,6 +100,8 @@ private:
     void xalsa_start_input(std::function<void(int,int,bool)> set_key);
     // start the port for midi output handling
     void xalsa_start_output();
+    // priority for the i/o threads
+    int prio;
 
 public:
     XAlsa(std::function<void(

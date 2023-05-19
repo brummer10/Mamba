@@ -98,9 +98,7 @@ MidiMapper::~MidiMapper() {
 }
 
 void MidiMapper::mmapper_set_priority(int priority) {
-    sched_param sch;
-    sch.sched_priority = priority/2;
-    pthread_setschedparam(_thd_map.native_handle(), SCHED_FIFO, &sch);
+    prio = priority/2;
 }
 
 void MidiMapper::mmapper_stop() {
@@ -130,6 +128,9 @@ void MidiMapper::mmapper_start(std::function<void(int,int,bool)> set_key) {
     };
     _execute_map.store(true, std::memory_order_release);
     _thd_map = std::thread([this, set_key]() {
+        sched_param sch;
+        sch.sched_priority = prio;
+        pthread_setschedparam(_thd_map.native_handle(), SCHED_FIFO, &sch);
         uint8_t event[3] = {0};
         while (_execute_map.load(std::memory_order_acquire)) {
             std::unique_lock<std::mutex> lk(m);

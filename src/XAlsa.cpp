@@ -94,6 +94,7 @@ XAlsa::XAlsa(std::function<void(
     in_port = -1;
     out_port = -1;
     mmap = 0;
+    prio = 10;
 }
 
 XAlsa::~XAlsa() {
@@ -126,10 +127,7 @@ int XAlsa::xalsa_init(const char *client_name, const char *input, const char *ou
 }
 
 void XAlsa::xalsa_set_priority(int priority) {
-    sched_param sch;
-    sch.sched_priority = priority/2;
-    pthread_setschedparam(_thd_out.native_handle(), SCHED_FIFO, &sch);
-    pthread_setschedparam(_thd.native_handle(), SCHED_FIFO, &sch);
+    prio = priority/2;
 }
 
 void XAlsa::xalsa_get_ports(std::vector<std::string> *iports, std::vector<std::string> *oports) {
@@ -283,6 +281,9 @@ void XAlsa::xalsa_start_output() {
     };
     _execute_out.store(true, std::memory_order_release);
     _thd_out = std::thread([this]() {
+        sched_param sch;
+        sch.sched_priority = prio;
+        pthread_setschedparam(_thd_out.native_handle(), SCHED_FIFO, &sch);
         snd_seq_event_t ev;
         uint8_t event[3] = {0};
         while (_execute_out.load(std::memory_order_acquire)) {
@@ -339,6 +340,9 @@ void XAlsa::xalsa_start_input(std::function<void(int,int,bool)> set_key) {
     };
     _execute.store(true, std::memory_order_release);
     _thd = std::thread([this, set_key]() {
+        sched_param sch;
+        sch.sched_priority = prio;
+        pthread_setschedparam(_thd.native_handle(), SCHED_FIFO, &sch);
         uint8_t event[3] = {0};
         while (_execute.load(std::memory_order_acquire)) {
             if (sequencer < 0) {

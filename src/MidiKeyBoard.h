@@ -324,11 +324,11 @@ private:
     static void synth_volume_callback(void *w_, void* user_data) noexcept;
     static void edo_callback(void *w_, void* user_data) noexcept;
     static void check_edo_mapfile(XKeyBoard *xjmkb, int edo);
-    static void reset_edos(XKeyBoard *xjmkb) noexcept;
+    static void remamba_set_edos(XKeyBoard *xjmkb) noexcept;
 
-    Widget_t *add_keyboard_knob(Widget_t *parent, const char * label,
+    Widget_t *mamba_add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
-    Widget_t *add_keyboard_button(Widget_t *parent, const char * label,
+    Widget_t *mamba_add_keyboard_button(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
     void get_port_entrys(Widget_t *parent, jack_port_t *my_port,
                                                 JackPortFlags type);

@@ -20,8 +20,8 @@
 
 #pragma once
 
-#ifndef XMIDI_KEYBOARD_H_
-#define XMIDI_KEYBOARD_H_
+#ifndef XMAMBA_KEYBOARD_H_
+#define XMAMBA_KEYBOARD_H_
 
 #include "xwidgets.h"
 
@@ -30,8 +30,8 @@ extern "C" {
 #endif
 
 
-typedef void (*midikeyfunc)(Widget_t *w, const int *key, const bool on_off);
-typedef void (*midiwheelfunc)(Widget_t *w, const int *value);
+typedef void (*mambakeyfunc)(Widget_t *w, const int *key, const bool on_off);
+typedef void (*mambawheelfunc)(Widget_t *w, const int *value);
 
 typedef struct {
 
@@ -64,47 +64,47 @@ typedef struct {
     unsigned long edo_matrix[8];
     long custom_keys[128][2];
 
-    midikeyfunc mk_send_note;
-    midiwheelfunc mk_send_all_sound_off;
-} MidiKeyboard;
+    mambakeyfunc mk_send_note;
+    mambawheelfunc mk_send_all_sound_off;
+} MambaKeyboard;
 
-void keysym_azerty_to_midi_key(long inkey, float *midi_key);
+void mamba_keysym_azerty_to_midi_key(long inkey, float *midi_key);
 
-void keysym_azerty_fr_to_midi_key(long inkey, float *midi_key);
+void mamba_keysym_azerty_fr_to_midi_key(long inkey, float *midi_key);
 
-void keysym_azerty_be_to_midi_key(long inkey, float *midi_key);
+void mamba_keysym_azerty_be_to_midi_key(long inkey, float *midi_key);
 
-void keysym_azerty_afnor_to_midi_key(long inkey, float *midi_key);
+void mamba_keysym_azerty_afnor_to_midi_key(long inkey, float *midi_key);
 
-void keysym_qwertz_to_midi_key(long inkey, float *midi_key);
+void mamba_keysym_qwertz_to_midi_key(long inkey, float *midi_key);
 
-void keysym_qwerty_to_midi_key(unsigned int inkey, float *midi_key);
+void mamba_keysym_qwerty_to_midi_key(unsigned int inkey, float *midi_key);
 
-void custom_to_midi_key(long custom_keys[128], long inkey, float *midi_key);
+void mamba_custom_to_midi_key(long custom_keys[128], long inkey, float *midi_key);
 
-void read_keymap(MidiKeyboard *keys, const char* keymapfile, long custom_keys[128][2]);
+void mamba_read_keymap(MambaKeyboard *keys, const char* keymapfile, long custom_keys[128][2]);
 
-void set_key_in_matrix(unsigned long *key_matrix, int key, bool set);
+void mamba_set_key_in_matrix(unsigned long *key_matrix, int key, bool set);
 
-bool is_key_in_matrix(unsigned long *key_matrix, int key);
+bool mamba_is_key_in_matrix(unsigned long *key_matrix, int key);
 
-bool have_key_in_matrix(unsigned long *key_matrix);
+bool mamba_have_key_in_matrix(unsigned long *key_matrix);
 
-void clear_key_matrix(unsigned long *key_matrix);
+void mamba_clear_key_matrix(unsigned long *key_matrix);
 
-void set_edo(MidiKeyboard *keys, Widget_t *w, int edo);
+void mamba_set_edo(MambaKeyboard *keys, Widget_t *w, int edo);
 
-void add_keyboard(Widget_t *wid, const char * label);
+void mamba_add_keyboard(Widget_t *wid, const char * label);
 
-Widget_t *open_midi_keyboard(Widget_t *w, const char * label);
+Widget_t *mamba_open_midi_keyboard(Widget_t *w, const char * label);
 
-void add_midi_keyboard(Widget_t *parent, const char * label,
+void mamba_add_midi_keyboard(Widget_t *parent, const char * label,
                             int x, int y, int width, int height);
 
-bool need_redraw(MidiKeyboard *keys);
+bool mamba_need_redraw(MambaKeyboard *keys);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //XMIDI_KEYBOARD_H_
+#endif //XMAMBA_KEYBOARD_H_
