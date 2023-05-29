@@ -32,6 +32,7 @@
 	LIB_DIR := ../libxputty/libxputty/
 	HEADER_DIR := $(LIB_DIR)include/
 	LOCALIZE_DIR := ../libxputty/xputty/dialogs/
+	LXPUTTY := -L. $(LIB_DIR)libxputty.a
 	PREFIX ?= /usr
 	BIN_DIR ?= $(PREFIX)/bin
 	SHARE_DIR ?= $(PREFIX)/share
@@ -158,7 +159,7 @@ uninstall :
 -include $(COBJ_FILES:%.o=%.d)
 
 $(NAME) : $(OBJ_FILES) $(SOBJ_FILES) $(COBJ_FILES) 
-	$(CXX) $(CXXFLAGS) -o ./$(BUILD_DIR)/$(EXEC_NAME) $(OBJ_FILES) $(SOBJ_FILES) $(COBJ_FILES) $(INCFLAGS) $(LDFLAGS) -L. ../libxputty/libxputty/libxputty.a
+	$(CXX) $(CXXFLAGS) -o ./$(BUILD_DIR)/$(EXEC_NAME) $(OBJ_FILES) $(SOBJ_FILES) $(COBJ_FILES) $(INCFLAGS) $(LDFLAGS) $(LXPUTTY)
 
 doc:
 	#pass

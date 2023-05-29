@@ -95,6 +95,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     client_name = xjack->client_name;
     if (getenv("XDG_CONFIG_HOME")) {
         path = getenv("XDG_CONFIG_HOME");
+        make_ending_slash(path);
         config_file = path + client_name + ".conf";
         keymap_file =  path +"/Mamba.keymap";
         multikeymap_file =  path +"/Mamba.multikeymap";
@@ -171,6 +172,15 @@ XKeyBoard* XKeyBoard::get_instance(void *w_) {
     return (XKeyBoard*) win->parent_struct;
 }
 
+void XKeyBoard::make_ending_slash(std::string& dirpath) {
+    if (dirpath.empty()) {
+        return;
+    }
+    if (dirpath[dirpath.size()-1] != '/') {
+        dirpath += "/";
+    }
+}
+
 std::string XKeyBoard::remove_sub(std::string a, std::string b) {
     std::string::size_type fpos = a.find(b);
     if (fpos != std::string::npos )
@@ -200,6 +210,7 @@ void XKeyBoard::set_config_file() {
     client_name = xjack->client_name;
     if (getenv("XDG_CONFIG_HOME")) {
         path = getenv("XDG_CONFIG_HOME");
+        make_ending_slash(path);
         config_file = path + client_name + ".conf";
     } else {
         path = getenv("HOME");
