@@ -304,6 +304,10 @@ private:
     static void draw_button(void *w_, void* user_data) noexcept;
     static void set_play_label(void *w_, void* user_data) noexcept;
 
+    static void clip_time(void *w_, void* user_data) noexcept;
+    static void clap_time(void *w_, void* user_data) noexcept;
+    inline int get_max_time_vector() noexcept;
+
     static void synth_ui_callback(void *w_, void* user_data);
 
     static void chorus_type_callback(void *w_, void* user_data);
@@ -338,6 +342,7 @@ private:
     void pattern_in(Widget_t *w, Color_state st, int height);
     void pattern_out(Widget_t *w, int height);
     void find_next_beat_time(double *absoluteTime);
+    void find_previus_beat_time(double *absoluteTime);
     void get_alsa_port_menu();
     void nsm_show_ui();
     void nsm_hide_ui();
