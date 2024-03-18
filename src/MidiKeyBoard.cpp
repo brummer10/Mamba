@@ -2500,17 +2500,19 @@ void XKeyBoard::clip_time(void *w_, void* user_data) noexcept{
     int value = (int)adj_get_value(w->adj);
     if (value > 0) {
         int v = xjmkb->get_max_time_vector();
-        const mamba::MidiEvent ev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1];
-        const mamba::MidiEvent prev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-2];
-        double deltaTime = ev.deltaTime; // seconds
-        double absoluteTime = ev.absoluteTime; // seconds
-        double beat = 60.0/(double)xjmkb->song_bpm;
-        if ( absoluteTime-beat > prev.absoluteTime) {
-            mamba::MidiEvent nev = {{0x80, 0, 0}, 3, deltaTime-beat, absoluteTime-beat};
-            xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1] = nev;
-            snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
-            xjmkb->time_line->label = xjmkb->time_line->input_label;
-            expose_widget(xjmkb->time_line);
+        if (v > 0) {
+            const mamba::MidiEvent ev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1];
+            const mamba::MidiEvent prev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-2];
+            double deltaTime = ev.deltaTime; // seconds
+            double absoluteTime = ev.absoluteTime; // seconds
+            double beat = 60.0/(double)xjmkb->song_bpm;
+            if ( absoluteTime-beat > prev.absoluteTime) {
+                mamba::MidiEvent nev = {{0x80, 0, 0}, 3, deltaTime-beat, absoluteTime-beat};
+                xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1] = nev;
+                snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
+                xjmkb->time_line->label = xjmkb->time_line->input_label;
+                expose_widget(xjmkb->time_line);
+            }
         }
     }
     adj_set_value(w->adj, 0.0);
@@ -2522,15 +2524,17 @@ void XKeyBoard::clap_time(void *w_, void* user_data) noexcept{
     int value = (int)adj_get_value(w->adj);
     if (value > 0) {
         int v = xjmkb->get_max_time_vector();
-        const mamba::MidiEvent ev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1];
-        double deltaTime = ev.deltaTime; // seconds
-        double absoluteTime = ev.absoluteTime; // seconds
-        double beat = 60.0/(double)xjmkb->song_bpm;
-        mamba::MidiEvent nev = {{0x80, 0, 0}, 3, deltaTime+beat, absoluteTime+beat};
-        xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1] = nev;
-        snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
-        xjmkb->time_line->label = xjmkb->time_line->input_label;
-        expose_widget(xjmkb->time_line);
+        if (v > 0) {
+            const mamba::MidiEvent ev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1];
+            double deltaTime = ev.deltaTime; // seconds
+            double absoluteTime = ev.absoluteTime; // seconds
+            double beat = 60.0/(double)xjmkb->song_bpm;
+            mamba::MidiEvent nev = {{0x80, 0, 0}, 3, deltaTime+beat, absoluteTime+beat};
+            xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1] = nev;
+            snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
+            xjmkb->time_line->label = xjmkb->time_line->input_label;
+            expose_widget(xjmkb->time_line);
+        }
     }
     adj_set_value(w->adj, 0.0);
 }
