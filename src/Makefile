@@ -66,9 +66,11 @@
 .PHONY : all debug nls gettext updatepot po clean install uninstall 
 
 all : check $(NAME)
-	@if [ -f ./$(BUILD_DIR)/$(EXEC_NAME) ]; then echo $(BLUE)"build finish, now run make install"; \
-	else echo $(RED)"sorry, build failed"; fi
-	@echo $(NONE)
+	@if [ -f ./$(BUILD_DIR)/$(EXEC_NAME) ]; then \
+		$(B_ECHO) "=================== DONE =======================$(reset)"; \
+	else \
+		$(R_ECHO) "sorry, build failed$(reset)"; \
+	fi
 
 debug: CXXFLAGS = $(DEBUG_CXXFLAGS) 
 debug: all
@@ -100,23 +102,23 @@ po:
 check :
 	@mkdir -p ./$(BUILD_DIR)
 ifdef ARMCPU
-	@echo $(RED)ARM CPU DEDECTED, please check the optimization flags
-	@echo $(NONE)
+	@(R_ECHO) "ARM CPU DEDECTED, please check the optimization flags $(reset)"
 endif
 
 clean :
 	@rm -f ./$(BUILD_DIR)/$(EXEC_NAME)
 	@rm -rf ./$(BUILD_DIR)
-	@echo ". ." $(BLUE)", clean up"$(NONE)
+	@$(ECHO) ". . , clean up$(reset)"
 
 install :
 ifneq ("$(wildcard ./$(BUILD_DIR))","")
-	mkdir -p $(DESTDIR)$(BIN_DIR)
-	cp ./$(BUILD_DIR)/$(EXEC_NAME) $(DESTDIR)$(BIN_DIR)/$(EXEC_NAME)
-	mkdir -p $(DESTDIR)$(DESKAPPS_DIR)
-	cp $(NAME).desktop $(DESTDIR)$(DESKAPPS_DIR)
-	mkdir -p $(DESTDIR)$(PIXMAPS_DIR)
-	cp $(NAME).svg $(DESTDIR)$(PIXMAPS_DIR)
+	@$(B_ECHO) "Install Mamba$(reset)"
+	$(QUIET)mkdir -p $(DESTDIR)$(BIN_DIR)
+	$(QUIET)cp ./$(BUILD_DIR)/$(EXEC_NAME) $(DESTDIR)$(BIN_DIR)/$(EXEC_NAME)
+	$(QUIET)mkdir -p $(DESTDIR)$(DESKAPPS_DIR)
+	$(QUIET)cp $(NAME).desktop $(DESTDIR)$(DESKAPPS_DIR)
+	$(QUIET)mkdir -p $(DESTDIR)$(PIXMAPS_DIR)
+	$(QUIET)cp $(NAME).svg $(DESTDIR)$(PIXMAPS_DIR)
 	@if [ ${LANGW} -gt 1 ]; then \
 		for lang in $(LANGS) ; \
 		do \
@@ -131,10 +133,10 @@ ifneq ("$(wildcard ./$(BUILD_DIR))","")
 				cp $(LANGS)/$(EXEC_NAME).mo $(DESTDIR)$(SHARE_DIR)/$(LANGS); \
 			fi \
 	fi
-	update-desktop-database || true
-	@echo ". ." $(BLUE)", done"$(NONE)
+	$(QUIET)update-desktop-database || true
+	@$(B_ECHO) "=================== DONE =======================$(reset)"
 else
-	@echo ". ." $(BLUE)", you must build first"$(NONE)
+	@$(B_ECHO) ". . , you must build first$(reset)"
 endif
 
 uninstall :
@@ -143,23 +145,27 @@ uninstall :
 	@rm -rf $(DESTDIR)$(PIXMAPS_DIR)/$(NAME).svg
 	@rm -rf $(DESTDIR)$(PIXMAPS_DIR)/$(NAME).png
 	@rm -rf $(addprefix $(SHARE_DIR)/, $(MSGOBJS))
-	@echo ". ." $(BLUE)", done"$(NONE)
+	@$(B_ECHO) "=================== DONE =======================$(reset)"
 
 ./$(BUILD_DIR)/%.o: %.cpp
-	$(CXX) $(CXXFLAGS)  $(INCFLAGS) -c $< -o $@
+	@$(ECHO) "Building object file $@ $(reset)"
+	$(QUIET)$(CXX) $(CXXFLAGS)  $(INCFLAGS) -c $< -o $@
 
 ./$(BUILD_DIR)/%.o: $(LIBSCALA_DIR)%.cpp
-	$(CXX) $(CXXFLAGS)  $(INCFLAGS) -c $< -o $@
+	@$(ECHO) "Building object file $@ $(reset)"
+	$(QUIET)$(CXX) $(CXXFLAGS)  $(INCFLAGS) -c $< -o $@
 
 ./$(BUILD_DIR)/%.o: %.c
-	$(CXX) $(CXXFLAGS)  $(INCFLAGS) -c $< -o $@
+	@$(ECHO) "Building object file $@ $(reset)"
+	$(QUIET)$(CXX) $(CXXFLAGS)  $(INCFLAGS) -c $< -o $@
 
 -include $(OBJ_FILES:%.o=%.d)
 -include $(SOBJ_FILES:%.o=%.d)
 -include $(COBJ_FILES:%.o=%.d)
 
-$(NAME) : $(OBJ_FILES) $(SOBJ_FILES) $(COBJ_FILES) 
-	$(CXX) $(CXXFLAGS) -o ./$(BUILD_DIR)/$(EXEC_NAME) $(OBJ_FILES) $(SOBJ_FILES) $(COBJ_FILES) $(INCFLAGS) $(LDFLAGS) $(LXPUTTY)
+$(NAME) : $(OBJ_FILES) $(SOBJ_FILES) $(COBJ_FILES)
+	@$(B_ECHO) "Compiling $(NAME) $(reset)"
+	$(QUIET)$(CXX) $(CXXFLAGS) -o ./$(BUILD_DIR)/$(EXEC_NAME) $(OBJ_FILES) $(SOBJ_FILES) $(COBJ_FILES) $(INCFLAGS) $(LDFLAGS) $(LXPUTTY)
 
 doc:
 	#pass

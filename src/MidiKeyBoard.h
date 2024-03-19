@@ -305,8 +305,11 @@ private:
     static void set_play_label(void *w_, void* user_data) noexcept;
 
     static void clip_time(void *w_, void* user_data) noexcept;
+    static void clips_time(void *w_, void* user_data) noexcept;
     static void clap_time(void *w_, void* user_data) noexcept;
+    static void claps_time(void *w_, void* user_data) noexcept;
     inline int get_max_time_vector() noexcept;
+    inline int get_min_time_vector() noexcept;
 
     static void synth_ui_callback(void *w_, void* user_data);
 

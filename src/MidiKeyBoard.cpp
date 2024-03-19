@@ -1175,7 +1175,18 @@ void XKeyBoard::init_ui(Xputty *app) {
     songbpm->func.key_press_callback = key_press;
     songbpm->func.key_release_callback = key_release;
 
-    time_line = add_label(proc_box,_("--"),610,10,100,20);
+    tmp = mamba_add_keyboard_button(proc_box, _("-"), 645, 0, 15, 15);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = clips_time;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(proc_box, _("+"), 660, 0, 15, 15);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = claps_time;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    time_line = add_label(proc_box,_("--"),610,15,100,15);
     time_line->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     snprintf(time_line->input_label, 31,"%.2f sec", xjack->get_max_loop_time());
     time_line->label = time_line->input_label;
@@ -1183,9 +1194,15 @@ void XKeyBoard::init_ui(Xputty *app) {
     time_line->func.key_release_callback = key_release;
 
     tmp = mamba_add_keyboard_button(proc_box, _("-"), 645, 30, 15, 15);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = clip_time;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
     tmp = mamba_add_keyboard_button(proc_box, _("+"), 660, 30, 15, 15);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = clap_time;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
 
     // middle box
     int bpos = 70;
@@ -2469,15 +2486,87 @@ void XKeyBoard::sostenuto_callback(void *w_, void* user_data) noexcept{
 }
 
 void XKeyBoard::find_next_beat_time(double *absoluteTime) {
-    double beat = 60.0/(double)song_bpm;
+    const double beat = 60.0/(double)song_bpm;
     int beats = std::round(((*absoluteTime)/beat));
     (*absoluteTime) = (double)beats*beat;
 }
 
 void XKeyBoard::find_previus_beat_time(double *absoluteTime) {
-    double beat = 60.0/(double)song_bpm;
+    const double beat = 60.0/(double)song_bpm;
     int beats = std::round((((*absoluteTime)-beat)/beat));
     (*absoluteTime) = (double)beats*beat;
+}
+
+inline int XKeyBoard::get_min_time_vector() noexcept {
+    int v = -1;
+    double min_loop_time = xjack->get_max_loop_time();
+    for (int j = 0; j<16;j++) {
+        if (!xjack->rec.play[j].size()) continue;
+        const mamba::MidiEvent ev = xjack->rec.play[j][3];
+        if (ev.absoluteTime < min_loop_time) {
+            min_loop_time = ev.absoluteTime;
+            v = j;
+        }
+    }
+    return v;
+}
+
+// static
+void XKeyBoard::clips_time(void *w_, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    int value = (int)adj_get_value(w->adj);
+    if (value > 0) {
+        int v = xjmkb->get_min_time_vector();
+        if (v > -1) {
+            const mamba::MidiEvent ev = xjmkb->xjack->rec.play[v][3];
+            double absoluteTime = ev.absoluteTime; // seconds
+            const double beat = 60.0/(double)xjmkb->song_bpm;
+            if ( absoluteTime-beat >= beat) {
+
+                for (int j = 0; j < 16; j++) {
+                    for(std::vector<mamba::MidiEvent>::iterator i = xjmkb->xjack->rec.play[j].begin(); i != xjmkb->xjack->rec.play[j].end(); ++i) {
+                        if (i == xjmkb->xjack->rec.play[j].begin()+2) {
+                            if ((*i).deltaTime) (*i).deltaTime -= beat;
+                        }
+                        if ((*i).absoluteTime) (*i).absoluteTime -= beat;
+                    }
+                }
+
+                snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
+                xjmkb->time_line->label = xjmkb->time_line->input_label;
+                expose_widget(xjmkb->time_line);
+                xjmkb->need_save = true;
+            }
+        }
+    }
+    adj_set_value(w->adj, 0.0);
+}
+
+// static
+void XKeyBoard::claps_time(void *w_, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    int value = (int)adj_get_value(w->adj);
+    if (value > 0) {
+        int v = xjmkb->get_min_time_vector();
+        if (v > -1) {
+            const double beat = 60.0/(double)xjmkb->song_bpm;
+            for (int j = 0; j < 16; j++) {
+                for(std::vector<mamba::MidiEvent>::iterator i = xjmkb->xjack->rec.play[j].begin(); i != xjmkb->xjack->rec.play[j].end(); ++i) {
+                    if (i == xjmkb->xjack->rec.play[j].begin()+2) {
+                        if ((*i).deltaTime) (*i).deltaTime += beat;
+                    }
+                    if ((*i).absoluteTime) (*i).absoluteTime += beat;
+                }
+            }
+            snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
+            xjmkb->time_line->label = xjmkb->time_line->input_label;
+            expose_widget(xjmkb->time_line);
+            xjmkb->need_save = true;
+        }
+    }
+    adj_set_value(w->adj, 0.0);
 }
 
 inline int XKeyBoard::get_max_time_vector() noexcept {
@@ -2494,46 +2583,50 @@ inline int XKeyBoard::get_max_time_vector() noexcept {
     return v;
 }
 
+// static
 void XKeyBoard::clip_time(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int value = (int)adj_get_value(w->adj);
     if (value > 0) {
         int v = xjmkb->get_max_time_vector();
-        if (v > 0) {
+        if (v > -1) {
             const mamba::MidiEvent ev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1];
             const mamba::MidiEvent prev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-2];
             double deltaTime = ev.deltaTime; // seconds
             double absoluteTime = ev.absoluteTime; // seconds
-            double beat = 60.0/(double)xjmkb->song_bpm;
+            const double beat = 60.0/(double)xjmkb->song_bpm;
             if ( absoluteTime-beat > prev.absoluteTime) {
                 mamba::MidiEvent nev = {{0x80, 0, 0}, 3, deltaTime-beat, absoluteTime-beat};
                 xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1] = nev;
                 snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
                 xjmkb->time_line->label = xjmkb->time_line->input_label;
                 expose_widget(xjmkb->time_line);
+                xjmkb->need_save = true;
             }
         }
     }
     adj_set_value(w->adj, 0.0);
 }
 
+// static
 void XKeyBoard::clap_time(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int value = (int)adj_get_value(w->adj);
     if (value > 0) {
         int v = xjmkb->get_max_time_vector();
-        if (v > 0) {
+        if (v > -1) {
             const mamba::MidiEvent ev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1];
             double deltaTime = ev.deltaTime; // seconds
             double absoluteTime = ev.absoluteTime; // seconds
-            double beat = 60.0/(double)xjmkb->song_bpm;
+            const double beat = 60.0/(double)xjmkb->song_bpm;
             mamba::MidiEvent nev = {{0x80, 0, 0}, 3, deltaTime+beat, absoluteTime+beat};
             xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1] = nev;
             snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
             xjmkb->time_line->label = xjmkb->time_line->input_label;
             expose_widget(xjmkb->time_line);
+            xjmkb->need_save = true;
         }
     }
     adj_set_value(w->adj, 0.0);

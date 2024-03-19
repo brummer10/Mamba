@@ -1,7 +1,9 @@
 
-BLUE = "\033[1;34m"
-RED =  "\033[1;31m"
-NONE = "\033[0m"
+include libxputty/Build/Makefile.base
+
+NOGOAL := install all features
+
+PASS := features 
 
 SUBDIR := src
 
@@ -10,18 +12,25 @@ SUBDIR := src
 $(MAKECMDGOALS) recurse: $(SUBDIR)
 
 check-and-reinit-submodules :
+ifeq (,$(filter $(NOGOAL),$(MAKECMDGOALS)))
+ifeq (,$(findstring clean,$(MAKECMDGOALS)))
 	@if git submodule status 2>/dev/null | egrep -q '^[-]|^[+]' ; then \
-		echo $(RED)"INFO: Need to reinitialize git submodules"$(NONE); \
+		echo "$(red)INFO: Need to reinitialize git submodules$(reset)"; \
 		git submodule update --init; \
-		echo $(BLUE)"Done"$(NONE); \
-	else echo $(BLUE)"Submodule up to date"$(NONE); \
+		echo "$(blue)Done$(reset)"; \
+	else echo "$(blue) Submodule up to date$(reset)"; \
 	fi
-
-clean:
+endif
+endif
 
 libxputty: check-and-reinit-submodules
-	@exec $(MAKE) -j 1 -C $@ $(MAKECMDGOALS)
+ifeq (,$(filter $(NOGOAL),$(MAKECMDGOALS)))
+	@exec $(MAKE) --no-print-directory -j 1 -C $@ $(MAKECMDGOALS)
+endif
 
 $(SUBDIR): libxputty
-	@exec $(MAKE) -j 1 -C $@ $(MAKECMDGOALS)
+ifeq (,$(filter $(PASS),$(MAKECMDGOALS)))
+	@exec $(MAKE) --no-print-directory -j 1 -C $@ $(MAKECMDGOALS)
+endif
 
+features:
