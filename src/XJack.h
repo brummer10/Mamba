@@ -150,6 +150,7 @@ public:
     unsigned int bpm;
     float max_loop_time;
     int midi_map;
+    unsigned int channel_matrix[16];
 
     float get_max_loop_time() noexcept;
     sigc::signal<void > trigger_quit_by_jack;

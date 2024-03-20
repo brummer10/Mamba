@@ -142,7 +142,6 @@ public:
 
 class XKeyBoard {
 private:
-    xjack::XJack *xjack;
     xalsa::XAlsa *xalsa;
     xsynth::XSynth *xsynth;
     midimapper::MidiMapper *mmapper;
@@ -162,8 +161,10 @@ private:
     Widget_t *play;
     Widget_t *filemenu;
     Widget_t *looper;
+    Widget_t *looper_control;
     Widget_t *view_channels;
     Widget_t *free_wheel;
+    Widget_t *lmc;
     Widget_t *info;
     Widget_t *mapping;
     Widget_t *keymap;
@@ -279,6 +280,7 @@ private:
     static void record_callback(void *w_, void* user_data);
     static void play_callback(void *w_, void* user_data) noexcept;
     static void freewheel_callback(void *w_, void* user_data) noexcept;
+    static void lmc_callback(void *w_, void* user_data) noexcept;
     static void clear_loops_callback(void *w_, void* user_data) noexcept;
     static void view_channels_callback(void *w_, void* user_data) noexcept;
     static void animate_midi_keyboard(void *w_);
@@ -334,6 +336,10 @@ private:
     static void check_edo_mapfile(XKeyBoard *xjmkb, int edo);
     static void remamba_set_edos(XKeyBoard *xjmkb) noexcept;
 
+    static void hide_callback(void *w_, void* user_data)  noexcept;
+    void show_looper_ui(int present);
+    void init_looper_ui(Widget_t *parent);
+
     Widget_t *mamba_add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
     Widget_t *mamba_add_keyboard_button(Widget_t *parent, const char * label,
@@ -364,6 +370,8 @@ public:
         mamba::MidiMessenger *mmessage, nsmhandler::NsmSignalHandler& nsmsig,
         PosixSignalHandler& xsig, AnimatedKeyBoard * animidi);
     ~XKeyBoard();
+
+    xjack::XJack *xjack;
 
     std::string client_name;
     std::string config_file;

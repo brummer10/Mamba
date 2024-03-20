@@ -137,6 +137,7 @@ XJack::XJack(mamba::MidiMessenger *mmessage_,
         for ( int i = 0; i < 16; i++) posPlay[i] = 0;
         for ( int i = 0; i < 16; i++) startPlay[i] = 0;
         for ( int i = 0; i < 16; i++) stopPlay[i] = 0;
+        for ( int i = 0; i < 16; i++) channel_matrix[i] = 0;
 }
 
 XJack::~XJack() {
@@ -270,30 +271,32 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
         const mamba::MidiEvent ev = rec.play[i][posPlay[i]];
         if (deltaTime >= ev.deltaTime * bpm_ratio) {
             playPosTime = ev.absoluteTime;
-            unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.num);
-            if (midi_send) {
-                midi_send[0] = ev.buffer[0];
-                midi_send[1] = ev.buffer[1];
-                if(ev.num > 2)
-                    midi_send[2] = ev.buffer[2];
-                bool ch = true;
-                if (mmessage->channel < 16 && view_channels) {
-                    if ((mmessage->channel) != (int(ev.buffer[0]&0x0f))) {
-                        ch = false;
+            if (!channel_matrix[int(ev.buffer[0]&0x0f)] || ((ev.buffer[0] & 0xf0) == 0x80 )) {
+                unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.num);
+                if (midi_send) {
+                    midi_send[0] = ev.buffer[0];
+                    midi_send[1] = ev.buffer[1];
+                    if(ev.num > 2)
+                        midi_send[2] = ev.buffer[2];
+                    bool ch = true;
+                    if (mmessage->channel < 16 && view_channels) {
+                        if ((mmessage->channel) != (int(ev.buffer[0]&0x0f))) {
+                            ch = false;
+                        }
                     }
-                }
-                send_to_alsa(midi_send, ev.num);
+                    send_to_alsa(midi_send, ev.num);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
-                if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
-                    if (ev.buffer[2] > 0) // velocity 0 treaded as Note Off
-                        std::async(std::launch::async, trigger_get_midi_in, (int(ev.buffer[0]&0x0f)), ev.buffer[1], true);
-                    else 
+                    if ((ev.buffer[0] & 0xf0) == 0x90 && ch) {   // Note On
+                        if (ev.buffer[2] > 0) // velocity 0 treaded as Note Off
+                            std::async(std::launch::async, trigger_get_midi_in, (int(ev.buffer[0]&0x0f)), ev.buffer[1], true);
+                        else 
+                            std::async(std::launch::async, trigger_get_midi_in, (int(ev.buffer[0]&0x0f)), ev.buffer[1], false);
+                    } else if ((ev.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
                         std::async(std::launch::async, trigger_get_midi_in, (int(ev.buffer[0]&0x0f)), ev.buffer[1], false);
-                } else if ((ev.buffer[0] & 0xf0) == 0x80 && ch) {   // Note Off
-                    std::async(std::launch::async, trigger_get_midi_in, (int(ev.buffer[0]&0x0f)), ev.buffer[1], false);
-                }
+                    }
 #pragma GCC diagnostic pop
+                }
             }
             startPlay[i] = jack_last_frame_time(client)+n;
             posPlay[i]++;

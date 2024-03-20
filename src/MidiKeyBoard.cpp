@@ -82,8 +82,7 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
         midimapper::MidiMapper *midimap,
         mamba::MidiMessenger *mmessage_, nsmhandler::NsmSignalHandler& nsmsig_,
         PosixSignalHandler& xsig_, AnimatedKeyBoard * animidi_)
-    : xjack(xjack_),
-    xalsa(xalsa_),
+    : xalsa(xalsa_),
     xsynth(xsynth_),
     mmapper(midimap),
     save(),
@@ -91,7 +90,8 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     mmessage(mmessage_),
     animidi(animidi_),
     nsmsig(nsmsig_),
-    xsig(xsig_) {
+    xsig(xsig_),
+    xjack(xjack_) {
     client_name = xjack->client_name;
     if (getenv("XDG_CONFIG_HOME")) {
         path = getenv("XDG_CONFIG_HOME");
@@ -580,11 +580,13 @@ void XKeyBoard::draw_my_combobox_entrys(void *w_, void* user_data) noexcept{
 
 void XKeyBoard::rounded_rectangle(cairo_t *cr,float x, float y, float width, float height) {
     cairo_new_path (cr);
-    cairo_move_to  (cr, x, (y + height)/2);
-    cairo_curve_to (cr, x ,y, x, y, (x + width)/2, y);
-    cairo_curve_to (cr, width, y, width, y, width, (y + height)/2);
-    cairo_curve_to (cr, width, height, width, height, (width + x)/2, height);
-    cairo_curve_to (cr, x, height, x, height, x, (y + height)/2);
+    float r = height * 0.33334;
+    cairo_new_path (cr);
+    cairo_arc(cr, x+r, y+r, r, M_PI, 3*M_PI/2);
+    cairo_arc(cr, x+width-1-r, y+r, r, 3*M_PI/2, 0);
+    cairo_arc(cr, x+width-1-r, y+height-1-r, r, 0, M_PI/2);
+    cairo_arc(cr, x+r, y+height-1-r, r, M_PI/2, M_PI);
+    cairo_close_path(cr);
     cairo_close_path (cr);
 }
 
@@ -709,6 +711,11 @@ void XKeyBoard::draw_button(void *w_, void* user_data) noexcept{
         cairo_move_to (w->crb, (width-extents.width)*0.5 +offset + set_line, (height+extents.height)*0.55 +offset);
         cairo_line_to(w->crb,(width-extents.width)*0.5 +offset + set_line + underline, (height+extents.height)*0.55 +offset);
         cairo_stroke(w->crb);
+    } else if (strstr(w->label, "-") || strstr(w->label, "+" )) {
+        cairo_text_extents(w->crb,w->label , &extents);
+        cairo_move_to (w->crb, (width-extents.width)*0.55 +offset, (height+extents.height)*0.65 +offset);
+        cairo_show_text(w->crb, w->label);
+        
     } else {
         cairo_text_extents(w->crb,w->label , &extents);
         cairo_move_to (w->crb, (width-extents.width)*0.5 +offset, (height+extents.height)*0.5 +offset);
@@ -1076,6 +1083,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     looper->flags |= NO_AUTOREPEAT;
     free_wheel = menu_add_check_entry(looper,_("Freewheel"));
     free_wheel->func.value_changed_callback = freewheel_callback;
+    lmc = menu_add_check_entry(looper,_("Channel Control"));
+    lmc->func.value_changed_callback = lmc_callback;
     menu_add_entry(looper,_("Clear All Channels"));
     menu_add_entry(looper,_("Clear Current Channel"));
     looper->func.value_changed_callback = clear_loops_callback;
@@ -1313,6 +1322,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     build_sfont_menu();
 
     init_synth_ui(win);
+    init_looper_ui(win);
     // start the timeout thread for keyboard animation
     animidi->start(30, std::bind(animate_midi_keyboard,(void*)wid));
     is_inited.store(true, std::memory_order_release);
@@ -1439,11 +1449,17 @@ void XKeyBoard::win_configure_callback(void *w_, void* user_data) {
     xjmkb->main_w = width;
     xjmkb->main_h = height;
 
-    XGetWindowAttributes(w->app->dpy, (Window)xjmkb->synth_ui->widget, &attrs);
-    if (attrs.map_state != IsViewable) return;
     int y = xjmkb->main_y-226;
-    if (xjmkb->main_y < 230) y = xjmkb->main_y + xjmkb->main_h+21;
-    XMoveWindow(xjmkb->win->app->dpy,xjmkb->synth_ui->widget, xjmkb->main_x, y);
+    XGetWindowAttributes(w->app->dpy, (Window)xjmkb->synth_ui->widget, &attrs);
+    if (attrs.map_state == IsViewable) {
+        if (xjmkb->main_y < 230) y = xjmkb->main_y + xjmkb->main_h+21;
+        XMoveWindow(xjmkb->win->app->dpy,xjmkb->synth_ui->widget, xjmkb->main_x, y);
+    }
+    XGetWindowAttributes(w->app->dpy, (Window)xjmkb->looper_control->widget, &attrs);
+    if (attrs.map_state != IsViewable) return;
+    y = xjmkb->main_y-71;
+    if (xjmkb->main_y < 75) y = xjmkb->main_y + xjmkb->main_h+21;
+    XMoveWindow(xjmkb->win->app->dpy,xjmkb->looper_control->widget, xjmkb->main_x+650, y);
 }
 
 //static
@@ -2718,11 +2734,20 @@ void XKeyBoard::freewheel_callback(void *w_, void* user_data) noexcept{
 }
 
 // static
+void XKeyBoard::lmc_callback(void *w_, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    int value = (int)adj_get_value(w->adj);
+    if (value) xjmkb->show_looper_ui(1);
+    else xjmkb->show_looper_ui(0);
+}
+
+// static
 void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
-    if ((int)adj_get_value(w->adj) == 2) {
+    if ((int)adj_get_value(w->adj) == 3) {
         xjmkb->xjack->play = 0.0;
         //adj_set_value(xjmkb->play->adj, 0.0);
         //set_play_label(xjmkb->play,NULL);
@@ -2747,7 +2772,7 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
         xjmkb->time_line->label = xjmkb->time_line->input_label;
         expose_widget(xjmkb->time_line);
         xjmkb->need_save = true;
-    } else if ((int)adj_get_value(w->adj) == 3) {
+    } else if ((int)adj_get_value(w->adj) == 4) {
         if (xjmkb->xjack->rec.channel == 0) {
             xjmkb->file_names.clear();
             xjmkb->build_remove_menu();
@@ -3498,6 +3523,272 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
     
+}
+
+/******************* Looper Controls *****************/
+
+void XKeyBoard::show_looper_ui(int present) {
+    if(present) {
+        widget_show_all(looper_control);
+        int y = main_y-71;
+        if (main_y < 75) y = main_y + main_h+21;
+        XMoveWindow(win->app->dpy,looper_control->widget, main_x+650, y);
+    }else {
+        widget_hide(looper_control);
+    }
+}
+
+//static
+void XKeyBoard::hide_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    adj_set_value(xjmkb->lmc->adj, 0.0);
+}
+
+static void play_channel1_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[0] = i;
+
+}
+
+static void play_channel2_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[1] = i;
+
+}
+
+static void play_channel3_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[2] = i;
+
+}
+
+static void play_channel4_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[3] = i;
+
+}
+
+static void play_channel5_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[4] = i;
+
+}
+
+static void play_channel6_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[5] = i;
+
+}
+
+static void play_channel7_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[6] = i;
+
+}
+
+static void play_channel8_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[7] = i;
+
+}
+
+static void play_channel9_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[8] = i;
+
+}
+
+static void play_channel10_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[9] = i;
+
+}
+
+static void play_channel11_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[10] = i;
+
+}
+
+static void play_channel12_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[11] = i;
+
+}
+
+static void play_channel13_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[12] = i;
+
+}
+
+static void play_channel14_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[13] = i;
+
+}
+
+static void play_channel15_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[14] = i;
+
+}
+
+static void play_channel16_callback(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    Widget_t *win = get_toplevel_widget(w->app);
+    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    int i = (int)adj_get_value(w->adj);
+    xjmkb->xjack->channel_matrix[15] = i;
+
+}
+
+void XKeyBoard::init_looper_ui(Widget_t *parent) {
+    looper_control = create_window(parent->app, DefaultRootWindow(parent->app->dpy), 0, 0, 415, 45);
+    XSelectInput(parent->app->dpy, looper_control->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
+                    |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
+                    |ButtonPressMask|Button1MotionMask|PointerMotionMask);
+    XSetTransientForHint(parent->app->dpy, looper_control->widget, parent->widget);
+    soundfontname =  basename((char*)soundfont.c_str());
+    std::string title = _("Looper Channel Control ");
+    widget_set_title(looper_control, title.c_str());
+    looper_control->flags &= ~USE_TRANSPARENCY;
+    looper_control->flags |= NO_AUTOREPEAT | NO_PROPAGATE | HIDE_ON_DELETE;
+    looper_control->func.expose_callback = draw_synth_ui;
+    looper_control->scale.gravity = CENTER;
+    looper_control->parent = parent;
+    looper_control->parent_struct = this;
+    looper_control->func.key_press_callback = key_press;
+    looper_control->func.key_release_callback = key_release;
+    looper_control->func.unmap_notify_callback = hide_callback;
+    
+    Widget_t *tmp = mamba_add_keyboard_button(looper_control, _("1"), 10, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel1_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("2"), 35, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel2_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("3"), 60, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel3_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("4"), 85, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel4_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("5"), 105, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel5_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("6"), 130, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel6_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("7"), 155, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel7_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("8"), 180, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel8_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("9"), 205, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel9_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("10"), 230, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel10_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("11"), 255, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel11_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("12"), 280, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel12_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("13"), 305, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel13_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("14"), 330, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel14_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("15"), 355, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel15_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(looper_control, _("16"), 380, 10, 25, 25);
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = play_channel16_callback;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
 }
 
 /******************* Exit handlers ********************/
