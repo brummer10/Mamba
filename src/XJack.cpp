@@ -137,7 +137,7 @@ XJack::XJack(mamba::MidiMessenger *mmessage_,
         for ( int i = 0; i < 16; i++) posPlay[i] = 0;
         for ( int i = 0; i < 16; i++) startPlay[i] = 0;
         for ( int i = 0; i < 16; i++) stopPlay[i] = 0;
-        for ( int i = 0; i < 16; i++) channel_matrix[i] = 0;
+        for ( int i = 0; i < 16; i++) channel_matrix[i].store(0, std::memory_order_release);
 }
 
 XJack::~XJack() {
@@ -271,7 +271,9 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
         const mamba::MidiEvent ev = rec.play[i][posPlay[i]];
         if (deltaTime >= ev.deltaTime * bpm_ratio) {
             playPosTime = ev.absoluteTime;
-            if (!channel_matrix[int(ev.buffer[0]&0x0f)] || ((ev.buffer[0] & 0xf0) == 0x80 )) {
+            // check if channel is muted
+            if (!channel_matrix[int(ev.buffer[0]&0x0f)].load(std::memory_order_acquire) ||
+                                                        ((ev.buffer[0] & 0xf0) == 0x80 )) {
                 unsigned char* midi_send = jack_midi_event_reserve(buf, n, ev.num);
                 if (midi_send) {
                     midi_send[0] = ev.buffer[0];

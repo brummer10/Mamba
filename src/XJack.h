@@ -119,6 +119,7 @@ public:
     std::atomic<bool> bpm_changed;
     std::atomic<int> bpm_set;
     std::atomic<bool> record_off;
+    std::atomic<int> channel_matrix[16];
     jack_client_t *client;
     jack_port_t *in_port;
     jack_port_t *out_port;
@@ -150,7 +151,6 @@ public:
     unsigned int bpm;
     float max_loop_time;
     int midi_map;
-    unsigned int channel_matrix[16];
 
     float get_max_loop_time() noexcept;
     sigc::signal<void > trigger_quit_by_jack;
