@@ -312,6 +312,7 @@ private:
     static void claps_time(void *w_, void* user_data) noexcept;
     inline int get_max_time_vector() noexcept;
     inline int get_min_time_vector() noexcept;
+    inline int get_min_time_event(int v) noexcept;
 
     static void synth_ui_callback(void *w_, void* user_data);
 

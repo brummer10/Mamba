@@ -240,6 +240,8 @@ void XKeyBoard::read_config() {
             else if (key.compare("[midi_through]") == 0) xjack->midi_through = std::stoi(value);
             else if (key.compare("[mchannel]") == 0) mchannel = std::stoi(value);
             else if (key.compare("[velocity]") == 0) velocity = std::stoi(value);
+            else if (key.compare("[bpm]") == 0) mbpm = std::stoi(value);
+            else if (key.compare("[song_bpm]") == 0) song_bpm = std::stoi(value);
             else if (key.compare("[filepath]") == 0) filepath = remove_sub(line, "[filepath] ");
             else if (key.compare("[scala_filepath]") == 0) scala_filepath = remove_sub(line, "[scala_filepath] ");
             else if (key.compare("[octave]") == 0) octave = std::stoi(value);
@@ -385,6 +387,8 @@ void XKeyBoard::save_config() {
          outfile << "[midi_through] " << xjack->midi_through << std::endl;
          outfile << "[mchannel] " << mchannel << std::endl;
          outfile << "[velocity] " << velocity << std::endl;
+         outfile << "[bpm] " << mbpm << std::endl;
+         outfile << "[song_bpm] " << song_bpm << std::endl;
          outfile << "[filepath] " << filepath << std::endl;
          outfile << "[scala_filepath] " << scala_filepath << std::endl;
          outfile << "[octave] " << octave << std::endl;
@@ -2502,13 +2506,13 @@ void XKeyBoard::sostenuto_callback(void *w_, void* user_data) noexcept{
 }
 
 void XKeyBoard::find_next_beat_time(double *absoluteTime) {
-    const double beat = 60.0/(double)song_bpm;
+    const double beat = 60.0/(double)mbpm;
     int beats = std::round(((*absoluteTime)/beat));
     (*absoluteTime) = (double)beats*beat;
 }
 
 void XKeyBoard::find_previus_beat_time(double *absoluteTime) {
-    const double beat = 60.0/(double)song_bpm;
+    const double beat = 60.0/(double)mbpm;
     int beats = std::round((((*absoluteTime)-beat)/beat));
     (*absoluteTime) = (double)beats*beat;
 }
@@ -2527,6 +2531,13 @@ inline int XKeyBoard::get_min_time_vector() noexcept {
     return v;
 }
 
+inline int XKeyBoard::get_min_time_event(int v) noexcept{
+    for(std::vector<mamba::MidiEvent>::iterator i = xjack->rec.play[v].begin(); i != xjack->rec.play[v].end(); ++i) {
+        if ((*i).absoluteTime > 0.0) return std::distance(xjack->rec.play[v].begin(), i);
+    }
+    return 0;
+}
+
 // static
 void XKeyBoard::clips_time(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
@@ -2535,14 +2546,15 @@ void XKeyBoard::clips_time(void *w_, void* user_data) noexcept{
     if (value > 0) {
         int v = xjmkb->get_min_time_vector();
         if (v > -1) {
-            const mamba::MidiEvent ev = xjmkb->xjack->rec.play[v][3];
+            int m = xjmkb->get_min_time_event(v);
+            const mamba::MidiEvent ev = xjmkb->xjack->rec.play[v][m];
             double absoluteTime = ev.absoluteTime; // seconds
-            const double beat = 60.0/(double)xjmkb->song_bpm;
-            if ( absoluteTime-beat >= beat) {
+            const double beat = 60.0/(double)xjmkb->mbpm;
+            if ( absoluteTime >= beat) {
 
                 for (int j = 0; j < 16; j++) {
                     for(std::vector<mamba::MidiEvent>::iterator i = xjmkb->xjack->rec.play[j].begin(); i != xjmkb->xjack->rec.play[j].end(); ++i) {
-                        if (i == xjmkb->xjack->rec.play[j].begin()+2) {
+                        if (i == xjmkb->xjack->rec.play[j].begin()+m) {
                             if ((*i).deltaTime) (*i).deltaTime -= beat;
                         }
                         if ((*i).absoluteTime) (*i).absoluteTime -= beat;
@@ -2567,7 +2579,7 @@ void XKeyBoard::claps_time(void *w_, void* user_data) noexcept{
     if (value > 0) {
         int v = xjmkb->get_min_time_vector();
         if (v > -1) {
-            const double beat = 60.0/(double)xjmkb->song_bpm;
+            const double beat = 60.0/(double)xjmkb->mbpm;
             for (int j = 0; j < 16; j++) {
                 for(std::vector<mamba::MidiEvent>::iterator i = xjmkb->xjack->rec.play[j].begin(); i != xjmkb->xjack->rec.play[j].end(); ++i) {
                     if (i == xjmkb->xjack->rec.play[j].begin()+2) {
@@ -2611,7 +2623,7 @@ void XKeyBoard::clip_time(void *w_, void* user_data) noexcept{
             const mamba::MidiEvent prev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-2];
             double deltaTime = ev.deltaTime; // seconds
             double absoluteTime = ev.absoluteTime; // seconds
-            const double beat = 60.0/(double)xjmkb->song_bpm;
+            const double beat = 60.0/(double)xjmkb->mbpm;
             if ( absoluteTime-beat > prev.absoluteTime) {
                 mamba::MidiEvent nev = {{0x80, 0, 0}, 3, deltaTime-beat, absoluteTime-beat};
                 xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1] = nev;
@@ -2636,7 +2648,7 @@ void XKeyBoard::clap_time(void *w_, void* user_data) noexcept{
             const mamba::MidiEvent ev = xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1];
             double deltaTime = ev.deltaTime; // seconds
             double absoluteTime = ev.absoluteTime; // seconds
-            const double beat = 60.0/(double)xjmkb->song_bpm;
+            const double beat = 60.0/(double)xjmkb->mbpm;
             mamba::MidiEvent nev = {{0x80, 0, 0}, 3, deltaTime+beat, absoluteTime+beat};
             xjmkb->xjack->rec.play[v][xjmkb->xjack->rec.play[v].size()-1] = nev;
             snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
@@ -3675,7 +3687,7 @@ static void play_channel16_callback(void *w_, void* user_data)  noexcept{
 }
 
 void XKeyBoard::init_looper_ui(Widget_t *parent) {
-    looper_control = create_window(parent->app, DefaultRootWindow(parent->app->dpy), 0, 0, 415, 45);
+    looper_control = create_window(parent->app, DefaultRootWindow(parent->app->dpy), 0, 0, 420, 45);
     XSelectInput(parent->app->dpy, looper_control->widget,StructureNotifyMask|ExposureMask|KeyPressMask 
                     |EnterWindowMask|LeaveWindowMask|ButtonReleaseMask|KeyReleaseMask
                     |ButtonPressMask|Button1MotionMask|PointerMotionMask);
@@ -3712,62 +3724,62 @@ void XKeyBoard::init_looper_ui(Widget_t *parent) {
     tmp->func.value_changed_callback = play_channel4_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("5"), 105, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("5"), 110, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel5_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("6"), 130, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("6"), 135, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel6_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("7"), 155, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("7"), 160, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel7_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("8"), 180, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("8"), 185, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel8_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("9"), 205, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("9"), 210, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel9_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("10"), 230, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("10"), 235, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel10_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("11"), 255, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("11"), 260, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel11_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("12"), 280, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("12"), 285, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel12_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("13"), 305, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("13"), 310, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel13_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("14"), 330, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("14"), 335, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel14_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("15"), 355, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("15"), 360, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel15_callback;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(looper_control, _("16"), 380, 10, 25, 25);
+    tmp = mamba_add_keyboard_button(looper_control, _("16"), 385, 10, 25, 25);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.value_changed_callback = play_channel16_callback;
     tmp->func.key_press_callback = key_press;
