@@ -2554,10 +2554,9 @@ void XKeyBoard::clips_time(void *w_, void* user_data) noexcept{
 
                 for (int j = 0; j < 16; j++) {
                     for(std::vector<mamba::MidiEvent>::iterator i = xjmkb->xjack->rec.play[j].begin(); i != xjmkb->xjack->rec.play[j].end(); ++i) {
-                        if (i == xjmkb->xjack->rec.play[j].begin()+m) {
+                        if ((*i).absoluteTime && ((*i).absoluteTime == (*i).deltaTime)) {
                             if ((*i).deltaTime) (*i).deltaTime -= beat;
-                        }
-                        if ((*i).absoluteTime) (*i).absoluteTime -= beat;
+                        } else if ((*i).absoluteTime) (*i).absoluteTime -= beat;
                     }
                 }
 
