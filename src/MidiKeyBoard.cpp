@@ -1362,15 +1362,17 @@ void XKeyBoard::animate_midi_keyboard(void *w_) {
         XUnlockDisplay(w->app->dpy);
     }
 
-    if ((xjmkb->xjack->record || xjmkb->xjack->play) && !xjmkb->xjack->freewheel) {
+    if ((xjmkb->xjack->record.load(std::memory_order_acquire) ||
+            xjmkb->xjack->play.load(std::memory_order_acquire)) && !xjmkb->xjack->freewheel) {
         static int scip = 8;
         if (scip >= 8) {
             XLockDisplay(w->app->dpy);
-            if ( xjmkb->xjack->play && xjmkb->xjack->get_max_loop_time() > 0.0) {
+            if ( xjmkb->xjack->play.load(std::memory_order_acquire) && xjmkb->xjack->get_max_loop_time() > 0.0) {
                 snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", 
                     xjmkb->xjack->get_max_loop_time() -
                     (double)((xjmkb->xjack->stPlay - xjmkb->xjack->stStart)/(double)xjmkb->xjack->SampleRate));
-            } else if (xjmkb->xjack->record && xjmkb->xjack->play) {
+            } else if (xjmkb->xjack->record.load(std::memory_order_acquire) &&
+                            xjmkb->xjack->play.load(std::memory_order_acquire)) {
                 snprintf(xjmkb->time_line->input_label, 31, "%.2f sec",
                     (double)((xjmkb->xjack->stPlay - xjmkb->xjack->rcStart)/(double)xjmkb->xjack->SampleRate));
             } else {
@@ -2326,7 +2328,7 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
-    if (xjmkb->xjack->play>0) {
+    if (xjmkb->xjack->play.load(std::memory_order_acquire)) {
         for (int i = 0; i<16;i++) 
             mamba_clear_key_matrix(keys->in_key_matrix[i]);
     }
@@ -2664,7 +2666,7 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int value = (int)adj_get_value(w->adj);
-    xjmkb->xjack->record = value;
+    xjmkb->xjack->record.store(value, std::memory_order_release);
     if (value > 0) {
         std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard");
         widget_set_title(xjmkb->win, tittle.c_str());
@@ -2698,7 +2700,7 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
         mamba::MidiEvent ev = {{0x80, 0, 0}, 3, deltaTime, absoluteTime};
         xjmkb->xjack->rec.st->push_back(ev);
         xjmkb->xjack->rec.stop();
-        xjmkb->xjack->record_finished = 1;
+        xjmkb->xjack->record_finished.store(1, std::memory_order_release);
         snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
         xjmkb->time_line->label = xjmkb->time_line->input_label;
         expose_widget(xjmkb->time_line);
@@ -2710,7 +2712,7 @@ void XKeyBoard::play_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int value = (int)adj_get_value(w->adj);
-    xjmkb->xjack->play = value;
+    xjmkb->xjack->play.store(value, std::memory_order_release);
     if (value < 1) {
         MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
         for (int i = 0; i<16;i++) 
@@ -2759,7 +2761,7 @@ void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
     if ((int)adj_get_value(w->adj) == 3) {
-        xjmkb->xjack->play = 0.0;
+        xjmkb->xjack->play.store(0, std::memory_order_release);
         //adj_set_value(xjmkb->play->adj, 0.0);
         //set_play_label(xjmkb->play,NULL);
         //adj_set_value(xjmkb->record->adj, 0.0);
@@ -3538,6 +3540,27 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
 
 /******************* Looper Controls *****************/
 
+void XKeyBoard::draw_looper_ui(void *w_, void* user_data)  noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
+    cairo_paint (w->crb);
+    widget_set_scale(w);
+    for(int i = 0;i<16;i++) {
+        double ci = ((i+1)/100.0)*12.0;
+        if (i<4)
+            cairo_set_source_rgba(w->crb, ci, 0.2, 0.4, 1.00);
+        else if (i<8)
+            cairo_set_source_rgba(w->crb, 0.6, 0.2+ci-0.48, 0.4, 1.00);
+        else if (i<12)
+            cairo_set_source_rgba(w->crb, 0.6-(ci-0.96), 0.68-(ci-1.08), 0.4, 1.00);
+        else
+            cairo_set_source_rgba(w->crb, 0.12+(ci-1.56), 0.32, 0.4-(ci-1.44), 1.00);
+        cairo_rectangle(w->crb, 10+(i*25), 0, 25, 25);
+        cairo_fill_preserve(w->crb);
+        cairo_stroke(w->crb);
+    }
+}
+
 void XKeyBoard::show_looper_ui(int present) {
     if(present) {
         widget_show_all(looper_control);
@@ -3695,7 +3718,7 @@ void XKeyBoard::init_looper_ui(Widget_t *parent) {
     widget_set_title(looper_control, title.c_str());
     looper_control->flags &= ~USE_TRANSPARENCY;
     looper_control->flags |= NO_AUTOREPEAT | NO_PROPAGATE | HIDE_ON_DELETE;
-    looper_control->func.expose_callback = draw_synth_ui;
+    looper_control->func.expose_callback = draw_looper_ui;
     looper_control->scale.gravity = CENTER;
     looper_control->parent = parent;
     looper_control->parent_struct = this;

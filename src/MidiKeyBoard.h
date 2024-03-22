@@ -338,6 +338,7 @@ private:
     static void remamba_set_edos(XKeyBoard *xjmkb) noexcept;
 
     static void hide_callback(void *w_, void* user_data)  noexcept;
+    static void draw_looper_ui(void *w_, void* user_data)  noexcept;
     void show_looper_ui(int present);
     void init_looper_ui(Widget_t *parent);
 

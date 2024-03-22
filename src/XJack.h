@@ -120,6 +120,9 @@ public:
     std::atomic<int> bpm_set;
     std::atomic<bool> record_off;
     std::atomic<int> channel_matrix[16];
+    std::atomic<int>  record_finished;
+    std::atomic<int> record;
+    std::atomic<int> play;
     jack_client_t *client;
     jack_port_t *in_port;
     jack_port_t *out_port;
@@ -135,9 +138,6 @@ public:
     std::vector<mamba::MidiEvent> store2;
     std::vector<mamba::MidiEvent> *st;
 
-    int record;
-    int record_finished;
-    int play;
     int bank;
     int program;
     int freewheel;

@@ -107,12 +107,14 @@ XJack::XJack(mamba::MidiMessenger *mmessage_,
         bpm_changed.store(false, std::memory_order_release);
         bpm_set.store(0, std::memory_order_release);
         record_off.store(false, std::memory_order_release);
+        record_finished.store(0, std::memory_order_release);
+        record.store(0, std::memory_order_release);
+        play.store(0, std::memory_order_release);
         start = 0;
         NotOn = 0;
         absoluteStart = 0;
-        record = 0;
-        record_finished = 0;
-        play = 0;
+        absoluteRecordTime = 0.0;
+        absoluteRecordStart = 0.0;
         pos = 0;
         bank = 0;
         program = 0;
@@ -249,7 +251,7 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
     for ( int i = 0; i < 16; i++) {
         stPlay = jack_last_frame_time(client)+n;
         if (!rec.play[i].size()) continue;
-        if (record && i == mmessage->channel) continue;
+        if (record.load(std::memory_order_acquire) && i == mmessage->channel) continue;
         stopPlay[i] = jack_last_frame_time(client)+n;
         if (posPlay[i] >= rec.play[i].size()) {
             
@@ -316,18 +318,28 @@ inline void XJack::process_midi_out(void *buf, jack_nframes_t nframes) {
             if (midi_send) {
                 mmessage->fill(midi_send, i);
                 send_to_alsa(midi_send, mmessage->size(i));
-                if (record) record_midi(midi_send, n, mmessage->size(i));
+                if (record.load(std::memory_order_acquire)) record_midi(midi_send, n, mmessage->size(i));
             }
             i = mmessage->next(i);
-        } else if (play) {
+        } else if (play.load(std::memory_order_acquire)) {
             play_midi(buf, n);
         }
     }
+    if (record.load(std::memory_order_acquire)) {
+        stop = jack_last_frame_time(client);
+        deltaTime = (double)(((stop) - start)/(double)SampleRate); // seconds
+        absoluteTime = (double)(((stop) - absoluteStart)/(double)SampleRate); // seconds
+        absoluteRecordTime = (double)(((stop) - absoluteRecordStart)/(double)SampleRate); // seconds
+        if (absoluteRecordTime >= max_loop_time && !NotOn && (get_max_time_loop() > -1)) {
+            record_off.store(true, std::memory_order_release);
+        }
+    }
+
 }
 
 // jack process callback for the midi input
 inline void XJack::process_midi_in(void* buf, void* out_buf) {
-    if (record && fresh_take) {
+    if (record.load(std::memory_order_acquire) && fresh_take) {
         start = jack_last_frame_time(client);
         absoluteStart = jack_last_frame_time(client);
         absoluteRecordStart = jack_last_frame_time(client);
@@ -345,8 +357,8 @@ inline void XJack::process_midi_in(void* buf, void* out_buf) {
             start = startPlay[mmessage->channel];
             absoluteStart = startPlay[mmessage->channel];
         }
-    } else if (record_finished && !freewheel && (get_max_time_loop() > -1)) {
-        record_finished = 0;
+    } else if (record_finished.load(std::memory_order_acquire) && !freewheel && (get_max_time_loop() > -1)) {
+        record_finished.store(0, std::memory_order_release);
         if (rec.is_sorted.load(std::memory_order_acquire)) {
             posPlay[mmessage->channel] = find_pos_for_playtime();
             rec.is_sorted.store(false, std::memory_order_release);
@@ -372,7 +384,7 @@ inline void XJack::process_midi_in(void* buf, void* out_buf) {
                 midi_send[1] = in_event.buffer[1]; // implement mapping
                 if (in_event.size>2) 
                     midi_send[2] = in_event.buffer[2];
-                if (record)
+                if (record.load(std::memory_order_acquire))
                     record_midi(midi_send, i, in_event.size);
                 send_to_alsa(midi_send, in_event.size);
             }
