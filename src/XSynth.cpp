@@ -184,6 +184,11 @@ void XSynth::init_synth() {
     setup_tunnings_for_channelemap();
 }
 
+int XSynth::synth_send_cc(int channel, int num, int value) {
+    if (!synth) return -1;
+    return fluid_synth_cc(synth, channel, num, value);
+}
+
 int XSynth::load_soundfont(const char *path) {
     if (sf_id != -1) fluid_synth_sfunload(synth, sf_id, 0);
     sf_id = fluid_synth_sfload(synth, path, 1);

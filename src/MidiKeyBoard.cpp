@@ -240,8 +240,6 @@ void XKeyBoard::read_config() {
             else if (key.compare("[midi_through]") == 0) xjack->midi_through = std::stoi(value);
             else if (key.compare("[mchannel]") == 0) mchannel = std::stoi(value);
             else if (key.compare("[velocity]") == 0) velocity = std::stoi(value);
-            else if (key.compare("[bpm]") == 0) mbpm = std::stoi(value);
-            else if (key.compare("[song_bpm]") == 0) song_bpm = std::stoi(value);
             else if (key.compare("[filepath]") == 0) filepath = remove_sub(line, "[filepath] ");
             else if (key.compare("[scala_filepath]") == 0) scala_filepath = remove_sub(line, "[scala_filepath] ");
             else if (key.compare("[octave]") == 0) octave = std::stoi(value);
@@ -387,8 +385,6 @@ void XKeyBoard::save_config() {
          outfile << "[midi_through] " << xjack->midi_through << std::endl;
          outfile << "[mchannel] " << mchannel << std::endl;
          outfile << "[velocity] " << velocity << std::endl;
-         outfile << "[bpm] " << mbpm << std::endl;
-         outfile << "[song_bpm] " << song_bpm << std::endl;
          outfile << "[filepath] " << filepath << std::endl;
          outfile << "[scala_filepath] " << scala_filepath << std::endl;
          outfile << "[octave] " << octave << std::endl;
@@ -1794,6 +1790,15 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
             _("Couldn't load file, is that a MIDI file?"),NULL);
             XSetTransientForHint(xjmkb->win->app->dpy, dia->widget, xjmkb->win->widget);
         } else {
+            if (xjmkb->xsynth->synth_is_active()) {
+                for(std::vector<mamba::MidiEvent>::iterator i = xjmkb->xjack->rec.play[0].begin(); i != xjmkb->xjack->rec.play[0].end(); ++i) {
+                    if (((*i).buffer[0] & 0xf0) == 0xB0 && ((*i).buffer[1]== 32 || (*i).buffer[1]== 0)) {
+                        xjmkb->mmessage->send_midi_cc((*i).buffer[0], (*i).buffer[1], (*i).buffer[2], 3, true);
+                    } else if (((*i).buffer[0] & 0xf0) == 0xC0 ) {
+                        xjmkb->mmessage->send_midi_cc((*i).buffer[0], (*i).buffer[1], 0, 2, true);
+                    }
+                }
+            }
             xjmkb->recent_file_manager(*(char**)user_data);
             std::string file(basename(*(char**)user_data));
             for(int i = 1;i<16;i++)
@@ -1812,6 +1817,7 @@ void XKeyBoard::dialog_load_response(void *w_, void* user_data) {
             xjmkb->time_line->label = xjmkb->time_line->input_label;
             expose_widget(xjmkb->time_line);
             adj_set_value(xjmkb->play->adj, play);
+            if (xjmkb->xsynth->synth_is_active()) xjmkb->rebuild_instrument_list();
         }
     }
 }
@@ -3294,8 +3300,9 @@ void XKeyBoard::rebuild_instrument_list() {
     }
 
     int i = xsynth->get_instrument_for_channel(mchannel);
-    if ( i >-1)
+    if ( i >-1) {
         combobox_set_active_entry(fs_instruments, i);
+    }
 }
 
 //static
