@@ -314,7 +314,7 @@ private:
     inline int get_min_time_vector() noexcept;
     inline int get_min_time_event(int v) noexcept;
 
-    static void synth_ui_callback(void *w_, void* user_data);
+    static void synth_hide_callback(void *w_, void* user_data)  noexcept;
 
     static void chorus_type_callback(void *w_, void* user_data);
     static void chorus_depth_callback(void *w_, void* user_data);
@@ -337,7 +337,7 @@ private:
     static void check_edo_mapfile(XKeyBoard *xjmkb, int edo);
     static void remamba_set_edos(XKeyBoard *xjmkb) noexcept;
 
-    static void hide_callback(void *w_, void* user_data)  noexcept;
+    static void looper_hide_callback(void *w_, void* user_data)  noexcept;
     static void draw_looper_ui(void *w_, void* user_data)  noexcept;
     void show_looper_ui(int present);
     void init_looper_ui(Widget_t *parent);
@@ -345,6 +345,8 @@ private:
     Widget_t *mamba_add_keyboard_knob(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
     Widget_t *mamba_add_keyboard_button(Widget_t *parent, const char * label,
+                                int x, int y, int width, int height);
+    Widget_t *mamba_add_button(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
     void get_port_entrys(Widget_t *parent, jack_port_t *my_port,
                                                 JackPortFlags type);
@@ -382,6 +384,7 @@ public:
     std::string path;
     std::string soundfont;
     std::string selected_edo;
+    std::atomic<int> looper_channel_matrix[16];
 
     bool has_config;
     Widget_t *win;
