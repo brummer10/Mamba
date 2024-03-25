@@ -3293,8 +3293,7 @@ void XKeyBoard::set_on_off_label(void *w_, void* user_data) noexcept{
 //static
 void XKeyBoard::instrument_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(xjmkb->fs_instruments->adj);
     xjmkb->xsynth->channel_instrument[xjmkb->mchannel] = i;
     std::istringstream buf(xjmkb->xsynth->instruments[i]);
@@ -3323,8 +3322,7 @@ void XKeyBoard::rebuild_instrument_list() {
 //static
 void XKeyBoard::soundfont_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     if (!strstr(xjmkb->soundfontname.data(), w->label)) {
         std::string sf = xjmkb->soundfontpath;
         sf +="/";
@@ -3370,8 +3368,7 @@ int XKeyBoard::get_edo_steps() {
 //static
 void XKeyBoard::edo_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     if ( xjmkb->mchannel > 15) xjmkb->xsynth->activate_tunning_for_all_channel(i);
     else xjmkb->xsynth->activate_tuning_for_channel(xjmkb->mchannel, i);
@@ -3382,8 +3379,7 @@ void XKeyBoard::edo_callback(void *w_, void* user_data)  noexcept{
 //static
 void XKeyBoard::synth_hide_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     adj_set_value(xjmkb->fs[0]->adj, 0.0);
 }
 
@@ -3572,8 +3568,7 @@ void XKeyBoard::draw_looper_ui(void *w_, void* user_data)  noexcept{
     XWindowAttributes attrs;
     XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
     if (attrs.map_state != IsViewable) return;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
     cairo_paint (w->crb);
     widget_set_scale(w);
@@ -3611,135 +3606,118 @@ void XKeyBoard::show_looper_ui(int present) {
 //static
 void XKeyBoard::looper_hide_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     adj_set_value(xjmkb->lmc->adj, 0.0);
 }
 
 static void play_channel1_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[0].store(i, std::memory_order_release);
 }
 
 static void play_channel2_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[1].store(i, std::memory_order_release);
 }
 
 static void play_channel3_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[2].store(i, std::memory_order_release);
 }
 
 static void play_channel4_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[3].store(i, std::memory_order_release);
 }
 
 static void play_channel5_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[4].store(i, std::memory_order_release);
 }
 
 static void play_channel6_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[5].store(i, std::memory_order_release);
 }
 
 static void play_channel7_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[6].store(i, std::memory_order_release);
 }
 
 static void play_channel8_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[7].store(i, std::memory_order_release);
 }
 
 static void play_channel9_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[8].store(i, std::memory_order_release);
 }
 
 static void play_channel10_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[9].store(i, std::memory_order_release);
 }
 
 static void play_channel11_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[10].store(i, std::memory_order_release);
 }
 
 static void play_channel12_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[11].store(i, std::memory_order_release);
 }
 
 static void play_channel13_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[12].store(i, std::memory_order_release);
 }
 
 static void play_channel14_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[13].store(i, std::memory_order_release);
 }
 
 static void play_channel15_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[14].store(i, std::memory_order_release);
 }
 
 static void play_channel16_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
-    Widget_t *win = get_toplevel_widget(w->app);
-    XKeyBoard *xjmkb = (XKeyBoard*) win->parent_struct;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
     xjmkb->xjack->channel_matrix[15].store(i, std::memory_order_release);
 }

@@ -121,7 +121,7 @@ bool MidiLoad::load_file(std::vector<MidiEvent> *play, int *song_bpm, const char
             }
         }
         // filter out 0xFF system reset message
-        if ((smf_event->midi_buffer[0] == 0xff)) {
+        if (smf_event->midi_buffer[0] == 0xff) {
             continue;
         }
         ev = {{smf_event->midi_buffer[0], smf_event->midi_buffer[1], smf_event->midi_buffer[2]},

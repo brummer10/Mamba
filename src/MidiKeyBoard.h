@@ -182,7 +182,6 @@ private:
     Widget_t *file_remove_menu;
     Widget_t *load_midi;
     Widget_t *add_midi;
-    Widget_t *load_scala;
     Widget_t *sfont_menu;
     Widget_t *fs_instruments;
     Widget_t *fs_soundfont;

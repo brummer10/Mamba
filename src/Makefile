@@ -42,11 +42,15 @@
 	LOCAL_DIR ?= $(SHARE_DIR)/locale
 
 	# set compile flags
-	CXXFLAGS += -std=gnu++17 -O3 -D_FORTIFY_SOURCE=2 -Wall -fstack-protector -funroll-loops -ffast-math -fomit-frame-pointer \
-	-fstrength-reduce -fschedule-insns -MMD $(SSE_CFLAGS)
+	
+	CXXFLAGS += -std=gnu++17 -O3 -D_FORTIFY_SOURCE=2 -Wall -fstack-protector -funroll-loops \
+	-ffast-math -fomit-frame-pointer -MMD $(SSE_CFLAGS)
+	ifneq ($(CXX), clang)
+	CXXFLAGS += -fstrength-reduce -fschedule-insns
+	endif
 	DEBUG_CXXFLAGS += -g -D DEBUG
 	LDFLAGS += -Wl,-z,noexecstack -Wl,--no-undefined \
-	`pkg-config --libs jack cairo x11 sigc++-2.0 liblo smf fluidsynth` -lm -pthread -lasound 
+	`pkg-config --libs jack cairo x11 sigc++-2.0 liblo smf fluidsynth` -lm -pthread -lasound -lstdc++
 	INCFLAGS = -I./ -I../libxputty/libxputty/include/ -I../libscala-file/ \
 	`pkg-config --cflags jack cairo x11 sigc++-2.0 liblo smf fluidsynth`\
 	-DVERSION=\"$(VER)\"
