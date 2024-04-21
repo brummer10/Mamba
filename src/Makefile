@@ -26,7 +26,7 @@
 	NAME = Mamba
 	EXEC_NAME  = $(shell echo $(NAME) | tr A-Z a-z)
 	BUILD_DIR = build
-	VER = 2.5
+	VER = 2.6
 
 	LIBSCALA_DIR := ../libscala-file/
 	LIB_DIR := ../libxputty/libxputty/

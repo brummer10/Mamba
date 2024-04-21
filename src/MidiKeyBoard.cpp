@@ -3610,116 +3610,11 @@ void XKeyBoard::looper_hide_callback(void *w_, void* user_data)  noexcept{
     adj_set_value(xjmkb->lmc->adj, 0.0);
 }
 
-static void play_channel1_callback(void *w_, void* user_data)  noexcept{
+static void play_channel_callback(void *w_, void* user_data)  noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[0].store(i, std::memory_order_release);
-}
-
-static void play_channel2_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[1].store(i, std::memory_order_release);
-}
-
-static void play_channel3_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[2].store(i, std::memory_order_release);
-}
-
-static void play_channel4_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[3].store(i, std::memory_order_release);
-}
-
-static void play_channel5_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[4].store(i, std::memory_order_release);
-}
-
-static void play_channel6_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[5].store(i, std::memory_order_release);
-}
-
-static void play_channel7_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[6].store(i, std::memory_order_release);
-}
-
-static void play_channel8_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[7].store(i, std::memory_order_release);
-}
-
-static void play_channel9_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[8].store(i, std::memory_order_release);
-}
-
-static void play_channel10_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[9].store(i, std::memory_order_release);
-}
-
-static void play_channel11_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[10].store(i, std::memory_order_release);
-}
-
-static void play_channel12_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[11].store(i, std::memory_order_release);
-}
-
-static void play_channel13_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[12].store(i, std::memory_order_release);
-}
-
-static void play_channel14_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[13].store(i, std::memory_order_release);
-}
-
-static void play_channel15_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[14].store(i, std::memory_order_release);
-}
-
-static void play_channel16_callback(void *w_, void* user_data)  noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int i = (int)adj_get_value(w->adj);
-    xjmkb->xjack->channel_matrix[15].store(i, std::memory_order_release);
+    xjmkb->xjack->channel_matrix[w->data].store(i, std::memory_order_release);
 }
 
 void XKeyBoard::init_looper_ui(Widget_t *parent) {
@@ -3740,86 +3635,16 @@ void XKeyBoard::init_looper_ui(Widget_t *parent) {
     looper_control->func.key_release_callback = key_release;
     looper_control->func.unmap_notify_callback = looper_hide_callback;
     
-    Widget_t *tmp = mamba_add_button(looper_control, _("1"), 10, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel1_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("2"), 35, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel2_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("3"), 60, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel3_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("4"), 85, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel4_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("5"), 110, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel5_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("6"), 135, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel6_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("7"), 160, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel7_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("8"), 185, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel8_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("9"), 210, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel9_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("10"), 235, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel10_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("11"), 260, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel11_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("12"), 285, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel12_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("13"), 310, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel13_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("14"), 335, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel14_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("15"), 360, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel15_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_button(looper_control, _("16"), 385, 10, 25, 25);
-    tmp->flags |= NO_AUTOREPEAT;
-    tmp->func.value_changed_callback = play_channel16_callback;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
+    for (int i = 0; i<16; i++) {
+        Widget_t *tmp = mamba_add_button(looper_control, "", 10 + (i * 25), 10, 25, 25);
+        tmp->flags |= NO_AUTOREPEAT;
+        tmp->data = i;
+        snprintf(tmp->input_label, 31, "%i",i + 1);
+        tmp->label = tmp->input_label;
+        tmp->func.value_changed_callback = play_channel_callback;
+        tmp->func.key_press_callback = key_press;
+        tmp->func.key_release_callback = key_release;
+    }
 }
 
 /******************* Exit handlers ********************/
