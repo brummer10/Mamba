@@ -124,6 +124,7 @@ XJack::XJack(mamba::MidiMessenger *mmessage_,
         playPosTime = 0.0;
         fresh_take = true;
         first_play = true;
+        second_play = false;
         midi_through = 1;
         store1.reserve(256);
         store2.reserve(256);
@@ -246,6 +247,9 @@ inline void XJack::play_midi(void *buf, unsigned int n) {
         start = jack_last_frame_time(client)+n;
         absoluteStart = jack_last_frame_time(client)+n;
         stStart = jack_last_frame_time(client)+n;
+    } else if (second_play) {
+        second_play = false;
+        stStart = jack_last_frame_time(client)+n - (stPlay - stStart);
     }
 
     for ( int i = 0; i < 16; i++) {

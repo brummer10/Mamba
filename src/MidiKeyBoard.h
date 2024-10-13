@@ -57,6 +57,7 @@
 #include "xmessage-dialog.h"
 #include "XSynth.h"
 #include "scala_file.hpp"
+#include "CustomDrawings.h"
 
 #pragma once
 
@@ -66,7 +67,7 @@
 
 namespace midikeyboard {
 
-#define CPORTS 11
+#define CPORTS 12
 
 typedef enum {
     PITCHBEND,
@@ -151,6 +152,7 @@ private:
     AnimatedKeyBoard * animidi;
     nsmhandler::NsmSignalHandler& nsmsig;
     PosixSignalHandler& xsig;
+    CustomDrawings draw;
 
     Widget_t *w[CPORTS];
     Widget_t *channel;
@@ -159,6 +161,8 @@ private:
     Widget_t *octavemap;
     Widget_t *record;
     Widget_t *play;
+    Widget_t *pause;
+    Widget_t *eject;
     Widget_t *filemenu;
     Widget_t *looper;
     Widget_t *looper_control;
@@ -268,6 +272,8 @@ private:
     static void attack_callback(void *w_, void* user_data) noexcept;
     static void expression_callback(void *w_, void* user_data) noexcept;
     static void release_callback(void *w_, void* user_data) noexcept;
+    static void cutoff_callback(void *w_, void* user_data) noexcept;
+    static void resonance_callback(void *w_, void* user_data) noexcept;
     static void volume_callback(void *w_, void* user_data) noexcept;
     static void velocity_callback(void *w_, void* user_data) noexcept;
     static void pitchwheel_callback(void *w_, void* user_data) noexcept;
@@ -278,9 +284,12 @@ private:
     static void sostenuto_callback(void *w_, void* user_data) noexcept;
     static void record_callback(void *w_, void* user_data);
     static void play_callback(void *w_, void* user_data) noexcept;
+    static void pause_callback(void *w_, void* user_data) noexcept;
+    static void eject_callback(void *w_, void* user_data) noexcept;
     static void freewheel_callback(void *w_, void* user_data) noexcept;
     static void lmc_callback(void *w_, void* user_data) noexcept;
     static void clear_loops_callback(void *w_, void* user_data) noexcept;
+    static void clear_all_loops_callback(XKeyBoard *xjmkb) noexcept;
     static void view_channels_callback(void *w_, void* user_data) noexcept;
     static void animate_midi_keyboard(void *w_);
     static void dialog_save_response(void *w_, void* user_data);
@@ -296,13 +305,6 @@ private:
     static void win_configure_callback(void *w_, void* user_data);
     static void unmap_callback(void *w_, void* user_data) noexcept;
     static void map_callback(void *w_, void* user_data);
-    static void draw_my_combobox_entrys(void *w_, void* user_data) noexcept;
-    static void draw_menubar(void *w_, void* user_data) noexcept;
-    static void draw_topbox(void *w_, void* user_data) noexcept;
-    static void draw_middlebox(void *w_, void* user_data) noexcept;
-    static void draw_synth_ui(void *w_, void* user_data) noexcept;
-    static void mk_draw_knob(void *w_, void* user_data) noexcept;
-    static void draw_button(void *w_, void* user_data) noexcept;
     static void set_play_label(void *w_, void* user_data) noexcept;
 
     static void clip_time(void *w_, void* user_data) noexcept;
@@ -347,12 +349,11 @@ private:
                                 int x, int y, int width, int height);
     Widget_t *mamba_add_button(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height);
+    Widget_t *mamba_add_keyboard_switch(Widget_t *parent, const char * label,
+                                int x, int y, int width, int height);
     void get_port_entrys(Widget_t *parent, jack_port_t *my_port,
                                                 JackPortFlags type);
     int remove_low_dash(char *str) noexcept;
-    void rounded_rectangle(cairo_t *cr,float x, float y, float width, float height);
-    void pattern_in(Widget_t *w, Color_state st, int height);
-    void pattern_out(Widget_t *w, int height);
     void find_next_beat_time(double *absoluteTime);
     void find_previus_beat_time(double *absoluteTime);
     void get_alsa_port_menu();
@@ -391,6 +392,10 @@ public:
     Widget_t *fs[3];
     int visible;
     int volume;
+    int attack;
+    int release;
+    int cutoff;
+    int resonance;
 
     void init_ui(Xputty *app);
     void init_synth_ui(Widget_t *win);
@@ -407,6 +412,7 @@ public:
     static void synth_load_response(void *w_, void* user_data);
     static void scala_load_response(void *w_, void* user_data);
     static void scala_kbm_load_response(void *w_, void* user_data);
+    static void init_modulators(XKeyBoard* xjmkb);
     int get_edo_steps();
     static XKeyBoard* get_instance(void *w_);
 };

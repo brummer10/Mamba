@@ -145,6 +145,7 @@ public:
     int midi_through;
     bool fresh_take;
     bool first_play;
+    bool second_play;
     unsigned int SampleRate;
     double srms;
     double bpm_ratio;

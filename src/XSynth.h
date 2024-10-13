@@ -55,6 +55,14 @@ private:
     void setup_key_tunnings();
     void setup_tunnings_for_channelemap();
     void just_intonation();
+    fluid_mod_t *amod;
+    fluid_mod_t *dmod;
+    fluid_mod_t *smod;
+    fluid_mod_t *rmod;
+    fluid_mod_t *qmod;
+    fluid_mod_t *fmod;
+    void setup_envelope();
+    void delete_envelope();
 
 public:
     XSynth();

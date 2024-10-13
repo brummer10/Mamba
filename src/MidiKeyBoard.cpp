@@ -115,6 +115,10 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     visible = 1;
     velocity = 127;
     volume = 63;
+    attack = 0;
+    release = 0;
+    cutoff = 0;
+    resonance = 0;
     mbank = 0;
     mprogram = 0;
     mbpm = 120;
@@ -165,6 +169,14 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
 }
 
 XKeyBoard::~XKeyBoard() {}
+
+//static
+void XKeyBoard::init_modulators(XKeyBoard* xjmkb){
+    xjmkb->attack_callback(xjmkb->w[3], NULL);
+    xjmkb->attack_callback(xjmkb->w[3], NULL);
+    xjmkb->cutoff_callback(xjmkb->w[8], NULL);
+    xjmkb->resonance_callback(xjmkb->w[11], NULL);
+}
 
 //static
 XKeyBoard* XKeyBoard::get_instance(void *w_) {
@@ -245,6 +257,10 @@ void XKeyBoard::read_config() {
             else if (key.compare("[scala_filepath]") == 0) scala_filepath = remove_sub(line, "[scala_filepath] ");
             else if (key.compare("[octave]") == 0) octave = std::stoi(value);
             else if (key.compare("[volume]") == 0) volume = std::stoi(value);
+            else if (key.compare("[attack]") == 0) attack = std::stoi(value);
+            else if (key.compare("[release]") == 0) release = std::stoi(value);
+            else if (key.compare("[cutoff]") == 0) cutoff = std::stoi(value);
+            else if (key.compare("[resonance]") == 0) resonance = std::stoi(value);
             else if (key.compare("[freewheel]") == 0) freewheel = std::stoi(value);
             else if (key.compare("[lchannels]") == 0) lchannels = std::stoi(value);
             else if (key.compare("[soundfontpath]") == 0) soundfontpath = remove_sub(line, "[soundfontpath] ");
@@ -391,6 +407,10 @@ void XKeyBoard::save_config() {
          outfile << "[scala_filepath] " << scala_filepath << std::endl;
          outfile << "[octave] " << octave << std::endl;
          outfile << "[volume] " << volume << std::endl;
+         outfile << "[attack] " << attack << std::endl;
+         outfile << "[release] " << release << std::endl;
+         outfile << "[cutoff] " << cutoff << std::endl;
+         outfile << "[resonance] " << resonance << std::endl;
          outfile << "[freewheel] " << freewheel << std::endl;
          outfile << "[lchannels] " << lchannels << std::endl;
          outfile << "[soundfontpath] " << soundfontpath << std::endl;
@@ -513,379 +533,6 @@ void XKeyBoard::quit_by_jack() {
 }
 
 // static
-void XKeyBoard::draw_my_combobox_entrys(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XWindowAttributes attrs;
-    XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
-    if (attrs.map_state != IsViewable) return;
-    int width = attrs.width;
-    int height = attrs.height;
-    ComboBox_t *comboboxlist = (ComboBox_t*)w->parent_struct;
-
-    use_base_color_scheme(w, NORMAL_);
-    cairo_rectangle(w->crb, 0, 0, width, height);
-    cairo_fill (w->crb);
-
-    int i = (int)max(0,adj_get_value(w->adj));
-    int a = 0;
-    int j = comboboxlist->list_size < static_cast<unsigned int>(comboboxlist->show_items+i+1) ? 
-      comboboxlist->list_size : comboboxlist->show_items+i+1;
-    for(;i<j;i++) {
-        double ci = ((i+1)/100.0)*12.0;
-        if (i<4)
-            cairo_set_source_rgba(w->crb, ci, 0.2, 0.4, 1.00);
-        else if (i<8)
-            cairo_set_source_rgba(w->crb, 0.6, 0.2+ci-0.48, 0.4, 1.00);
-        else if (i<12)
-            cairo_set_source_rgba(w->crb, 0.6-(ci-0.96), 0.68-(ci-1.08), 0.4, 1.00);
-        else
-            cairo_set_source_rgba(w->crb, 0.12+(ci-1.56), 0.32, 0.4-(ci-1.44), 1.00);
-        if(i == comboboxlist->prelight_item && i == comboboxlist->active_item)
-            use_base_color_scheme(w, ACTIVE_);
-        else if(i == comboboxlist->prelight_item)
-            use_base_color_scheme(w, PRELIGHT_);
-        cairo_rectangle(w->crb, 0, a*25, width, 25);
-        cairo_fill_preserve(w->crb);
-        cairo_set_line_width(w->crb, 1.0);
-        use_frame_color_scheme(w, PRELIGHT_);
-        cairo_stroke(w->crb); 
-        cairo_text_extents_t extents;
-        /** show label **/
-        if(i == comboboxlist->prelight_item && i == comboboxlist->active_item)
-            use_text_color_scheme(w, ACTIVE_);
-        else if(i == comboboxlist->prelight_item)
-            use_text_color_scheme(w, PRELIGHT_);
-        else if (i == comboboxlist->active_item)
-            use_text_color_scheme(w, SELECTED_);
-        else
-            use_text_color_scheme(w,NORMAL_ );
-
-        cairo_set_font_size (w->crb, 12);
-        cairo_text_extents(w->crb,"Ay", &extents);
-        double h = extents.height;
-        cairo_text_extents(w->crb,comboboxlist->list_names[i] , &extents);
-
-        cairo_move_to (w->crb, 15, (25*(a+1)) - h +2);
-        cairo_show_text(w->crb, comboboxlist->list_names[i]);
-        cairo_new_path (w->crb);
-        if (i == comboboxlist->prelight_item && extents.width > (float)width-20) {
-            tooltip_set_text(w,comboboxlist->list_names[i]);
-            w->flags |= HAS_TOOLTIP;
-            show_tooltip(w);
-        } else {
-            w->flags &= ~HAS_TOOLTIP;
-            hide_tooltip(w);
-        }
-        a++;
-    }
-}
-
-void XKeyBoard::rounded_rectangle(cairo_t *cr,float x, float y, float width, float height) {
-    cairo_new_path (cr);
-    float r = height * 0.33334;
-    cairo_new_path (cr);
-    cairo_arc(cr, x+r, y+r, r, M_PI, 3*M_PI/2);
-    cairo_arc(cr, x+width-1-r, y+r, r, 3*M_PI/2, 0);
-    cairo_arc(cr, x+width-1-r, y+height-1-r, r, 0, M_PI/2);
-    cairo_arc(cr, x+r, y+height-1-r, r, M_PI/2, M_PI);
-    cairo_close_path(cr);
-    cairo_close_path (cr);
-}
-
-void XKeyBoard::pattern_out(Widget_t *w, int height) {
-    cairo_pattern_t *pat = cairo_pattern_create_linear (0, -4, 0, height-4);
-    cairo_pattern_add_color_stop_rgba (pat, 0,  0.3, 0.3, 0.3, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 0.25,  0.2, 0.2, 0.2, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.15, 0.15, 0.15, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 0.75,  0.1, 0.1, 0.1, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 1,  0.05, 0.05, 0.05, 1.0);
-    cairo_set_source(w->crb, pat);
-    cairo_pattern_destroy (pat);
-}
-
-void XKeyBoard::pattern_in(Widget_t *w, Color_state st, int height) {
-    Colors *c = get_color_scheme(w,st);
-    if (!c) return;
-    cairo_pattern_t *pat = cairo_pattern_create_linear (2, 2, 2, height);
-    cairo_pattern_add_color_stop_rgba(pat, 0.0, 0.0, 0.0, 0.0, 0.0);
-    cairo_pattern_add_color_stop_rgba(pat, 0.5, c->light[0],  c->light[1], c->light[2],  c->light[3]);
-    cairo_pattern_add_color_stop_rgba(pat, 1.0, 0.0, 0.0, 0.0, 0.0);
-    cairo_set_source(w->crb, pat);
-    cairo_pattern_destroy (pat);
-}
-
-int XKeyBoard::remove_low_dash(char *str)  noexcept{
-
-    char *src;
-    char *dst;
-    int i = 0;
-    int r = 0;
-    for (src = dst = str; *src != '\0'; src++) {
-        *dst = *src;
-        if (*dst != '_') {
-            dst++;
-        } else {
-            r = i;
-        }
-        i++;
-    }
-    *dst = '\0';
-    return r;
-}
-
-// static
-void XKeyBoard::draw_button(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    if (!w) return;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    XWindowAttributes attrs;
-    XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
-    int width = attrs.width-2;
-    int height = attrs.height-2;
-    if (attrs.map_state != IsViewable) return;
-    if (!w->state && (int)w->adj_y->value) {
-        w->state = 3;
-    } else if (w->state == 3 && !(int)w->adj_y->value) {
-        w->state = 0;
-    }
-
-    xjmkb->rounded_rectangle(w->crb,2.0, 2.0, width, height);
-
-    if(w->state==0) {
-        cairo_set_line_width(w->crb, 1.0);
-        xjmkb->pattern_out(w, height);
-        cairo_fill_preserve(w->crb);
-        use_frame_color_scheme(w, PRELIGHT_);
-    } else if(w->state==1) {
-        xjmkb->pattern_out(w, height);
-        cairo_fill_preserve(w->crb);
-        cairo_set_line_width(w->crb, 1.5);
-        use_frame_color_scheme(w, PRELIGHT_);
-    } else if(w->state==2) {
-        xjmkb->pattern_in(w, SELECTED_, height);
-        cairo_fill_preserve(w->crb);
-        cairo_set_line_width(w->crb, 1.0);
-        use_frame_color_scheme(w, PRELIGHT_);
-    } else if(w->state==3) {
-        xjmkb->pattern_in(w, ACTIVE_, height);
-        cairo_fill_preserve(w->crb);
-        cairo_set_line_width(w->crb, 1.0);
-        use_frame_color_scheme(w, PRELIGHT_);
-    }
-    cairo_stroke(w->crb);
-
-    if(w->state==2) {
-        xjmkb->rounded_rectangle(w->crb,4.0, 4.0, width, height);
-        cairo_stroke(w->crb);
-        xjmkb->rounded_rectangle(w->crb,3.0, 3.0, width, height);
-        cairo_stroke(w->crb);
-    } else if (w->state==3) {
-        xjmkb->rounded_rectangle(w->crb,3.0, 3.0, width, height);
-        cairo_stroke(w->crb);
-    }
-
-    float offset = 0.0;
-    if(w->state==1 && ! (int)w->adj_y->value) {
-        offset = 1.0;
-    } else if(w->state==1) {
-        offset = 2.0;
-    } else if(w->state==2) {
-        offset = 2.0;
-    } else if(w->state==3) {
-        offset = 1.0;
-    }
-
-    cairo_text_extents_t extents;
-    use_text_color_scheme(w, get_color_state(w));
-    cairo_set_font_size (w->crb, w->app->normal_font/w->scale.ascale);
-
-    if (strstr(w->label, "_")) {
-        cairo_text_extents(w->crb, "--", &extents);
-        double underline = extents.width;
-        strncpy(w->input_label,w->label, sizeof(w->input_label)-1);
-        int pos = xjmkb->remove_low_dash(w->input_label);
-        int len = strlen(w->input_label);
-        cairo_text_extents(w->crb,w->input_label , &extents);
-        int set_line = (extents.width/len) * pos;
-        cairo_move_to (w->crb, (width-extents.width)*0.5 +offset, (height+extents.height)*0.5 +offset);
-        cairo_show_text(w->crb, w->input_label);
-        cairo_set_line_width(w->crb, 1.0);
-        cairo_move_to (w->crb, (width-extents.width)*0.5 +offset + set_line, (height+extents.height)*0.55 +offset);
-        cairo_line_to(w->crb,(width-extents.width)*0.5 +offset + set_line + underline, (height+extents.height)*0.55 +offset);
-        cairo_stroke(w->crb);
-    } else if (strstr(w->label, "-") || strstr(w->label, "+" )) {
-        cairo_text_extents(w->crb,w->label , &extents);
-        cairo_move_to (w->crb, (width-extents.width)*0.55 +offset, (height+extents.height)*0.65 +offset);
-        cairo_show_text(w->crb, w->label);
-        
-    } else {
-        cairo_text_extents(w->crb,w->label , &extents);
-        cairo_move_to (w->crb, (width-extents.width)*0.5 +offset, (height+extents.height)*0.5 +offset);
-        cairo_show_text(w->crb, w->label);
-    }
-}
-
-// static
-void XKeyBoard::mk_draw_knob(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XWindowAttributes attrs;
-    XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
-    int width = attrs.width-2;
-    int height = attrs.height-2;
-
-    const double scale_zero = 20 * (M_PI/180); // defines "dead zone" for knobs
-    int arc_offset = 2;
-    int knob_x = 0;
-    int knob_y = 0;
-
-    int grow = (width > height-15) ? height-15:width;
-    knob_x = grow-1;
-    knob_y = grow-1;
-    /** get values for the knob **/
-
-    int knobx = (width - knob_x) * 0.5;
-    int knobx1 = width* 0.5;
-
-    int knoby = (height - knob_y) * 0.5;
-    int knoby1 = height * 0.5;
-
-    double knobstate = adj_get_state(w->adj_y);
-    double angle = scale_zero + knobstate * 2 * (M_PI - scale_zero);
-
-    double pointer_off =knob_x/3.5;
-    double radius = min(knob_x-pointer_off, knob_y-pointer_off) / 2;
-    double lengh_x = (knobx+radius+pointer_off/2) - radius * sin(angle);
-    double lengh_y = (knoby+radius+pointer_off/2) + radius * cos(angle);
-    double radius_x = (knobx+radius+pointer_off/2) - radius/ 1.18 * sin(angle);
-    double radius_y = (knoby+radius+pointer_off/2) + radius/ 1.18 * cos(angle);
-    cairo_pattern_t* pat;
-    cairo_new_path (w->crb);
-
-    pat = cairo_pattern_create_linear (0, 0, 0, knob_y);
-    cairo_pattern_add_color_stop_rgba (pat, 1,  0.3, 0.3, 0.3, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 0.75,  0.2, 0.2, 0.2, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.15, 0.15, 0.15, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 0.25,  0.1, 0.1, 0.1, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 0,  0.05, 0.05, 0.05, 1.0);
-
-    cairo_scale (w->crb, 0.95, 1.05);
-    cairo_arc(w->crb,knobx1+arc_offset/2, knoby1-arc_offset, knob_x/2.2, 0, 2 * M_PI );
-    cairo_set_source (w->crb, pat);
-    cairo_fill_preserve (w->crb);
-    cairo_set_source_rgb (w->crb, 0.1, 0.1, 0.1); 
-    cairo_set_line_width(w->crb,1);
-    cairo_stroke(w->crb);
-    cairo_scale (w->crb, 1.05, 0.95);
-    cairo_new_path (w->crb);
-    cairo_pattern_destroy (pat);
-    pat = NULL;
-
-    pat = cairo_pattern_create_linear (0, 0, 0, knob_y);
-    cairo_pattern_add_color_stop_rgba (pat, 0,  0.3, 0.3, 0.3, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 0.25,  0.2, 0.2, 0.2, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.15, 0.15, 0.15, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 0.75,  0.1, 0.1, 0.1, 1.0);
-    cairo_pattern_add_color_stop_rgba (pat, 1,  0.05, 0.05, 0.05, 1.0);
-
-    cairo_arc(w->crb,knobx1, knoby1, knob_x/2.6, 0, 2 * M_PI );
-    cairo_set_source (w->crb, pat);
-    cairo_fill_preserve (w->crb);
-    cairo_set_source_rgb (w->crb, 0.1, 0.1, 0.1); 
-    cairo_set_line_width(w->crb,1);
-    cairo_stroke(w->crb);
-    cairo_new_path (w->crb);
-    cairo_pattern_destroy (pat);
-
-    /** create a rotating pointer on the kob**/
-    cairo_set_line_cap(w->crb, CAIRO_LINE_CAP_ROUND); 
-    cairo_set_line_join(w->crb, CAIRO_LINE_JOIN_BEVEL);
-    cairo_move_to(w->crb, radius_x, radius_y);
-    cairo_line_to(w->crb,lengh_x,lengh_y);
-    cairo_set_line_width(w->crb,3);
-    cairo_set_source_rgb (w->crb,0.63,0.63,0.63);
-    cairo_stroke(w->crb);
-    cairo_new_path (w->crb);
-
-    cairo_text_extents_t extents;
-    /** show value on the kob**/
-    if (w->state) {
-        char s[64];
-        const char* format[] = {"%.1f", "%.2f", "%.3f"};
-        float value = adj_get_value(w->adj);
-        if (fabs(w->adj->step)>0.99) {
-            snprintf(s, 63,"%d",  (int) value);
-        } else if (fabs(w->adj->step)>0.09) {
-            snprintf(s, 63, format[1-1], value);
-        } else {
-            snprintf(s, 63, format[2-1], value);
-        }
-        cairo_set_source_rgb (w->crb, 0.6, 0.6, 0.6);
-        cairo_set_font_size (w->crb, knobx1/3);
-        cairo_text_extents(w->crb, s, &extents);
-        cairo_move_to (w->crb, knobx1-extents.width/2, knoby1+extents.height/2);
-        cairo_show_text(w->crb, s);
-        cairo_new_path (w->crb);
-    }
-
-    /** show label below the knob**/
-    use_text_color_scheme(w, get_color_state(w));
-    cairo_set_font_size (w->crb,  (w->app->normal_font-1)/w->scale.ascale);
-    cairo_text_extents(w->crb,w->label , &extents);
-
-    cairo_move_to (w->crb, knobx1-extents.width/2, height );
-    cairo_show_text(w->crb, w->label);
-    cairo_new_path (w->crb);
-}
-
-// static
-void XKeyBoard::draw_menubar(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XWindowAttributes attrs;
-    XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
-    int width = attrs.width;
-    int height = attrs.height;
-    use_bg_color_scheme(w, NORMAL_);
-    cairo_rectangle(w->crb,0,0,width,height);
-    cairo_fill (w->crb);
-    use_bg_color_scheme(w, ACTIVE_);
-    cairo_rectangle(w->crb,0,height-2,width,2);
-    cairo_fill(w->crb);
-}
-
-// static
-void XKeyBoard::draw_topbox(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XWindowAttributes attrs;
-    XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
-    int width = attrs.width;
-    int height = attrs.height;
-    use_bg_color_scheme(w, NORMAL_);
-    cairo_rectangle(w->crb,0,0,width,height);
-    cairo_fill (w->crb);
-    use_bg_color_scheme(w, ACTIVE_);
-    cairo_rectangle(w->crb,0,height-2,width,2);
-    cairo_fill(w->crb);
-}
-
-// static
-void XKeyBoard::draw_middlebox(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XWindowAttributes attrs;
-    XGetWindowAttributes(w->app->dpy, (Window)w->widget, &attrs);
-    int height = attrs.height;
-    set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
-    cairo_paint (w->crb);
-
-    cairo_pattern_t *pat = cairo_pattern_create_linear (0, 0, 0, height);
-    cairo_pattern_add_color_stop_rgba(pat, 0.0, 0.0, 0.0, 0.0, 0.0);
-    cairo_pattern_add_color_stop_rgba(pat, 0.8, 0.0, 0.0, 0.0, 0.0);
-    cairo_pattern_add_color_stop_rgba(pat, 1.0, 0.0, 0.0, 0.0, 0.6);
-    cairo_set_source(w->crb, pat);
-    cairo_paint (w->crb);
-    cairo_pattern_destroy (pat);
-}
-
-// static
 void XKeyBoard::set_std_value(void *w_, void* button, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     adj_set_value(w->adj, w->adj->std_value);
@@ -896,7 +543,7 @@ Widget_t *XKeyBoard::mamba_add_keyboard_knob(Widget_t *parent, const char * labe
     Widget_t *wid = add_knob(parent,label, x, y, width, height);
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     set_adjustment(wid->adj,64.0, 64.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
-    wid->func.expose_callback = mk_draw_knob;
+    wid->func.expose_callback = draw.mk_draw_knob;
     wid->func.key_press_callback = key_press;
     wid->func.key_release_callback = key_release;
     wid->func.double_click_callback = set_std_value;
@@ -907,7 +554,8 @@ Widget_t *XKeyBoard::mamba_add_keyboard_button(Widget_t *parent, const char * la
                                 int x, int y, int width, int height) {
     Widget_t *wid = add_toggle_button(parent,label, x, y, width, height);   
     wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    wid->func.expose_callback = draw_button;
+    wid->scale.gravity = ASPECT;
+    wid->func.expose_callback = draw.draw_button;
     wid->func.key_press_callback = key_press;
     wid->func.key_release_callback = key_release;
     wid->func.double_click_callback = set_std_value;
@@ -918,7 +566,19 @@ Widget_t *XKeyBoard::mamba_add_button(Widget_t *parent, const char * label,
                                 int x, int y, int width, int height) {
     Widget_t *wid = add_toggle_button(parent,label, x, y, width, height);   
     wid->flags |= NO_AUTOREPEAT;
-    wid->func.expose_callback = draw_button;
+    wid->func.expose_callback = draw.draw_button;
+    wid->func.key_press_callback = key_press;
+    wid->func.key_release_callback = key_release;
+    wid->func.double_click_callback = set_std_value;
+    return wid;
+}
+
+Widget_t *XKeyBoard::mamba_add_keyboard_switch(Widget_t *parent, const char * label,
+                                int x, int y, int width, int height) {
+    Widget_t *wid = add_toggle_button(parent,label, x, y, width, height);   
+    wid->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    wid->scale.gravity = ASPECT;
+    wid->func.expose_callback = draw.draw_my_switch;
     wid->func.key_press_callback = key_press;
     wid->func.key_release_callback = key_release;
     wid->func.double_click_callback = set_std_value;
@@ -962,7 +622,7 @@ void XKeyBoard::init_ui(Xputty *app) {
 
     // menu
     menubar = add_menubar(win,"",0, 0, 700, 25);
-    menubar->func.expose_callback = draw_menubar;
+    menubar->func.expose_callback = draw.draw_menubar;
     menubar->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     menubar->func.key_press_callback = key_press;
     menubar->func.key_release_callback = key_release;
@@ -1111,16 +771,57 @@ void XKeyBoard::init_ui(Xputty *app) {
     info->func.key_release_callback = key_release;
     info->func.value_changed_callback = info_callback;
 
+    songbpm = add_label(menubar,_("File BPM:"),390,2,100,20);
+    songbpm->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    snprintf(songbpm->input_label, 31,_("File BPM: %d"),  (int) song_bpm);
+    songbpm->label = songbpm->input_label;
+    songbpm->func.key_press_callback = key_press;
+    songbpm->func.key_release_callback = key_release;
+
+
+    Widget_t *tmp = mamba_add_keyboard_button(menubar, _("-"), 510, 0, 20, 20);
+    widget_get_png(tmp, LDVAR(minus_png));
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = clips_time;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(menubar, _("+"), 530, 0, 20, 20);
+    widget_get_png(tmp, LDVAR(plus_png));
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = claps_time;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
+    time_line = add_label(menubar,_("--"),550,5,100,15);
+    time_line->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    snprintf(time_line->input_label, 31,"%.2f sec", xjack->get_max_loop_time());
+    time_line->label = time_line->input_label;
+    time_line->func.key_press_callback = key_press;
+    time_line->func.key_release_callback = key_release;
+
+    tmp = mamba_add_keyboard_button(menubar, _("-"), 650, 0, 20, 20);
+    widget_get_png(tmp, LDVAR(minus_png));
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = clip_time;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+    tmp = mamba_add_keyboard_button(menubar, _("+"), 670, 0, 20, 20);
+    widget_get_png(tmp, LDVAR(plus_png));
+    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
+    tmp->func.value_changed_callback = clap_time;
+    tmp->func.key_press_callback = key_press;
+    tmp->func.key_release_callback = key_release;
+
     // top box
     proc_box = create_widget(win->app, win, 0, 25, 700, 45);
-    proc_box->func.expose_callback = draw_topbox;
+    proc_box->func.expose_callback = draw.draw_topbox;
     proc_box->flags |= NO_AUTOREPEAT;
     proc_box->flags  &= ~USE_TRANSPARENCY;
     proc_box->scale.gravity = NORTHEAST;
     proc_box->func.key_press_callback = key_press;
     proc_box->func.key_release_callback = key_release;
 
-    Widget_t *tmp = add_label(proc_box,_("Channel:"),10,10,60,20);
+    tmp = add_label(proc_box,_("Channel:"),10,10,60,20);
     tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
@@ -1137,7 +838,7 @@ void XKeyBoard::init_ui(Xputty *app) {
     channel->func.key_release_callback = key_release;
     Widget_t *menu = channel->childlist->childs[1];
     Widget_t *view_port = menu->childlist->childs[0];
-    view_port->func.expose_callback = draw_my_combobox_entrys;
+    view_port->func.expose_callback = draw.draw_my_combobox_entrys;
     tmp = channel->childlist->childs[0];
     tmp->func.key_press_callback = key_press;
     tmp->func.key_release_callback = key_release;
@@ -1190,109 +891,93 @@ void XKeyBoard::init_ui(Xputty *app) {
     bpm->func.key_press_callback = key_press;
     bpm->func.key_release_callback = key_release;
 
-    songbpm = add_label(proc_box,_("File BPM:"),510,10,100,20);
-    songbpm->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    snprintf(songbpm->input_label, 31,_("File BPM: %d"),  (int) song_bpm);
-    songbpm->label = songbpm->input_label;
-    songbpm->func.key_press_callback = key_press;
-    songbpm->func.key_release_callback = key_release;
+    record = mamba_add_keyboard_button(proc_box, _("_Record"), 540, 10, 30, 30);
+    widget_get_png(record, LDVAR(record_png));
+    record->func.value_changed_callback = record_callback;
 
-    tmp = mamba_add_keyboard_button(proc_box, _("-"), 645, 0, 15, 15);
-    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    tmp->func.value_changed_callback = clips_time;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(proc_box, _("+"), 660, 0, 15, 15);
-    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    tmp->func.value_changed_callback = claps_time;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
+    play = mamba_add_keyboard_button(proc_box, _("_Play"), 570, 10, 30, 30);
+    widget_get_png(play, LDVAR(play_png));
+   // play->func.adj_callback = set_play_label;
+    play->func.value_changed_callback = play_callback;
 
-    time_line = add_label(proc_box,_("--"),610,15,100,15);
-    time_line->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    snprintf(time_line->input_label, 31,"%.2f sec", xjack->get_max_loop_time());
-    time_line->label = time_line->input_label;
-    time_line->func.key_press_callback = key_press;
-    time_line->func.key_release_callback = key_release;
+    pause = mamba_add_keyboard_button(proc_box, _("Pause"), 600, 10, 30, 30);
+    widget_get_png(pause, LDVAR(pause_png));
+    pause->func.value_changed_callback = pause_callback;
 
-    tmp = mamba_add_keyboard_button(proc_box, _("-"), 645, 30, 15, 15);
-    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    tmp->func.value_changed_callback = clip_time;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
-    tmp = mamba_add_keyboard_button(proc_box, _("+"), 660, 30, 15, 15);
-    tmp->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
-    tmp->func.value_changed_callback = clap_time;
-    tmp->func.key_press_callback = key_press;
-    tmp->func.key_release_callback = key_release;
+    eject = mamba_add_keyboard_button(proc_box, _("eject"), 630, 10, 30, 30);
+    widget_get_png(eject, LDVAR(eject_png));
+    eject->func.value_changed_callback = eject_callback;
 
     // middle box
     int bpos = 70;
     if (!view_program) bpos -= 45;
     knob_box = create_widget(win->app, win, 0, bpos, 700, 77);
-    knob_box->func.expose_callback = draw_middlebox;
+    knob_box->func.expose_callback = draw.draw_middlebox;
     knob_box->flags |= NO_AUTOREPEAT;
     knob_box->flags &= ~USE_TRANSPARENCY;
     knob_box->scale.gravity = NORTHEAST;
     knob_box->func.key_press_callback = key_press;
     knob_box->func.key_release_callback = key_release;
     
-    w[0] = mamba_add_keyboard_knob(knob_box, _("PitchBend"), 5, 0, 60, 75);
+    w[0] = mamba_add_keyboard_knob(knob_box, _("PitchBend"), 3, 0, 60, 75);
     w[0]->data = PITCHBEND;
     w[0]->func.value_changed_callback = pitchwheel_callback;
     w[0]->func.button_release_callback = pitchwheel_release_callback;
     w[0]->func.button_press_callback = pitchwheel_press_callback;
 
-    w[9] = mamba_add_keyboard_knob(knob_box, _("Balance"), 65, 0, 60, 75);
+    w[9] = mamba_add_keyboard_knob(knob_box, _("Balance"), 63, 0, 60, 75);
     w[9]->data = BALANCE;
     w[9]->func.value_changed_callback = balance_callback;
 
-    w[1] = mamba_add_keyboard_knob(knob_box, _("ModWheel"), 125, 0, 60, 75);
+    w[1] = mamba_add_keyboard_knob(knob_box, _("ModWheel"), 123, 0, 60, 75);
     w[1]->data = MODULATION;
     set_adjustment(w[1]->adj, 0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[1]->func.value_changed_callback = modwheel_callback;
 
-    w[2] = mamba_add_keyboard_knob(knob_box, _("Detune"), 185, 0, 60, 75);
+    w[2] = mamba_add_keyboard_knob(knob_box, _("Detune"), 183, 0, 60, 75);
     w[2]->data = CELESTE;
     w[2]->func.value_changed_callback = detune_callback;
 
-    w[10] = mamba_add_keyboard_knob(knob_box, _("Expression"), 245, 0, 60, 75);
+    w[10] = mamba_add_keyboard_knob(knob_box, _("Expression"), 243, 0, 60, 75);
     w[10]->data = EXPRESSION;
     set_adjustment(w[10]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[10]->func.value_changed_callback = expression_callback;
 
-    w[3] = mamba_add_keyboard_knob(knob_box, _("Attack"), 305, 0, 60, 75);
+    w[3] = mamba_add_keyboard_knob(knob_box, _("Attack"), 303, 0, 60, 75);
     w[3]->data = ATTACK_TIME;
+    set_adjustment(w[3]->adj,0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[3]->func.value_changed_callback = attack_callback;
 
-    w[4] = mamba_add_keyboard_knob(knob_box, _("Release"), 365, 0, 60, 75);
+    w[4] = mamba_add_keyboard_knob(knob_box, _("Release"), 363, 0, 60, 75);
     w[4]->data = RELEASE_TIME;
+    set_adjustment(w[4]->adj,0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[4]->func.value_changed_callback = release_callback;
 
-    w[5] = mamba_add_keyboard_knob(knob_box, _("Volume"), 425, 0, 60, 75);
+    w[8] = mamba_add_keyboard_knob(knob_box, _("Cutoff"), 423, 0, 60, 75);
+    set_adjustment(w[8]->adj,0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
+    w[8]->func.value_changed_callback = cutoff_callback;
+
+    w[11] = mamba_add_keyboard_knob(knob_box, _("Resonance"), 483, 0, 60, 75);
+    set_adjustment(w[11]->adj,0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
+    w[11]->func.value_changed_callback = resonance_callback;
+
+    w[5] = mamba_add_keyboard_knob(knob_box, _("Volume"), 543, 0, 60, 75);
     w[5]->data = VOLUME;
     w[5]->func.value_changed_callback = volume_callback;
 
-    w[6] = mamba_add_keyboard_knob(knob_box, _("Velocity"), 485, 0, 60, 75);
+    w[6] = mamba_add_keyboard_knob(knob_box, _("Velocity"), 603, 0, 60, 75);
     w[6]->data = VELOCITY;
     set_adjustment(w[6]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[6]->func.value_changed_callback = velocity_callback;
 
-    w[7] = mamba_add_keyboard_button(knob_box, _("Sustain"), 550, 5, 75, 30);
+    w[7] = mamba_add_keyboard_switch(knob_box, _("Sustain"), 663, 9, 34, 70);
     w[7]->data = SUSTAIN;
     w[7]->func.value_changed_callback = sustain_callback;
-
+/*
     w[8] = mamba_add_keyboard_button(knob_box, _("Sostenuto"), 550, 45, 75, 30);
     w[8]->data = SOSTENUTO;
     w[8]->func.value_changed_callback = sostenuto_callback;
-
-    record = mamba_add_keyboard_button(knob_box, _("_Record"), 635, 5, 55, 30);
-    record->func.value_changed_callback = record_callback;
-
-    play = mamba_add_keyboard_button(knob_box, _("_Play"), 635, 45, 55, 30);
-    play->func.adj_callback = set_play_label;
-    play->func.value_changed_callback = play_callback;
-
+*/
     // open a widget for the keyboard layout
     int wpos = view_controls ? 147 : 70;
     if (!view_program) wpos -= 45;
@@ -1324,6 +1009,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     adj_set_value(octavemap->adj,octave);
     adj_set_value(w[6]->adj, velocity);
     adj_set_value(w[5]->adj, volume);
+    adj_set_value(w[3]->adj, attack);
+    adj_set_value(w[4]->adj, release);
     adj_set_value(free_wheel->adj, freewheel);
 
     // set window to saved size
@@ -2220,6 +1907,7 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
             xjmkb->xsynth->setup(xjmkb->xjack->SampleRate, synth_instance.c_str());
             xjmkb->xsynth->init_synth();
             check_edo_mapfile(xjmkb, xjmkb->get_edo_steps());
+            xjmkb->init_modulators(xjmkb);
         }
         if (xjmkb->xsynth->load_soundfont( *(const char**)user_data)) {
             Widget_t *dia = open_message_dialog(xjmkb->win, ERROR_BOX, *(const char**)user_data, 
@@ -2432,22 +2120,60 @@ void XKeyBoard::detune_callback(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::attack_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    int value = (int)adj_get_value(w->adj);
-    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 73, value, 3, false);
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    xjmkb->attack = (int)adj_get_value(w->adj);
+    if(xjmkb->xsynth->synth_is_active()) {
+        //for(int i = 0; i<16;i++)
+            xjmkb->mmessage->send_midi_cc(0xB0 | 0, 73, xjmkb->attack, 3, true);
+    } else {
+        xjmkb->mmessage->send_midi_cc(0xB0 , 73, xjmkb->attack, 3, false);
+    }
 }
 
 // static
 void XKeyBoard::expression_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     int value = (int)adj_get_value(w->adj);
-    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 11, value, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0 , 11, value, 3, false);
 }
 
 // static 
 void XKeyBoard::release_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    int value = (int)adj_get_value(w->adj);
-    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 72, value, 3, false);
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    xjmkb->release = (int)adj_get_value(w->adj);
+    if(xjmkb->xsynth->synth_is_active()) {
+        //for(int i = 0; i<16;i++)
+            xjmkb->mmessage->send_midi_cc(0xB0| 0, 72, xjmkb->release, 3, true);
+    } else {
+        xjmkb->mmessage->send_midi_cc(0xB0, 72, xjmkb->release, 3, false);
+    }
+}
+
+// static
+void XKeyBoard::cutoff_callback(void *w_, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    xjmkb->cutoff = (int)adj_get_value(w->adj);
+    if(xjmkb->xsynth->synth_is_active()) {
+        //for(int i = 0; i<16;i++)
+            xjmkb->mmessage->send_midi_cc(0xB0 | 0, 74, xjmkb->cutoff, 3, true);
+    } else {
+        xjmkb->mmessage->send_midi_cc(0xB0 , 74, xjmkb->cutoff, 3, false);
+    }
+}
+
+// static
+void XKeyBoard::resonance_callback(void *w_, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    xjmkb->resonance = (int)adj_get_value(w->adj);
+    if(xjmkb->xsynth->synth_is_active()) {
+        //for(int i = 0; i<16;i++)
+            xjmkb->mmessage->send_midi_cc(0xB0 | 0, 71, xjmkb->resonance, 3, true);
+    } else {
+        xjmkb->mmessage->send_midi_cc(0xB0 , 71, xjmkb->resonance, 3, false);
+    }
 }
 
 // static 
@@ -2737,7 +2463,7 @@ void XKeyBoard::record_callback(void *w_, void* user_data) {
 void XKeyBoard::play_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    int value = (int)adj_get_value(w->adj);
+    int value = (int)adj_get_value(xjmkb->pause->adj) ? 0 : (int)adj_get_value(w->adj);
     xjmkb->xjack->play.store(value, std::memory_order_release);
     if (value < 1) {
         MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
@@ -2750,6 +2476,33 @@ void XKeyBoard::play_callback(void *w_, void* user_data) noexcept{
     snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
     xjmkb->time_line->label = xjmkb->time_line->input_label;
     expose_widget(xjmkb->time_line);
+}
+
+// static
+void XKeyBoard::pause_callback(void *w_, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    int value = (int)adj_get_value(w->adj) ? 0 : (int)adj_get_value(xjmkb->play->adj)? 1 : 0;
+    xjmkb->xjack->play.store(value, std::memory_order_release);
+    if (value < 1) {
+        MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
+        for (int i = 0; i<16;i++) 
+            mamba_clear_key_matrix(keys->in_key_matrix[i]);
+        xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3, false);
+        if (xjmkb->xsynth->synth_is_active()) xjmkb->xsynth->panic();
+    } else {
+       xjmkb->xjack->second_play = true; 
+    }
+}
+
+// static
+void XKeyBoard::eject_callback(void *w_, void* user_data) noexcept{
+    Widget_t *w = (Widget_t*)w_;
+    if (adj_get_value(w->adj)) {
+        XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+        clear_all_loops_callback(xjmkb);
+        adj_set_value(w->adj, 0.0);
+    }
 }
 
 // static
@@ -2782,37 +2535,43 @@ void XKeyBoard::lmc_callback(void *w_, void* user_data) noexcept{
 }
 
 // static
+void XKeyBoard::clear_all_loops_callback(XKeyBoard *xjmkb) noexcept{
+    MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
+    xjmkb->xjack->play.store(0, std::memory_order_release);
+    //adj_set_value(xjmkb->play->adj, 0.0);
+    //set_play_label(xjmkb->play,NULL);
+    //adj_set_value(xjmkb->record->adj, 0.0);
+    for (int i = 0; i<16;i++) 
+        xjmkb->xjack->rec.play[i].clear();
+    for (int i = 0; i<16;i++) 
+        mamba_clear_key_matrix(keys->in_key_matrix[i]);
+    xjmkb->file_names.clear();
+    xjmkb->build_remove_menu();
+    xjmkb->load.positions.clear();
+    std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard");
+    widget_set_title(xjmkb->win, tittle.c_str());
+    adj_set_value(xjmkb->bpm->adj,120.0);
+    xjmkb->song_bpm = adj_get_value(xjmkb->bpm->adj);
+    xjmkb->mbpm = (int)adj_get_value(xjmkb->bpm->adj);
+    snprintf(xjmkb->songbpm->input_label, 31,_("File BPM: %d"),  (int) xjmkb->song_bpm);
+    xjmkb->songbpm->label = xjmkb->songbpm->input_label;
+    xjmkb->xjack->bpm_ratio = (double)xjmkb->song_bpm/(double)xjmkb->mbpm;
+    expose_widget(xjmkb->songbpm);
+    snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
+    xjmkb->time_line->label = xjmkb->time_line->input_label;
+    expose_widget(xjmkb->time_line);
+    xjmkb->need_save = true;
+    for ( int i = 0; i < 16; i++) xjmkb->looper_channel_matrix[i].store(0, std::memory_order_release);
+    expose_widget(xjmkb->looper_control);
+}
+
+// static
 void XKeyBoard::clear_loops_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     MambaKeyboard *keys = (MambaKeyboard*)xjmkb->wid->parent_struct;
     if ((int)adj_get_value(w->adj) == 3) {
-        xjmkb->xjack->play.store(0, std::memory_order_release);
-        //adj_set_value(xjmkb->play->adj, 0.0);
-        //set_play_label(xjmkb->play,NULL);
-        //adj_set_value(xjmkb->record->adj, 0.0);
-        for (int i = 0; i<16;i++) 
-            xjmkb->xjack->rec.play[i].clear();
-        for (int i = 0; i<16;i++) 
-            mamba_clear_key_matrix(keys->in_key_matrix[i]);
-        xjmkb->file_names.clear();
-        xjmkb->build_remove_menu();
-        xjmkb->load.positions.clear();
-        std::string tittle = xjmkb->client_name + _(" - Virtual Midi Keyboard");
-        widget_set_title(xjmkb->win, tittle.c_str());
-        adj_set_value(xjmkb->bpm->adj,120.0);
-        xjmkb->song_bpm = adj_get_value(xjmkb->bpm->adj);
-        xjmkb->mbpm = (int)adj_get_value(xjmkb->bpm->adj);
-        snprintf(xjmkb->songbpm->input_label, 31,_("File BPM: %d"),  (int) xjmkb->song_bpm);
-        xjmkb->songbpm->label = xjmkb->songbpm->input_label;
-        xjmkb->xjack->bpm_ratio = (double)xjmkb->song_bpm/(double)xjmkb->mbpm;
-        expose_widget(xjmkb->songbpm);
-        snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
-        xjmkb->time_line->label = xjmkb->time_line->input_label;
-        expose_widget(xjmkb->time_line);
-        xjmkb->need_save = true;
-        for ( int i = 0; i < 16; i++) xjmkb->looper_channel_matrix[i].store(0, std::memory_order_release);
-        expose_widget(xjmkb->looper_control);
+        clear_all_loops_callback(xjmkb);
     } else if ((int)adj_get_value(w->adj) == 4) {
         if (xjmkb->xjack->rec.channel == 0) {
             xjmkb->file_names.clear();
@@ -3170,13 +2929,6 @@ void XKeyBoard::key_release(void *w_, void *key_, void *user_data) {
 /**************** Fluidsynth settings window *****************/
 
 //static 
-void XKeyBoard::draw_synth_ui(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    set_pattern(w,&w->app->color_scheme->selected,&w->app->color_scheme->normal,BACKGROUND_);
-    cairo_paint (w->crb);
-}
-
-//static 
 void XKeyBoard::reverb_level_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
@@ -3408,7 +3160,7 @@ void XKeyBoard::init_synth_ui(Widget_t *parent) {
     widget_set_dnd_aware(synth_ui);
     synth_ui->flags &= ~USE_TRANSPARENCY;
     synth_ui->flags |= NO_AUTOREPEAT | NO_PROPAGATE | HIDE_ON_DELETE;
-    synth_ui->func.expose_callback = draw_synth_ui;
+    synth_ui->func.expose_callback = draw.draw_synth_ui;
     synth_ui->scale.gravity = CENTER;
     synth_ui->parent = parent;
     synth_ui->parent_struct = this;
@@ -3837,6 +3589,7 @@ int main (int argc, char *argv[]) {
             xjmkb.fs[2]->state = 0;
             xjmkb.rebuild_instrument_list();
             xjmkb.rebuild_soundfont_list();
+            xjmkb.init_modulators(&xjmkb);
         }
         
         if (argc > 1) {
