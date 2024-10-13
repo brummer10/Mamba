@@ -1,24 +1,49 @@
 
-	# check CPU and supported optimization flags
-	ifneq ($(shell cat /proc/cpuinfo | grep sse3 ) , )
-		SSE_CFLAGS = -msse3 -mfpmath=sse
-	else ifneq ($(shell cat /proc/cpuinfo | grep sse2 ) , )
-		SSE_CFLAGS = -msse2 -mfpmath=sse
-	else ifneq ($(shell cat /proc/cpuinfo | grep sse ) , )
-		SSE_CFLAGS = -msse -mfpmath=sse
-		else ifneq ($(shell cat /proc/cpuinfo | grep ARM ) , )
-		ifneq ($(shell cat /proc/cpuinfo | grep ARMv7 ) , )
-			ifneq ($(shell cat /proc/cpuinfo | grep vfpd32 ) , )
-				SSE_CFLAGS = -march=armv7-a -mfpu=vfpv3 
-			else ifneq ($(shell cat /proc/cpuinfo | grep vfpv3 ) , )
-				SSE_CFLAGS = -march=armv7-a -mfpu=vfpv3
-			endif
-		else
-			ARMCPU = "YES"
-		endif
-	else
-		SSE_CFLAGS =
-	endif
+	# check on which OS we build
+	UNAME_S := $(shell uname -s)
+
+# get flags supported by CPU
+ifeq ($(UNAME_S), FreeBSD)
+  CPU_INFO = dmesg | grep Features | tr A-Z a-z
+  ifeq ($(UNAME_M), amd64)
+    UNAME_M = x86_64
+  endif
+else
+  CPU_INFO = cat /proc/cpuinfo | grep flags
+endif
+
+ifneq ($(UNAME_M),$(TARGET_ARCH))
+  CROSS_COMPILING = 1
+  $(info $(yellow) INFO: $(reset)Cross Compile $(blue)$(UNAME_M)$(reset) to $(blue)$(TARGET_ARCH)$(reset))
+endif
+
+# avoid optimisation for x86_64 arch when we cross compile
+#ifneq ($(CROSS_COMPILING), 1)
+# check for sse optimisation level only on x86_64 architecture
+ifeq ($(TARGET_ARCH), x86_64)
+  ifneq ($$(filter $(CPU_INFO) | grep sse3 ) , )
+    SSE_CFLAGS = -msse3 -mfpmath=sse -mfxsr -DUSE_SSE=1
+    FFT_FLAG = -DFFTCONVOLVER_USE_SSE=1
+  else ifneq ($$(filter $(CPU_INFO) | grep sse2 ) , )
+    SSE_CFLAGS = -msse2 -mfpmath=sse -mfxsr -DUSE_SSE=1
+    FFT_FLAG = -DFFTCONVOLVER_USE_SSE=1
+  else ifneq ($$(filter $(CPU_INFO) | grep sse ) , )
+    SSE_CFLAGS = -msse -mfpmath=sse -mfxsr -DUSE_SSE=1
+    FFT_FLAG = -DFFTCONVOLVER_USE_SSE=1
+  else ifneq ($$(filter $(CPU_INFO) | grep ARM ) , )
+    ifneq ($$(filter $(CPU_INFO) | grep ARMv7 ) , )
+      ifneq ($$(filter $(CPU_INFO) | grep vfpd32 ) , )
+        SSE_CFLAGS = -march=armv7-a -mfpu=vfpv3 
+      else ifneq ($$(filter $(CPU_INFO) | grep vfpv3 ) , )
+        SSE_CFLAGS = -march=armv7-a -mfpu=vfpv3
+      endif
+    else
+      ARMCPU = "YES"
+    endif
+  endif
+else
+  SSE_CFLAGS =
+endif
 
 	# set bundle name
 	OLDNAME = MidiKeyBoard
@@ -45,7 +70,7 @@
 	
 	CXXFLAGS += -std=gnu++17 -O3 -D_FORTIFY_SOURCE=2 -Wall -fstack-protector -funroll-loops \
 	-ffast-math -fomit-frame-pointer -MMD $(SSE_CFLAGS)
-	ifneq ($(CXX), clang)
+	ifneq ($(UNAME_S), FreeBSD)
 	CXXFLAGS += -fstrength-reduce -fschedule-insns
 	endif
 	DEBUG_CXXFLAGS += -g -D DEBUG
