@@ -9,3 +9,5 @@ Icon=Mamba
 Categories=AudioVideo;Audio;Midi;
 MimeType=audio/x-midi
 Terminal=false
+X-NSM-Capable=true
+X-NSM-Exec=mamba
