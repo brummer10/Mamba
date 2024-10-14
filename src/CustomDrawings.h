@@ -192,11 +192,11 @@ public:
     static void switchLight(cairo_t *cr, int x, int y, int h) {
         cairo_pattern_t *pat = cairo_pattern_create_linear (x, y, x, y + h);
         cairo_pattern_add_color_stop_rgba
-            (pat, 1, 0.3, 0.55, 0.91, 1.0 * 0.8);
+            (pat, 1, 0.6, 0.6, 0.6, 1.0 * 0.8);
         cairo_pattern_add_color_stop_rgba
-            (pat, 0.5, 0.3, 0.55, 0.91, 1.0 * 0.4);
+            (pat, 0.5, 0.6, 0.6, 0.6, 1.0 * 0.4);
         cairo_pattern_add_color_stop_rgba
-            (pat, 0, 0.3, 0.55, 0.91, 1.0 * 0.2);
+            (pat, 0, 0.6, 0.6, 0.6, 1.0 * 0.2);
         cairo_pattern_set_extend(pat, CAIRO_EXTEND_NONE);
         cairo_set_source(cr, pat);
         cairo_fill_preserve (cr);

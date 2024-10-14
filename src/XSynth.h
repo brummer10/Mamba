@@ -86,6 +86,7 @@ public:
     void setup(unsigned int SampleRate, const char *instance_name);
     void init_synth();
     int synth_send_cc(int channel, int num, int value);
+    void reset_modulators();
     int synth_is_active() {return synth ? 1 : 0;}
     int load_soundfont(const char *path);
     void print_soundfont();

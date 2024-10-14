@@ -285,6 +285,10 @@ void XSynth::setup_envelope() {
     fluid_mod_set_amount(fmod, -2400.0f);
     fluid_synth_add_default_mod(synth, fmod, FLUID_SYNTH_ADD);
 #endif
+}
+
+void XSynth::reset_modulators() {
+    if (!synth) return;
     // set modulators for all channels to zero
     for (int i = 0; i<16; i++) {
         fluid_synth_cc(synth, i, 73, 0);
@@ -305,6 +309,7 @@ void XSynth::init_synth() {
     if (scala_size) setup_scala_tuning();
     setup_tunnings_for_channelemap();
     setup_envelope();
+    reset_modulators();
 }
 
 int XSynth::synth_send_cc(int channel, int num, int value) {

@@ -389,13 +389,15 @@ public:
     bool has_config;
     Widget_t *win;
     Widget_t *wid;
-    Widget_t *fs[3];
+    Widget_t *fs[4];
     int visible;
-    int volume;
-    int attack;
-    int release;
-    int cutoff;
-    int resonance;
+    int expresion[16];
+    int volume[16];
+    int attack[16];
+    int release[16];
+    int cutoff[16];
+    int resonance[16];
+    int sustain[16];
 
     void init_ui(Xputty *app);
     void init_synth_ui(Widget_t *win);

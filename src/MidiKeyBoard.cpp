@@ -114,11 +114,6 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     main_h = 240;
     visible = 1;
     velocity = 127;
-    volume = 63;
-    attack = 0;
-    release = 0;
-    cutoff = 0;
-    resonance = 0;
     mbank = 0;
     mprogram = 0;
     mbpm = 120;
@@ -141,7 +136,17 @@ XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth 
     is_inited.store(false, std::memory_order_release);
     filepath = getenv("HOME") ? getenv("HOME") : "/";
     scala_filepath = getenv("HOME") ? getenv("HOME") : "/";
-    for ( int i = 0; i < 16; i++) looper_channel_matrix[i].store(0, std::memory_order_release);
+
+    for ( int i = 0; i < 16; i++) {
+        attack[i] = 0;
+        release[i] = 0;
+        cutoff[i] = 0;
+        resonance[i] = 0;
+        volume[i] = 63;
+        expresion[i] = 127;
+        sustain[i] = 0;
+        looper_channel_matrix[i].store(0, std::memory_order_release);
+    }
 
     nsmsig.signal_trigger_nsm_show_gui().connect(
         sigc::mem_fun(this, &XKeyBoard::nsm_show_ui));
@@ -172,10 +177,14 @@ XKeyBoard::~XKeyBoard() {}
 
 //static
 void XKeyBoard::init_modulators(XKeyBoard* xjmkb){
-    xjmkb->attack_callback(xjmkb->w[3], NULL);
-    xjmkb->attack_callback(xjmkb->w[3], NULL);
-    xjmkb->cutoff_callback(xjmkb->w[8], NULL);
-    xjmkb->resonance_callback(xjmkb->w[11], NULL);
+    if (xjmkb->xsynth->synth_is_active()) {
+        for (int i = 0; i < 16; i++) {
+            xjmkb->mmessage->send_midi_cc(0xB0 | i, 73, xjmkb->attack[i], 3, true);
+            xjmkb->mmessage->send_midi_cc(0xB0| i, 72, xjmkb->release[i], 3, true);
+            xjmkb->mmessage->send_midi_cc(0xB0 | i, 74, xjmkb->cutoff[i], 3, true);
+            xjmkb->mmessage->send_midi_cc(0xB0 | i, 71, xjmkb->resonance[i], 3, true);
+        }
+    }
 }
 
 //static
@@ -256,11 +265,55 @@ void XKeyBoard::read_config() {
             else if (key.compare("[filepath]") == 0) filepath = remove_sub(line, "[filepath] ");
             else if (key.compare("[scala_filepath]") == 0) scala_filepath = remove_sub(line, "[scala_filepath] ");
             else if (key.compare("[octave]") == 0) octave = std::stoi(value);
-            else if (key.compare("[volume]") == 0) volume = std::stoi(value);
-            else if (key.compare("[attack]") == 0) attack = std::stoi(value);
-            else if (key.compare("[release]") == 0) release = std::stoi(value);
-            else if (key.compare("[cutoff]") == 0) cutoff = std::stoi(value);
-            else if (key.compare("[resonance]") == 0) resonance = std::stoi(value);
+            else if (key.compare("[expresion]") == 0) {
+                for (int i = 0; i < 15; i++) {
+                    expresion[i] = std::stoi(value);
+                    buf >> value;
+                }
+                expresion[15] = std::stoi(value);
+            }
+            else if (key.compare("[volume]") == 0) {
+                for (int i = 0; i < 15; i++) {
+                    volume[i] = std::stoi(value);
+                    buf >> value;
+                }
+                volume[15] = std::stoi(value);
+            }
+            else if (key.compare("[attack]") == 0) {
+                for (int i = 0; i < 15; i++) {
+                    attack[i] = std::stoi(value);
+                    buf >> value;
+                }
+                attack[15] = std::stoi(value);
+            }
+            else if (key.compare("[release]") == 0) {
+                for (int i = 0; i < 15; i++) {
+                    release[i] = std::stoi(value);
+                    buf >> value;
+                }
+                release[15] = std::stoi(value);
+            }
+            else if (key.compare("[cutoff]") == 0) {
+                for (int i = 0; i < 15; i++) {
+                    cutoff[i] = std::stoi(value);
+                    buf >> value;
+                }
+                cutoff[15] = std::stoi(value);
+            }
+            else if (key.compare("[resonance]") == 0) {
+                for (int i = 0; i < 15; i++) {
+                    resonance[i] = std::stoi(value);
+                    buf >> value;
+                }
+                resonance[15] = std::stoi(value);
+            }
+            else if (key.compare("[sustain]") == 0) {
+                for (int i = 0; i < 15; i++) {
+                    sustain[i] = std::stoi(value);
+                    buf >> value;
+                }
+                sustain[15] = std::stoi(value);
+            }
             else if (key.compare("[freewheel]") == 0) freewheel = std::stoi(value);
             else if (key.compare("[lchannels]") == 0) lchannels = std::stoi(value);
             else if (key.compare("[soundfontpath]") == 0) soundfontpath = remove_sub(line, "[soundfontpath] ");
@@ -406,11 +459,41 @@ void XKeyBoard::save_config() {
          outfile << "[filepath] " << filepath << std::endl;
          outfile << "[scala_filepath] " << scala_filepath << std::endl;
          outfile << "[octave] " << octave << std::endl;
-         outfile << "[volume] " << volume << std::endl;
-         outfile << "[attack] " << attack << std::endl;
-         outfile << "[release] " << release << std::endl;
-         outfile << "[cutoff] " << cutoff << std::endl;
-         outfile << "[resonance] " << resonance << std::endl;
+         outfile << "[expresion] ";
+         for (int i = 0; i < 16; i++) {
+            outfile << " " << expresion[i];
+         }
+         outfile << std::endl;
+         outfile << "[volume] ";
+         for (int i = 0; i < 16; i++) {
+            outfile << " " << volume[i];
+         }
+         outfile << std::endl;
+         outfile << "[attack] ";
+         for (int i = 0; i < 16; i++) {
+            outfile << " " << attack[i];
+         }
+         outfile << std::endl;
+         outfile << "[release] ";
+         for (int i = 0; i < 16; i++) {
+            outfile << " " << release[i];
+         }
+         outfile << std::endl;
+         outfile << "[cutoff] ";
+         for (int i = 0; i < 16; i++) {
+            outfile << " " << cutoff[i];
+         }
+         outfile << std::endl;
+         outfile << "[resonance] ";
+         for (int i = 0; i < 16; i++) {
+            outfile << " " << resonance[i];
+         }
+         outfile << std::endl;
+         outfile << "[sustain] ";
+         for (int i = 0; i < 16; i++) {
+            outfile << " " << sustain[i];
+         }
+         outfile << std::endl;
          outfile << "[freewheel] " << freewheel << std::endl;
          outfile << "[lchannels] " << lchannels << std::endl;
          outfile << "[soundfontpath] " << soundfontpath << std::endl;
@@ -735,6 +818,8 @@ void XKeyBoard::init_ui(Xputty *app) {
     fs[0]->state = 4;
     fs[1] = menu_add_entry(synth,_("Fluids_ynth Panic"));
     fs[1]->state = 4;
+    fs[3] = menu_add_entry(synth,_("Reset Modulators"));
+    fs[3]->state = 4;
     fs[2] = menu_add_entry(synth,_("E_xit Fluidsynth"));
     fs[2]->state = 4;
     synth->flags |= NO_AUTOREPEAT;
@@ -830,9 +915,9 @@ void XKeyBoard::init_ui(Xputty *app) {
     channel->childlist->childs[0]->flags |= NO_AUTOREPEAT | NO_PROPAGATE;
     channel->scale.gravity = ASPECT;
     combobox_add_numeric_entrys(channel,1,16);
-    combobox_add_entry(channel,"--");
+    //combobox_add_entry(channel,"--");
     combobox_set_active_entry(channel, 0);
-    set_adjustment(channel->adj,0.0, 0.0, 0.0, 16.0, 1.0, CL_ENUM);
+    set_adjustment(channel->adj,0.0, 0.0, 0.0, 15.0, 1.0, CL_ENUM);
     channel->func.value_changed_callback = channel_callback;
     channel->func.key_press_callback = key_press;
     channel->func.key_release_callback = key_release;
@@ -1008,9 +1093,13 @@ void XKeyBoard::init_ui(Xputty *app) {
     adj_set_value(keymap->adj,keylayout);
     adj_set_value(octavemap->adj,octave);
     adj_set_value(w[6]->adj, velocity);
-    adj_set_value(w[5]->adj, volume);
-    adj_set_value(w[3]->adj, attack);
-    adj_set_value(w[4]->adj, release);
+    adj_set_value(w[5]->adj, expresion[mchannel]);
+    adj_set_value(w[5]->adj, volume[mchannel]);
+    adj_set_value(w[3]->adj, attack[mchannel]);
+    adj_set_value(w[4]->adj, release[mchannel]);
+    adj_set_value(w[8]->adj, cutoff[mchannel]);
+    adj_set_value(w[11]->adj, resonance[mchannel]);
+    adj_set_value(w[11]->adj, sustain[mchannel]);
     adj_set_value(free_wheel->adj, freewheel);
 
     // set window to saved size
@@ -1946,10 +2035,12 @@ void XKeyBoard::synth_load_response(void *w_, void* user_data) {
         if (attrs.map_state == IsViewable) {
             widget_show_all(xjmkb->fs_instruments);
         }
-        xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3, false);
+        for (int i = 0; i<16;i++)
+            xjmkb->mmessage->send_midi_cc(0xB0 | i, 7, xjmkb->volume[i], 3, true);
         xjmkb->fs[0]->state = 0;
         xjmkb->fs[1]->state = 0;
         xjmkb->fs[2]->state = 0;
+        xjmkb->fs[3]->state = 0;
         xjmkb->rebuild_soundfont_list();
         xjmkb->build_sfont_menu();
     }
@@ -2003,6 +2094,19 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
         break;
         case(3):
         {
+            xjmkb->xsynth->reset_modulators();
+            adj_set_value(xjmkb->w[3]->adj, 0.0);
+            adj_set_value(xjmkb->w[4]->adj, 0.0);
+            adj_set_value(xjmkb->w[8]->adj, 0.0);
+            adj_set_value(xjmkb->w[11]->adj, 0.0);
+            //for ( int i = 0; i < 16; i++) {
+           //     xjmkb->volume[i] = 63;
+           // }
+           // adj_set_value(xjmkb->w[5]->adj, 63.0);
+        }
+        break;
+        case(4):
+        {
             xjmkb->show_synth_ui(0);
             xjmkb->xsynth->unload_synth();
             xjmkb->remamba_set_edos(xjmkb);
@@ -2010,6 +2114,7 @@ void XKeyBoard::synth_callback(void *w_, void* user_data) {
             xjmkb->fs[0]->state = 4;
             xjmkb->fs[1]->state = 4;
             xjmkb->fs[2]->state = 4;
+            xjmkb->fs[3]->state = 4;
             xjmkb->build_sfont_menu();
         }
         break;
@@ -2046,6 +2151,13 @@ void XKeyBoard::channel_callback(void *w_, void* user_data) noexcept{
     }
     xjmkb->xjack->rec.channel = xjmkb->mmessage->channel = keys->channel = xjmkb->mchannel = (int)adj_get_value(w->adj);
     if(xjmkb->xsynth->synth_is_active()) {
+        adj_set_value(xjmkb->w[3]->adj, xjmkb->attack[xjmkb->mchannel]);
+        adj_set_value(xjmkb->w[4]->adj, xjmkb->release[xjmkb->mchannel]);
+        adj_set_value(xjmkb->w[8]->adj, xjmkb->cutoff[xjmkb->mchannel]);
+        adj_set_value(xjmkb->w[11]->adj, xjmkb->resonance[xjmkb->mchannel]);
+        adj_set_value(xjmkb->w[5]->adj, xjmkb->volume[xjmkb->mchannel]);
+        adj_set_value(xjmkb->w[10]->adj, xjmkb->expresion[xjmkb->mchannel]);
+        adj_set_value(xjmkb->w[7]->adj, xjmkb->sustain[xjmkb->mchannel]);
         //xjmkb->fs_edo->func.value_changed_callback = dummy_callback;
         combobox_set_active_entry(xjmkb->fs_edo, xjmkb->xsynth->get_tuning_for_channel(xjmkb->mchannel));
         //xjmkb->fs_edo->func.value_changed_callback = xjmkb->edo_callback;
@@ -2121,67 +2233,48 @@ void XKeyBoard::detune_callback(void *w_, void* user_data) noexcept{
 void XKeyBoard::attack_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->attack = (int)adj_get_value(w->adj);
-    if(xjmkb->xsynth->synth_is_active()) {
-        //for(int i = 0; i<16;i++)
-            xjmkb->mmessage->send_midi_cc(0xB0 | 0, 73, xjmkb->attack, 3, true);
-    } else {
-        xjmkb->mmessage->send_midi_cc(0xB0 , 73, xjmkb->attack, 3, false);
-    }
+    xjmkb->attack[xjmkb->mchannel] = (int)adj_get_value(w->adj);
+    xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, 73, xjmkb->attack[xjmkb->mchannel], 3, true);
 }
 
 // static
 void XKeyBoard::expression_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    int value = (int)adj_get_value(w->adj);
-    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0 , 11, value, 3, false);
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    xjmkb->expresion[xjmkb->mchannel] = (int)adj_get_value(w->adj);
+    xjmkb->mmessage->send_midi_cc(0xB0| xjmkb->mchannel , 11, xjmkb->expresion[xjmkb->mchannel], 3, true);
 }
 
 // static 
 void XKeyBoard::release_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->release = (int)adj_get_value(w->adj);
-    if(xjmkb->xsynth->synth_is_active()) {
-        //for(int i = 0; i<16;i++)
-            xjmkb->mmessage->send_midi_cc(0xB0| 0, 72, xjmkb->release, 3, true);
-    } else {
-        xjmkb->mmessage->send_midi_cc(0xB0, 72, xjmkb->release, 3, false);
-    }
+    xjmkb->release[xjmkb->mchannel] = (int)adj_get_value(w->adj);
+    xjmkb->mmessage->send_midi_cc(0xB0| xjmkb->mchannel, 72, xjmkb->release[xjmkb->mchannel], 3, true);
 }
 
 // static
 void XKeyBoard::cutoff_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->cutoff = (int)adj_get_value(w->adj);
-    if(xjmkb->xsynth->synth_is_active()) {
-        //for(int i = 0; i<16;i++)
-            xjmkb->mmessage->send_midi_cc(0xB0 | 0, 74, xjmkb->cutoff, 3, true);
-    } else {
-        xjmkb->mmessage->send_midi_cc(0xB0 , 74, xjmkb->cutoff, 3, false);
-    }
+    xjmkb->cutoff[xjmkb->mchannel] = (int)adj_get_value(w->adj);
+    xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, 74, xjmkb->cutoff[xjmkb->mchannel], 3, true);
 }
 
 // static
 void XKeyBoard::resonance_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->resonance = (int)adj_get_value(w->adj);
-    if(xjmkb->xsynth->synth_is_active()) {
-        //for(int i = 0; i<16;i++)
-            xjmkb->mmessage->send_midi_cc(0xB0 | 0, 71, xjmkb->resonance, 3, true);
-    } else {
-        xjmkb->mmessage->send_midi_cc(0xB0 , 71, xjmkb->resonance, 3, false);
-    }
+    xjmkb->resonance[xjmkb->mchannel] = (int)adj_get_value(w->adj);
+    xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, 71, xjmkb->resonance[xjmkb->mchannel], 3, true);
 }
 
 // static 
 void XKeyBoard::volume_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->volume = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0, 7, xjmkb->volume, 3, false);
+    xjmkb->volume[xjmkb->mchannel] = (int)adj_get_value(w->adj);
+    xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, 7, xjmkb->volume[xjmkb->mchannel], 3, true);
 }
 
 // static 
@@ -2246,8 +2339,9 @@ void XKeyBoard::balance_callback(void *w_, void* user_data) noexcept{
 // static
 void XKeyBoard::sustain_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
-    int value = (int)adj_get_value(w->adj);
-    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 64, value*127, 3, false);
+    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    xjmkb->sustain[xjmkb->mchannel] = (int)adj_get_value(w->adj);
+    xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, 64, xjmkb->sustain[xjmkb->mchannel]*127, 3, true);
 }
 
 // static
@@ -2415,6 +2509,7 @@ void XKeyBoard::clap_time(void *w_, void* user_data) noexcept{
 void XKeyBoard::record_callback(void *w_, void* user_data) {
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
+    if (!xjmkb->xjack->play.load(std::memory_order_acquire)) return;
     int value = (int)adj_get_value(w->adj);
     xjmkb->xjack->record.store(value, std::memory_order_release);
     if (value > 0) {
@@ -2472,6 +2567,8 @@ void XKeyBoard::play_callback(void *w_, void* user_data) noexcept{
         xjmkb->mmessage->send_midi_cc(0xB0, 123, 0, 3, false);
         if (xjmkb->xsynth->synth_is_active()) xjmkb->xsynth->panic();
         xjmkb->xjack->first_play = true;
+    } else {
+        if (adj_get_value(xjmkb->record->adj)) xjmkb->record_callback(xjmkb->record, NULL);
     }
     snprintf(xjmkb->time_line->input_label, 31,"%.2f sec", xjmkb->xjack->get_max_loop_time());
     xjmkb->time_line->label = xjmkb->time_line->input_label;
@@ -2492,6 +2589,7 @@ void XKeyBoard::pause_callback(void *w_, void* user_data) noexcept{
         if (xjmkb->xsynth->synth_is_active()) xjmkb->xsynth->panic();
     } else {
        xjmkb->xjack->second_play = true; 
+        if (adj_get_value(xjmkb->record->adj)) xjmkb->record_callback(xjmkb->record, NULL);
     }
 }
 
@@ -2859,6 +2957,7 @@ void XKeyBoard::key_press(void *w_, void *key_, void *user_data) {
                 xjmkb->fs[0]->state = 4;
                 xjmkb->fs[1]->state = 4;
                 xjmkb->fs[2]->state = 4;
+                xjmkb->fs[3]->state = 4;
             }
             break;
             case (XK_y):
@@ -3583,10 +3682,12 @@ int main (int argc, char *argv[]) {
                 jack_free(port_list);
                 port_list = NULL;
             }
-            mmessage.send_midi_cc(0xB0, 7, xjmkb.volume, 3, false);
+            for (int i = 0; i<16;i++)
+                mmessage.send_midi_cc(0xB0 | i, 7, xjmkb.volume[i], 3, true);
             xjmkb.fs[0]->state = 0;
             xjmkb.fs[1]->state = 0;
             xjmkb.fs[2]->state = 0;
+            xjmkb.fs[3]->state = 0;
             xjmkb.rebuild_instrument_list();
             xjmkb.rebuild_soundfont_list();
             xjmkb.init_modulators(&xjmkb);
