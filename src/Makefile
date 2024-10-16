@@ -80,7 +80,8 @@ endif
 	`pkg-config --cflags jack cairo x11 sigc++-2.0 liblo smf fluidsynth`\
 	-DVERSION=\"$(VER)\"
 	# invoke build files
-	OBJECTS = $(OLDNAME).cpp $(NAME).cpp XAlsa.cpp XJack.cpp NsmHandler.cpp XSynth.cpp MidiMapper.cpp
+	OBJECTS = $(NAME).cpp XAlsa.cpp XJack.cpp NsmHandler.cpp XSynth.cpp MidiMapper.cpp main.cpp \
+	PosixSignalHandler.cpp AnimatedKeyBoard.cpp $(OLDNAME).cpp
 	SOBJECTS = $(LIBSCALA_DIR)scala_kbm.cpp $(LIBSCALA_DIR)scala_scl.cpp
 	COBJECTS = xmkeyboard.c xcustommap.c
 	OBJ_FILES = $(addprefix ./$(BUILD_DIR)/,$(notdir $(OBJECTS:.cpp=.o)))

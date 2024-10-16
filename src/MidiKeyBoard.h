@@ -18,6 +18,7 @@
  *
  */
 
+#include "AnimatedKeyBoard.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -48,6 +49,7 @@
 #endif
 
 #include "NsmHandler.h"
+#include "PosixSignalHandler.h"
 #include "Mamba.h"
 #include "XJack.h"
 #include "XAlsa.h"
@@ -69,71 +71,6 @@ namespace midikeyboard {
 
 #define CPORTS 12
 
-typedef enum {
-    PITCHBEND,
-    MODULATION,
-    CELESTE,
-    ATTACK_TIME,
-    RELEASE_TIME,
-    VOLUME,
-    VELOCITY,
-    SUSTAIN,
-    SOSTENUTO,
-    BALANCE,
-    EXPRESSION,
-    KEYMAP,
-    LAYOUT,
-    
-}ControlPorts;
-
-
-/****************************************************************
- ** class PosixSignalHandler
- **
- ** Watch for incomming system signals in a extra thread
- ** 
- */
-
-class PosixSignalHandler : public sigc::trackable {
-private:
-    sigset_t waitset;
-    std::thread *thread;
-    volatile bool exit;
-    void signal_helper_thread();
-    void create_thread();
-    
-public:
-    PosixSignalHandler();
-    ~PosixSignalHandler();
-
-    sigc::signal<void, int> trigger_quit_by_posix;
-    sigc::signal<void, int>& signal_trigger_quit_by_posix() { return trigger_quit_by_posix; }
-
-    sigc::signal<void, int> trigger_kill_by_posix;
-    sigc::signal<void, int>& signal_trigger_kill_by_posix() { return trigger_kill_by_posix; }
-};
-
-/****************************************************************
- ** class AnimatedKeyBoard
- **
- ** animate midi input from jack on the keyboard in a extra thread
- ** 
- */
-
-class AnimatedKeyBoard {
-private:
-    std::atomic<bool> _execute;
-    std::thread _thd;
-
-public:
-    AnimatedKeyBoard();
-    ~AnimatedKeyBoard();
-    void stop();
-    void start(int interval, std::function<void(void)> func);
-    bool is_running() const noexcept;
-};
-
-
 /****************************************************************
  ** class XKeyBoard
  **
@@ -149,9 +86,9 @@ private:
     mamba::MidiSave save;
     mamba::MidiLoad load;
     mamba::MidiMessenger *mmessage;
-    AnimatedKeyBoard * animidi;
+    animatedkeyboard::AnimatedKeyBoard * animidi;
     nsmhandler::NsmSignalHandler& nsmsig;
-    PosixSignalHandler& xsig;
+    signalhandler::PosixSignalHandler& xsig;
     CustomDrawings draw;
 
     Widget_t *w[CPORTS];
@@ -244,6 +181,18 @@ private:
     static void get_note(Widget_t *w, const int *key, const bool on_off) noexcept;
     static void get_all_notes_off(Widget_t *w, const int *value) noexcept;
 
+    // midi cc controller callbacks
+    static void midi_cc_callback(void *w_, void* user_data) noexcept;
+    static void midi_cc_channel_callback(void *w_, void* user_data) noexcept;
+    static void bank_callback(void *w_, void* user_data) noexcept;
+    static void program_callback(void *w_, void* user_data);
+    static void bpm_callback(void *w_, void* user_data) noexcept;
+    static void velocity_callback(void *w_, void* user_data) noexcept;
+    static void pitchwheel_callback(void *w_, void* user_data) noexcept;
+    static void pitchwheel_release_callback(void *w_, void* button, void* user_data) noexcept;
+    static void pitchwheel_press_callback(void *w_, void* button, void* user_data) noexcept;
+    static void sustain_callback(void *w_, void* user_data) noexcept;
+
     static void set_std_value(void *w_, void* button, void* user_data) noexcept;
     static void info_callback(void *w_, void* user_data);
     static void load_scala_callback(void *w_, void* user_data);
@@ -257,9 +206,6 @@ private:
     static void file_remove_callback(void *w_, void* user_data);
     static void rebuild_remove_menu(void *w_, void* button, void* user_data);
     static void channel_callback(void *w_, void* user_data) noexcept;
-    static void bank_callback(void *w_, void* user_data) noexcept;
-    static void program_callback(void *w_, void* user_data);
-    static void bpm_callback(void *w_, void* user_data) noexcept;
     static void layout_callback(void *w_, void* user_data);
     static void octave_callback(void *w_, void* user_data) noexcept;
     static void keymap_callback(void *w_, void* user_data);
@@ -267,21 +213,6 @@ private:
     static void through_callback(void *w_, void* user_data);
     static void midi_map_callback(void *w_, void* user_data);
     static void synth_callback(void *w_, void* user_data);
-    static void modwheel_callback(void *w_, void* user_data) noexcept;
-    static void detune_callback(void *w_, void* user_data) noexcept;
-    static void attack_callback(void *w_, void* user_data) noexcept;
-    static void expression_callback(void *w_, void* user_data) noexcept;
-    static void release_callback(void *w_, void* user_data) noexcept;
-    static void cutoff_callback(void *w_, void* user_data) noexcept;
-    static void resonance_callback(void *w_, void* user_data) noexcept;
-    static void volume_callback(void *w_, void* user_data) noexcept;
-    static void velocity_callback(void *w_, void* user_data) noexcept;
-    static void pitchwheel_callback(void *w_, void* user_data) noexcept;
-    static void balance_callback(void *w_, void* user_data) noexcept;
-    static void pitchwheel_release_callback(void *w_, void* button, void* user_data) noexcept;
-    static void pitchwheel_press_callback(void *w_, void* button, void* user_data) noexcept;
-    static void sustain_callback(void *w_, void* user_data) noexcept;
-    static void sostenuto_callback(void *w_, void* user_data) noexcept;
     static void record_callback(void *w_, void* user_data);
     static void play_callback(void *w_, void* user_data) noexcept;
     static void pause_callback(void *w_, void* user_data) noexcept;
@@ -372,7 +303,7 @@ public:
     XKeyBoard(xjack::XJack *xjack, xalsa::XAlsa *xalsa, xsynth::XSynth *xsynth,
         midimapper::MidiMapper *midimap,
         mamba::MidiMessenger *mmessage, nsmhandler::NsmSignalHandler& nsmsig,
-        PosixSignalHandler& xsig, AnimatedKeyBoard * animidi);
+        signalhandler::PosixSignalHandler& xsig, animatedkeyboard::AnimatedKeyBoard * animidi);
     ~XKeyBoard();
 
     xjack::XJack *xjack;

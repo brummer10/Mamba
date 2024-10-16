@@ -24,53 +24,6 @@
 #include "xcustommap.h"
 
 
-namespace midikeyboard {
-
-
-/****************************************************************
- ** class AnimatedKeyBoard
- **
- ** animate midi input from jack on the keyboard in a extra thread
- ** 
- */
-
-AnimatedKeyBoard::AnimatedKeyBoard() 
-    :_execute(false) {
-}
-
-AnimatedKeyBoard::~AnimatedKeyBoard() {
-    if( _execute.load(std::memory_order_acquire) ) {
-        stop();
-    };
-}
-
-void AnimatedKeyBoard::stop() {
-    _execute.store(false, std::memory_order_release);
-    if (_thd.joinable()) {
-        _thd.join();
-    }
-}
-
-void AnimatedKeyBoard::start(int interval, std::function<void(void)> func) {
-    if( _execute.load(std::memory_order_acquire) ) {
-        stop();
-    };
-    _execute.store(true, std::memory_order_release);
-    _thd = std::thread([this, interval, func]() {
-        while (_execute.load(std::memory_order_acquire)) {
-            func();                   
-            std::this_thread::sleep_for(
-                std::chrono::milliseconds(interval));
-        }
-    });
-}
-
-bool AnimatedKeyBoard::is_running() const noexcept {
-    return ( _execute.load(std::memory_order_acquire) && 
-             _thd.joinable() );
-}
-
-
 /****************************************************************
  ** class XKeyBoard
  **
@@ -78,10 +31,12 @@ bool AnimatedKeyBoard::is_running() const noexcept {
  ** 
  */
 
+namespace midikeyboard {
+
 XKeyBoard::XKeyBoard(xjack::XJack *xjack_, xalsa::XAlsa *xalsa_, xsynth::XSynth *xsynth_,
         midimapper::MidiMapper *midimap,
         mamba::MidiMessenger *mmessage_, nsmhandler::NsmSignalHandler& nsmsig_,
-        PosixSignalHandler& xsig_, AnimatedKeyBoard * animidi_)
+        signalhandler::PosixSignalHandler& xsig_, animatedkeyboard::AnimatedKeyBoard * animidi_)
     : xalsa(xalsa_),
     xsynth(xsynth_),
     mmapper(midimap),
@@ -1005,64 +960,66 @@ void XKeyBoard::init_ui(Xputty *app) {
     knob_box->func.key_release_callback = key_release;
     
     w[0] = mamba_add_keyboard_knob(knob_box, _("PitchBend"), 3, 0, 60, 75);
-    w[0]->data = PITCHBEND;
     w[0]->func.value_changed_callback = pitchwheel_callback;
     w[0]->func.button_release_callback = pitchwheel_release_callback;
     w[0]->func.button_press_callback = pitchwheel_press_callback;
 
     w[9] = mamba_add_keyboard_knob(knob_box, _("Balance"), 63, 0, 60, 75);
-    w[9]->data = BALANCE;
-    w[9]->func.value_changed_callback = balance_callback;
+    w[9]->data = 8;
+    w[9]->func.value_changed_callback = midi_cc_callback;
 
     w[1] = mamba_add_keyboard_knob(knob_box, _("ModWheel"), 123, 0, 60, 75);
-    w[1]->data = MODULATION;
+    w[1]->data = 1;
     set_adjustment(w[1]->adj, 0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
-    w[1]->func.value_changed_callback = modwheel_callback;
+    w[1]->func.value_changed_callback = midi_cc_callback;
 
     w[2] = mamba_add_keyboard_knob(knob_box, _("Detune"), 183, 0, 60, 75);
-    w[2]->data = CELESTE;
-    w[2]->func.value_changed_callback = detune_callback;
+    w[2]->data = 94;
+    w[2]->func.value_changed_callback = midi_cc_callback;
 
     w[10] = mamba_add_keyboard_knob(knob_box, _("Expression"), 243, 0, 60, 75);
-    w[10]->data = EXPRESSION;
+    w[10]->data = 11;
+    w[10]->private_struct = (void*)expresion;
     set_adjustment(w[10]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
-    w[10]->func.value_changed_callback = expression_callback;
+    w[10]->func.value_changed_callback = midi_cc_channel_callback;
 
     w[3] = mamba_add_keyboard_knob(knob_box, _("Attack"), 303, 0, 60, 75);
-    w[3]->data = ATTACK_TIME;
+    w[3]->data = 73;
+    w[3]->private_struct = (void*)attack;
     set_adjustment(w[3]->adj,0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
-    w[3]->func.value_changed_callback = attack_callback;
+    w[3]->func.value_changed_callback = midi_cc_channel_callback;
 
     w[4] = mamba_add_keyboard_knob(knob_box, _("Release"), 363, 0, 60, 75);
-    w[4]->data = RELEASE_TIME;
+    w[4]->data = 72;
+    w[4]->private_struct = (void*)release;
     set_adjustment(w[4]->adj,0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
-    w[4]->func.value_changed_callback = release_callback;
+    w[4]->func.value_changed_callback = midi_cc_channel_callback;
 
     w[8] = mamba_add_keyboard_knob(knob_box, _("Cutoff"), 423, 0, 60, 75);
+    w[8]->data = 74;
+    w[8]->private_struct = (void*)cutoff;
     set_adjustment(w[8]->adj,0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
-    w[8]->func.value_changed_callback = cutoff_callback;
+    w[8]->func.value_changed_callback = midi_cc_channel_callback;
 
     w[11] = mamba_add_keyboard_knob(knob_box, _("Resonance"), 483, 0, 60, 75);
+    w[11]->data = 71;
+    w[11]->private_struct = (void*)resonance;
     set_adjustment(w[11]->adj,0.0, 0.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
-    w[11]->func.value_changed_callback = resonance_callback;
+    w[11]->func.value_changed_callback = midi_cc_channel_callback;
 
     w[5] = mamba_add_keyboard_knob(knob_box, _("Volume"), 543, 0, 60, 75);
-    w[5]->data = VOLUME;
-    w[5]->func.value_changed_callback = volume_callback;
+    w[5]->data = 7;
+    w[5]->private_struct = (void*)volume;
+    w[5]->func.value_changed_callback = midi_cc_channel_callback;
 
     w[6] = mamba_add_keyboard_knob(knob_box, _("Velocity"), 603, 0, 60, 75);
-    w[6]->data = VELOCITY;
     set_adjustment(w[6]->adj, 127.0, 127.0, 0.0, 127.0, 1.0, CL_CONTINUOS);
     w[6]->func.value_changed_callback = velocity_callback;
 
     w[7] = mamba_add_keyboard_switch(knob_box, _("Sustain"), 663, 9, 34, 70);
-    w[7]->data = SUSTAIN;
+    w[7]->data = 64;
     w[7]->func.value_changed_callback = sustain_callback;
-/*
-    w[8] = mamba_add_keyboard_button(knob_box, _("Sostenuto"), 550, 45, 75, 30);
-    w[8]->data = SOSTENUTO;
-    w[8]->func.value_changed_callback = sostenuto_callback;
-*/
+
     // open a widget for the keyboard layout
     int wpos = view_controls ? 147 : 70;
     if (!view_program) wpos -= 45;
@@ -2216,65 +2173,19 @@ void XKeyBoard::bpm_callback(void *w_, void* user_data) noexcept{
 }
 
 // static
-void XKeyBoard::modwheel_callback(void *w_, void* user_data) noexcept{
+void XKeyBoard::midi_cc_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     int value = (int)adj_get_value(w->adj);
-    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 1, value, 3, false);
+    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, w->data, value, 3, false);
 }
 
 // static
-void XKeyBoard::detune_callback(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    int value = (int)adj_get_value(w->adj);
-    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 94, value, 3, false);
-}
-
-// static
-void XKeyBoard::attack_callback(void *w_, void* user_data) noexcept{
+void XKeyBoard::midi_cc_channel_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->attack[xjmkb->mchannel] = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, 73, xjmkb->attack[xjmkb->mchannel], 3, true);
-}
-
-// static
-void XKeyBoard::expression_callback(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->expresion[xjmkb->mchannel] = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0| xjmkb->mchannel , 11, xjmkb->expresion[xjmkb->mchannel], 3, true);
-}
-
-// static 
-void XKeyBoard::release_callback(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->release[xjmkb->mchannel] = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0| xjmkb->mchannel, 72, xjmkb->release[xjmkb->mchannel], 3, true);
-}
-
-// static
-void XKeyBoard::cutoff_callback(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->cutoff[xjmkb->mchannel] = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, 74, xjmkb->cutoff[xjmkb->mchannel], 3, true);
-}
-
-// static
-void XKeyBoard::resonance_callback(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->resonance[xjmkb->mchannel] = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, 71, xjmkb->resonance[xjmkb->mchannel], 3, true);
-}
-
-// static 
-void XKeyBoard::volume_callback(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
-    xjmkb->volume[xjmkb->mchannel] = (int)adj_get_value(w->adj);
-    xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, 7, xjmkb->volume[xjmkb->mchannel], 3, true);
+    int *value = (int*)w->private_struct;
+    value[xjmkb->mchannel] = (int)adj_get_value(w->adj);
+    xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, w->data, value[xjmkb->mchannel], 3, true);
 }
 
 // static 
@@ -2330,25 +2241,11 @@ void XKeyBoard::pitchwheel_release_callback(void *w_, void* button, void* user_d
 }
 
 // static
-void XKeyBoard::balance_callback(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    int value = (int)adj_get_value(w->adj);
-    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 8, value, 3, false);
-}
-
-// static
 void XKeyBoard::sustain_callback(void *w_, void* user_data) noexcept{
     Widget_t *w = (Widget_t*)w_;
     XKeyBoard *xjmkb = XKeyBoard::get_instance(w);
     xjmkb->sustain[xjmkb->mchannel] = (int)adj_get_value(w->adj);
     xjmkb->mmessage->send_midi_cc(0xB0 | xjmkb->mchannel, 64, xjmkb->sustain[xjmkb->mchannel]*127, 3, true);
-}
-
-// static
-void XKeyBoard::sostenuto_callback(void *w_, void* user_data) noexcept{
-    Widget_t *w = (Widget_t*)w_;
-    int value = (int)adj_get_value(w->adj);
-    XKeyBoard::get_instance(w)->mmessage->send_midi_cc(0xB0, 66, value*127, 3, false);
 }
 
 void XKeyBoard::find_next_beat_time(double *absoluteTime) {
@@ -3517,223 +3414,5 @@ void XKeyBoard::exit_handle (int sig) {
     exit (0);
 }
 
-/****************************************************************
- ** class PosixSignalHandler
- **
- ** Watch for incomming system signals in a extra thread
- ** 
- */
-
-PosixSignalHandler::PosixSignalHandler()
-    : sigc::trackable(),
-      waitset(),
-      thread(nullptr),
-      exit(false) {
-    sigemptyset(&waitset);
-
-    sigaddset(&waitset, SIGINT);
-    sigaddset(&waitset, SIGQUIT);
-    sigaddset(&waitset, SIGTERM);
-    sigaddset(&waitset, SIGHUP);
-    sigaddset(&waitset, SIGKILL);
-
-    sigprocmask(SIG_BLOCK, &waitset, NULL);
-    create_thread();
-}
-
-PosixSignalHandler::~PosixSignalHandler() {
-    if (thread) {
-        exit = true;
-        pthread_kill(thread->native_handle(), SIGINT);
-        thread->join();
-        delete thread;
-    }
-    sigprocmask(SIG_UNBLOCK, &waitset, NULL);
-}
-
-void PosixSignalHandler::create_thread() {
-    try {
-        thread = new std::thread(
-            sigc::mem_fun(*this, &PosixSignalHandler::signal_helper_thread));
-    } catch (std::system_error& e) {
-        fprintf(stderr,"Thread create failed (signal): %s", e.what());
-    }
-}
-
-void PosixSignalHandler::signal_helper_thread() {
-
-    pthread_sigmask(SIG_BLOCK, &waitset, NULL);
-    while (true) {
-        int sig;
-        int ret = sigwait(&waitset, &sig);
-        if (exit) {
-            break;
-        }
-        if (ret != 0) {
-            assert(errno == EINTR);
-            continue;
-        }
-        switch (sig) {
-            case SIGINT:
-            case SIGTERM:
-            case SIGQUIT:
-                trigger_quit_by_posix(sig);
-            break;
-            case SIGHUP:
-            case SIGKILL:
-                trigger_kill_by_posix(sig);
-            break;
-            default:
-            break;
-        }
-    }
-}
-
 } // namespace midikeyboard
-
-
-/****************************************************************
- ** main
- **
- ** init the classes, create the UI, open jackd-client and start application
- ** 
- */
-
-int main (int argc, char *argv[]) {
-    auto t1 = std::chrono::high_resolution_clock::now();
-
-#ifdef ENABLE_NLS
-    // set Message type to locale to fetch localisation support
-    std::setlocale (LC_MESSAGES, "");
-    // set Ctype to C to avoid symbol clashes from different locales
-    std::setlocale (LC_CTYPE, "C");
-    bindtextdomain(GETTEXT_PACKAGE, LOCAL_DIR);
-    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
-    textdomain(GETTEXT_PACKAGE);
-#endif
-
-    if(0 == XInitThreads()) 
-        fprintf(stderr, "Warning: XInitThreads() failed\n");
-
-    midikeyboard::PosixSignalHandler xsig;
-
-    Xputty app;
-
-    mamba::MidiMessenger mmessage;
-    nsmhandler::NsmSignalHandler nsmsig;
-    midikeyboard::AnimatedKeyBoard  animidi;
-
-    midimapper::MidiMapper midimap([&mmessage]
-        (int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept
-        {mmessage.send_midi_cc( _cc, _pg, _bgn, _num, have_channel);});
-
-    xalsa::XAlsa xalsa([&mmessage]
-        (int _cc, int _pg, int _bgn, int _num, bool have_channel) noexcept
-        {mmessage.send_midi_cc( _cc, _pg, _bgn, _num, have_channel);},
-        [&midimap] (const uint8_t* m ,uint8_t n ) noexcept {midimap.mmapper_input_notify(m,n);});
-
-    xjack::XJack xjack(&mmessage,
-        [&xalsa] (const uint8_t* m ,uint8_t n ) noexcept {xalsa.xalsa_output_notify(m,n);},
-        [&xalsa] (int p ) {xalsa.xalsa_set_priority(p);},
-        [&midimap] (const uint8_t* m ,uint8_t n ) noexcept {midimap.mmapper_input_notify(m,n);},
-        [&midimap] (int p ) {midimap.mmapper_set_priority(p);});
-
-    xsynth::XSynth xsynth;
-    midikeyboard::XKeyBoard xjmkb(&xjack, &xalsa, &xsynth, &midimap, &mmessage, nsmsig, xsig, &animidi);
-    nsmhandler::NsmHandler nsmh(&nsmsig);
-
-    nsmsig.nsm_session_control = nsmh.check_nsm(xjmkb.client_name.c_str(), argv);
-
-    main_init(&app);
-
-    if (xjack.init_jack()) {
-
-        if (!nsmsig.nsm_session_control)
-            xjmkb.set_config_file();
-
-        xjmkb.read_config();
-        xjmkb.init_ui(&app);
-        MambaKeyboard *keys = (MambaKeyboard*)xjmkb.wid->parent_struct;
-        midimap.mmapper_start([keys] (int channel, int key, bool set)
-            {mamba_set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
-        if (xalsa.xalsa_init(xjack.client_name.c_str(), "input", "output") >= 0) {
-            xalsa.xalsa_start([keys] (int channel, int key, bool set)
-                {mamba_set_key_in_matrix(keys->in_key_matrix[channel], key, set);});
-        } else {
-            fprintf(stderr, _("Couldn't open a alsa port, is the alsa sequencer running?\n"));
-        }
-
-        if (!xjmkb.soundfont.empty()) {
-            std::string synth_instance = xjack.client_name;
-            std::transform(synth_instance.begin(), synth_instance.end(), synth_instance.begin(), ::tolower);
-            xsynth.setup(xjack.SampleRate, synth_instance.c_str());
-            xsynth.init_synth();
-            xsynth.load_soundfont(xjmkb.soundfont.c_str());
-            const char **port_list = NULL;
-            port_list = jack_get_ports(xjack.client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
-            if (port_list) {
-                for (int i = 0; port_list[i] != NULL; i++) {
-                    if (strstr(port_list[i], synth_instance.c_str())) {
-                        const char *my_port = jack_port_name(xjack.out_port);
-                        jack_connect(xjack.client, my_port,port_list[i]);
-                        break;
-                    }
-                }
-                jack_free(port_list);
-                port_list = NULL;
-            }
-            for (int i = 0; i<16;i++)
-                mmessage.send_midi_cc(0xB0 | i, 7, xjmkb.volume[i], 3, true);
-            xjmkb.fs[0]->state = 0;
-            xjmkb.fs[1]->state = 0;
-            xjmkb.fs[2]->state = 0;
-            xjmkb.fs[3]->state = 0;
-            xjmkb.rebuild_instrument_list();
-            xjmkb.rebuild_soundfont_list();
-            xjmkb.init_modulators(&xjmkb);
-        }
-        
-        if (argc > 1) {
-
-#ifdef __XDG_MIME_H__
-            if(strstr(xdg_mime_get_mime_type_from_file_name(argv[1]), "midi")) {
-#else
-            if( access(argv[1], F_OK ) != -1 ) {
-#endif
-                xjmkb.dialog_load_response(xjmkb.win, (void*) &argv[1]);
-            }
-        }
-
-        if (xsynth.synth_is_active()) {
-            for(std::vector<mamba::MidiEvent>::iterator i = xjack.rec.play[0].begin(); i != xjack.rec.play[0].end(); ++i) {
-                if (((*i).buffer[0] & 0xf0) == 0xB0 && ((*i).buffer[1]== 32 || (*i).buffer[1]== 0)) {
-                    mmessage.send_midi_cc((*i).buffer[0], (*i).buffer[1], (*i).buffer[2], 3, true);
-                } else if (((*i).buffer[0] & 0xf0) == 0xC0 ) {
-                    mmessage.send_midi_cc((*i).buffer[0], (*i).buffer[1], 0, 2, true);
-                }
-            }
-        }
-        xjmkb.client_name = xjack.client_name;
-        std::string tittle = xjmkb.client_name + _(" - Virtual Midi Keyboard");
-        widget_set_title(xjmkb.win, tittle.c_str());
-        xjmkb.show_ui(xjmkb.visible);
-        if (xsynth.synth_is_active()) xjmkb.rebuild_instrument_list();
-        auto t2 = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
-        debug_print("%f sec\n",duration/1e+6);
-
-        main_run(&app);
-        
-        animidi.stop();
-        if (xjack.client) jack_client_close (xjack.client);
-        xsynth.unload_synth();
-        if(!nsmsig.nsm_session_control) xjmkb.save_config();
-    }
-    main_quit(&app);
-
-    exit (0);
-
-} 
-
-
 

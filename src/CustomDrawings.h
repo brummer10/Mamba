@@ -25,7 +25,16 @@
 
 #ifndef CUSTOMDRAWINGS_H
 #define CUSTOMDRAWINGS_H
+
+/****************************************************************
+ ** class CustomDrawings
+ **
+ ** drawing routines from Mamba - Virtual Midi Keyboard
+ ** 
+ */
+
 namespace midikeyboard {
+
 class CustomDrawings {
 public:
 
